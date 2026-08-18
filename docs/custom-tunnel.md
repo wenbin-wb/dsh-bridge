@@ -188,11 +188,22 @@ DSH（127.0.0.1:3080）
 
 **连接超时 / 无法连接**
 
-1. 检查服务器防火墙是否放行了端口（默认 3000）
+1. 检查服务器**云控制台安全组**是否放行了端口（默认 3000）——云主机有两层防火墙：云安全组（控制台配置）和系统防火墙（ufw/firewalld），两层都要放行
 2. 确认服务正在运行：`systemctl status dsh-tunnel`
-3. 验证健康检查：`curl http://YOUR_IP:3000/healthz`，应返回 `{"ok":true,...}`
+3. 验证健康检查（在服务器本机执行）：`curl http://127.0.0.1:3000/healthz`，应返回 `{"ok":true,...}`
+4. 外网访问 `healthz` 返回 404 是正常的（安全设计，防止探测）
 
-**连接成功后频繁断开**
+**历史记录加载失败 / 提示 "The user aborted a request."**
+
+历史消息较多时，API 响应时间较长。请确保服务端版本 ≥ 1.0.6（脚本已将 API 请求超时提升至 120s）。重新运行安装脚本即可更新：
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/wenbin-wb/dsh-bridge/main/scripts/install-tunnel-server.sh)
+```
+
+**重装后端口变了，安全组不匹配**
+
+插件会自动保留已有配置（令牌/端口/路径不变）。若出现端口变化，通常是上次重装时旧进程仍在占用端口导致自动选了新端口。脚本 1.0.6 起已修复：清理旧进程提前到端口检测之前，重装时始终复用原端口。
 
 WebSocket 长连接需要较长的超时配置。如果使用 Nginx，确保 `proxy_read_timeout` 设为 `3600s`。
 
