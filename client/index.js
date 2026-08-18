@@ -251,7 +251,7 @@ function VersionBanner({ rpcCall }) {
           ),
           React.createElement('code', {
             style: { fontSize: 11, opacity: 0.85, fontFamily: 'ui-monospace,Menlo,monospace', wordBreak: 'break-all' },
-          }, 'dsh plugin --profile web update @wenbin-wb/dsh-bridge --latest'),
+          }, 'dsh plugin --profile web update @wenbin_wb/dsh-bridge --latest'),
         ),
         React.createElement('button', {
           style: {

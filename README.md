@@ -26,7 +26,7 @@
 从 npm 安装（发布后）：
 
 ```bash
-dsh plugin --profile web add @wenbin-wb/dsh-bridge
+dsh plugin --profile web add @wenbin_wb/dsh-bridge
 ```
 
 从源码安装：
