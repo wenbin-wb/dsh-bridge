@@ -21,9 +21,36 @@
 > 本插件基于 **DeepSeek Harness v0.1.0-rc.6** 开发测试。  
 > DSH 是开发者预览版，插件契约可能随版本变化，请关注 [CHANGELOG](./CHANGELOG.md)。
 
+## 环境要求
+
+安装插件前，请先确保：
+
+1. **Node.js ≥ 22**（DSH 要求 `^22.19.0` 或 `≥ 24.0.0`）
+2. **dsh CLI 可用**——即能在终端直接运行 `dsh` 命令
+
+```bash
+# 检查 Node 版本
+node -v   # 应显示 v22.19+ 或 v24+
+
+# 检查 dsh 是否可用
+dsh --version
+```
+
+如果 `dsh` 命令提示"无法识别/找不到"，说明它没有全局安装，先安装 DSH：
+
+```bash
+npm install -g @deepseek-ai/dsh@0.1.0-rc.6
+```
+
+> ⚠️ 与 DSH 版本保持一致：本插件基于 `0.1.0-rc.6` 测试，建议安装相同版本以免契约不匹配。  
+> 若没有全局安装的权限，也可以用 `npx` 方式（无需全局安装）：
+> ```bash
+> npx --yes @deepseek-ai/dsh plugin --profile web add @wenbin_wb/dsh-bridge
+> ```
+
 ## 安装
 
-从 npm 安装（发布后）：
+从 npm 安装：
 
 ```bash
 dsh plugin --profile web add @wenbin_wb/dsh-bridge
