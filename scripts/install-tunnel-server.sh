@@ -197,12 +197,14 @@ function forwardRequest(ws, req, res, forwardPath) {
       headers: req.headers,
       body: Buffer.concat(chunks).toString('base64'),
     }));
+    // API 请求（历史记录等大响应）用更长超时
+    const timeoutMs = forwardPath.startsWith('/api/') ? 120000 : 30000;
     const timer = setTimeout(() => {
       if (!pending.has(requestId)) return;
       pending.delete(requestId);
       res.writeHead(504, { 'content-type': 'text/plain; charset=utf-8' });
       res.end('Gateway Timeout');
-    }, 30000);
+    }, timeoutMs);
     pending.set(requestId, { res, timer });
   });
   req.on('error', () => res.destroy());
