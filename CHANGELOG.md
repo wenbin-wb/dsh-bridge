@@ -1,92 +1,92 @@
-# Changelog
+# 变更日志
 
-All notable changes to DSH Bridge will be documented in this file.
+本文档记录 DSH Bridge 的所有重要变更。
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
+版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [1.0.0] - 2024-01-15
+## [未发布]
 
-### Added
+### 新增功能
 
-#### Access Layer
-- **LAN Access**: Automatic local network detection with QR code generation
-- **Cloudflare Tunnel**: One-click public URL via cloudflared with auto-download
-- **Custom Tunnel**: WebSocket reverse tunnel to self-hosted servers
-- **Smart Network Detection**: Intelligent LAN IP selection with scoring algorithm
-- **QR Code Cache**: Efficient caching with TTL and size limits
+#### 访问层
+- 局域网访问：自动检测本地网络并生成二维码
+- Cloudflare 隧道：一键获取公网地址，自动下载 cloudflared
+- 自建隧道：WebSocket 反向隧道连接自建服务器
+- 智能网络检测：基于评分算法的 LAN IP 智能选择
+- 二维码缓存：基于 TTL 和大小限制的高效缓存
 
-#### Security
-- **Token Authentication**: Secure token-based auth for custom tunnels
-- **Loopback-only RPC**: Browser-to-host communication restricted to loopback
-- **Host Header Rewriting**: Proper trust boundary for DSH
+#### 安全性
+- Token 认证：自建隧道的安全令牌认证机制
+- Loopback-only RPC：浏览器到宿主的通信限制在本地回环
+- Host Header 重写：DSH 信任边界的正确处理
 
-#### User Experience
-- **Real-time Status Updates**: Auto-refresh every 3 seconds
-- **Progress Indicators**: Download progress, connection states, error messages
-- **Copy to Clipboard**: One-click URL copying with visual feedback
-- **Active Connection Counter**: Real-time connection monitoring
-- **Elegant UI**: Production-grade design with warm earth tones
+#### 用户体验
+- 实时状态更新：每 3 秒自动刷新
+- 进度指示器：下载进度、连接状态、错误信息
+- 一键复制：点击复制 URL，带视觉反馈
+- 活动连接计数：实时连接数监控
+- 专业界面：生产级设计，清晰简洁
 
-#### Server Infrastructure
-- **Production-grade Tunnel Server**: WebSocket-based with automatic reconnection
-- **Health Monitoring**: Heartbeat system with automatic timeout detection
-- **Request Multiplexing**: Efficient HTTP request/response mapping
-- **Docker Support**: Complete containerization with docker-compose
-- **Graceful Shutdown**: Clean connection cleanup on server stop
+#### 服务器基础设施
+- 生产级隧道服务器：基于 WebSocket，支持自动重连
+- 健康监控：心跳系统，自动超时检测
+- 请求复用：高效的 HTTP 请求/响应映射
+- Docker 支持：完整的容器化，提供 docker-compose
+- 优雅关闭：服务器停止时清理所有连接
 
-#### Developer Experience
-- **TypeScript-ready**: Full type definitions for service interfaces
-- **Comprehensive Error Handling**: Detailed error messages and recovery
-- **Extensive Logging**: Debug-friendly logging at all levels
-- **Clean Architecture**: Service layer separation, dependency injection
+#### 开发体验
+- TypeScript 支持：完整的服务接口类型定义
+- 完善的错误处理：详细的错误信息和恢复机制
+- 广泛的日志记录：各层级的调试友好日志
+- 清晰的架构：服务层分离、依赖注入
 
-### Technical Details
+### 技术细节
 
-#### Architecture
-- **Service Orchestration Layer**: Centralized state management and health monitoring
-- **Proxy Server**: HTTP and WebSocket proxy with connection tracking
-- **Tunnel Client**: Auto-reconnect with exponential backoff
-- **Cloudflared Manager**: Platform detection and binary auto-download
+#### 架构
+- 服务编排层：集中式状态管理和健康监控
+- 代理服务器：HTTP 和 WebSocket 代理，连接跟踪
+- 隧道客户端：指数退避的自动重连机制
+- Cloudflared 管理器：平台检测和二进制自动下载
 
-#### Performance
-- **Efficient QR Generation**: Cached with 30-minute TTL
-- **Connection Pooling**: Reused connections where possible
-- **Minimal Memory Footprint**: Stream-based request forwarding
-- **Fast Startup**: Parallel initialization of services
+#### 性能
+- 高效二维码生成：30 分钟 TTL 缓存
+- 连接池：可能的情况下复用连接
+- 最小内存占用：基于流的请求转发
+- 快速启动：服务并行初始化
 
-## Roadmap
+## 路线图
 
-### [1.1.0] - Bot Integrations (Q1 2024)
-- [ ] WeChat bot integration via Clawbot
-- [ ] QQ bot integration
-- [ ] Telegram bot integration
-- [ ] Lark (Feishu) bot integration
+### v1.1 - Bot 集成
+- 微信机器人集成（通过 Clawbot）
+- QQ 机器人集成
+- Telegram 机器人集成
+- 飞书机器人集成
 
-### [1.2.0] - Advanced Features (Q2 2024)
-- [ ] Webhook endpoints for external services
-- [ ] Session sharing across devices
-- [ ] Mobile-optimized UI
-- [ ] Custom domain support for tunnels
-- [ ] Rate limiting and traffic shaping
+### v1.2 - 高级功能
+- Webhook 端点，支持外部服务
+- 跨设备会话共享
+- 移动端优化界面
+- 自定义域名支持
+- 流量限速和整形
 
-### [1.3.0] - Enterprise Features (Q3 2024)
-- [ ] Multi-user support with separate tokens
-- [ ] Analytics dashboard
-- [ ] Traffic logs and audit trails
-- [ ] Slack bot integration
-- [ ] Discord bot integration
+### v1.3 - 企业功能
+- 多用户支持，独立令牌
+- 分析仪表盘
+- 流量日志和审计跟踪
+- Slack 机器人集成
+- Discord 机器人集成
 
-### [2.0.0] - Platform Expansion (Q4 2024)
-- [ ] Native mobile apps (iOS, Android)
-- [ ] Desktop tray application
-- [ ] Browser extension
-- [ ] API for third-party integrations
+### v2.0 - 平台扩展
+- 原生移动应用（iOS、Android）
+- 桌面托盘应用
+- 浏览器扩展
+- 第三方集成 API
 
-## Contributing
+## 贡献
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines on how to contribute.
+参见 [CONTRIBUTING.md](./CONTRIBUTING.md) 了解贡献指南。
 
-## License
+## 许可证
 
-MIT License - see [LICENSE](./LICENSE) for details.
+MIT License - 详见 [LICENSE](./LICENSE)。

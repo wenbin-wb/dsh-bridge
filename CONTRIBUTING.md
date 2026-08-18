@@ -1,196 +1,196 @@
-# Contributing to DSH Bridge
+# 贡献指南
 
-Thank you for your interest in contributing to DSH Bridge! This document provides guidelines and instructions for contributing.
+感谢您对 DSH Bridge 项目的关注！本文档提供贡献的指南和说明。
 
-## Code of Conduct
+## 行为准则
 
-- Be respectful and inclusive
-- Focus on constructive feedback
-- Help maintain a welcoming environment
+- 尊重他人，包容多元
+- 专注于建设性反馈
+- 帮助维护友好的环境
 
-## Getting Started
+## 开始贡献
 
-### Prerequisites
+### 环境要求
 
 - Node.js >= 18.0.0
 - Git
-- Basic understanding of DSH and Cordis plugins
+- 基本了解 DSH 和 Cordis 插件
 
-### Development Setup
+### 开发环境设置
 
 ```bash
-# Fork and clone the repository
+# Fork 并克隆仓库
 git clone https://github.com/YOUR_USERNAME/dsh-bridge.git
 cd dsh-bridge
 
-# Install dependencies
+# 安装依赖
 npm install
 
-# Run tests
+# 运行测试
 npm test
 
-# Link for local development
+# 链接到本地开发
 npm link
 cd /path/to/your/dsh
 npm link dsh-bridge
 ```
 
-## Development Workflow
+## 开发流程
 
-### 1. Create a Branch
+### 1. 创建分支
 
 ```bash
 git checkout -b feature/your-feature-name
-# or
+# 或
 git checkout -b fix/your-bug-fix
 ```
 
-### 2. Make Changes
+### 2. 进行修改
 
-- Follow existing code style
-- Add tests for new features
-- Update documentation
-- Keep commits atomic and meaningful
+- 遵循现有代码风格
+- 为新功能添加测试
+- 更新相关文档
+- 保持提交原子化且有意义
 
-### 3. Test Your Changes
+### 3. 测试修改
 
 ```bash
-# Run tests
+# 运行测试
 npm test
 
-# Test manually with DSH
-# Start DSH with your linked plugin
+# 使用 DSH 手动测试
+# 启动链接了插件的 DSH
 dsh
 ```
 
-### 4. Commit
+### 4. 提交代码
 
-Use clear, descriptive commit messages:
+使用清晰、描述性的提交信息（中文）：
 
 ```
-feat: add telegram bot integration
-fix: resolve connection timeout issue
-docs: update deployment guide
-refactor: improve tunnel client error handling
+feat: 添加 Telegram 机器人集成
+fix: 修复连接超时问题
+docs: 更新部署指南
+refactor: 改进隧道客户端错误处理
 ```
 
-### 5. Push and Create PR
+### 5. 推送并创建 PR
 
 ```bash
 git push origin feature/your-feature-name
 ```
 
-Then create a Pull Request on GitHub with:
-- Clear title and description
-- Reference any related issues
-- Screenshots for UI changes
-- Test results
+然后在 GitHub 上创建 Pull Request，包含：
+- 清晰的标题和描述
+- 引用相关 issue
+- UI 变更的截图
+- 测试结果
 
-## Code Style
+## 代码规范
 
-### General Principles
+### 通用原则
 
-- **Clarity over cleverness**: Write code that's easy to understand
-- **Production-grade**: Error handling, logging, graceful degradation
-- **Type safety**: Use JSDoc for type hints where helpful
-- **Clean architecture**: Separate concerns, dependency injection
+- **清晰优于聪明**: 编写易于理解的代码
+- **生产级标准**: 错误处理、日志记录、优雅降级
+- **类型安全**: 在有帮助的地方使用 JSDoc 类型提示
+- **清晰架构**: 关注点分离、依赖注入
 
-### JavaScript Style
+### JavaScript 风格
 
 ```javascript
-// Use modern JavaScript
+// 使用现代 JavaScript
 const { feature } = await import('./module.mjs');
 
-// Descriptive names
+// 描述性命名
 function calculateBestLanIp() { ... }
 
-// Error handling
+// 错误处理
 try {
   await riskyOperation();
 } catch (err) {
-  logger.error('Operation failed: %s', err.message);
-  throw new Error(`Failed to complete: ${err.message}`);
+  logger.error('操作失败: %s', err.message);
+  throw new Error(`完成失败: ${err.message}`);
 }
 
-// Comments for complex logic
-// Calculate network interface score based on:
-// 1. Private IP range (highest priority)
-// 2. Physical vs virtual interface
-// 3. Ethernet vs WiFi
+// 为复杂逻辑添加注释
+// 基于以下因素计算网络接口评分：
+// 1. 私有 IP 范围（最高优先级）
+// 2. 物理 vs 虚拟接口
+// 3. 以太网 vs WiFi
 ```
 
-### UI Components
+### UI 组件
 
 ```javascript
-// React without JSX
+// 不使用 JSX 的 React
 React.createElement('div', {
   style: { padding: '20px' }
 },
-  React.createElement('h1', null, 'Title')
+  React.createElement('h1', null, '标题')
 )
 
-// Elegant, production-grade design
-// - Warm earth tones (#C4612F, #F7F4EF)
-// - Rounded buttons (999px)
-// - Clear hierarchy
-// - Real-time feedback
+// 优雅的生产级设计
+// - 温暖大地色调（#C4612F, #F7F4EF）
+// - 圆角按钮（999px）
+// - 清晰的层级
+// - 实时反馈
 ```
 
-## Testing
+## 测试
 
-### Unit Tests
+### 单元测试
 
 ```javascript
 // test/feature.test.mjs
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 
-describe('Feature', () => {
-  it('should work correctly', () => {
+describe('功能', () => {
+  it('应该正常工作', () => {
     assert.strictEqual(result, expected);
   });
 });
 ```
 
-### Integration Tests
+### 集成测试
 
-Test complete workflows:
-- Tunnel connection and reconnection
-- QR code generation and caching
-- RPC communication
-- Error recovery
+测试完整工作流：
+- 隧道连接和重连
+- QR 码生成和缓存
+- RPC 通信
+- 错误恢复
 
-### Manual Testing
+### 手动测试
 
-1. Test all access methods (LAN, Cloudflare, Custom)
-2. Test on different platforms (Windows, macOS, Linux)
-3. Test UI on different browsers
-4. Test mobile device access
+1. 测试所有访问方式（局域网、Cloudflare、自建）
+2. 测试不同平台（Windows、macOS、Linux）
+3. 测试不同浏览器上的 UI
+4. 测试移动设备访问
 
-## Documentation
+## 文档
 
-### Code Documentation
+### 代码文档
 
 ```javascript
 /**
- * Connect to tunnel server with automatic reconnection
- * @throws {Error} If server URL or token is invalid
+ * 连接到隧道服务器，支持自动重连
+ * @throws {Error} 如果服务器 URL 或 token 无效
  */
 async connect() { ... }
 ```
 
-### User Documentation
+### 用户文档
 
-- Update README.md for new features
-- Add examples and use cases
-- Include troubleshooting steps
-- Update CHANGELOG.md
+- 为新功能更新 README.md
+- 添加示例和使用场景
+- 包含故障排除步骤
+- 更新 CHANGELOG.md
 
-## Adding New Features
+## 添加新功能
 
-### Bot Integrations
+### 机器人集成
 
-Structure for adding a new bot:
+添加新机器人的结构：
 
 ```javascript
 // lib/bots/telegram-bot.mjs
@@ -201,24 +201,24 @@ export class TelegramBot {
   }
   
   async start() {
-    // Initialize bot
+    // 初始化机器人
   }
   
   async handleCommand(command, args) {
-    // Process commands
+    // 处理命令
   }
   
   async sendNotification(message) {
-    // Send messages
+    // 发送消息
   }
   
   stop() {
-    // Cleanup
+    // 清理资源
   }
 }
 ```
 
-Register in `index.js`:
+在 `index.js` 中注册：
 
 ```javascript
 if (config.telegram?.enabled) {
@@ -228,84 +228,84 @@ if (config.telegram?.enabled) {
 }
 ```
 
-Add UI in `client/index.js`:
+在 `client/index.js` 中添加 UI：
 
 ```javascript
 React.createElement(BotCard, {
   ctx,
-  title: 'Telegram Bot',
-  description: 'Receive notifications via Telegram',
+  title: 'Telegram 机器人',
+  description: '通过 Telegram 接收通知',
   status: status.telegram,
   onStart: () => handleAction('startTelegram'),
   onStop: () => handleAction('stopTelegram'),
 })
 ```
 
-### Access Channels
+### 访问通道
 
-For new tunnel types, follow the pattern:
+对于新的隧道类型，遵循以下模式：
 
-1. Create manager class in `lib/`
-2. Integrate in `BridgeService`
-3. Add RPC endpoints
-4. Add UI card in client
-5. Update documentation
+1. 在 `lib/` 中创建管理器类
+2. 集成到 `BridgeService`
+3. 添加 RPC 端点
+4. 在客户端添加 UI 卡片
+5. 更新文档
 
-## Pull Request Guidelines
+## Pull Request 指南
 
-### Before Submitting
+### 提交前检查
 
-- [ ] All tests pass
-- [ ] Code follows style guidelines
-- [ ] Documentation updated
-- [ ] CHANGELOG.md updated
-- [ ] No console.log() in production code (use logger)
-- [ ] Error messages are user-friendly
+- [ ] 所有测试通过
+- [ ] 代码遵循风格指南
+- [ ] 文档已更新
+- [ ] CHANGELOG.md 已更新
+- [ ] 生产代码中无 console.log()（使用 logger）
+- [ ] 错误信息对用户友好
 
-### PR Description Template
+### PR 描述模板
 
 ```markdown
-## Description
-Brief description of changes
+## 描述
+变更的简要说明
 
-## Type of Change
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Breaking change
-- [ ] Documentation update
+## 变更类型
+- [ ] Bug 修复
+- [ ] 新功能
+- [ ] 破坏性变更
+- [ ] 文档更新
 
-## Testing
-- [ ] Unit tests added/updated
-- [ ] Integration tests added/updated
-- [ ] Manual testing completed
+## 测试
+- [ ] 单元测试已添加/更新
+- [ ] 集成测试已添加/更新
+- [ ] 手动测试已完成
 
-## Screenshots (if applicable)
-[Add screenshots for UI changes]
+## 截图（如适用）
+[为 UI 变更添加截图]
 
-## Checklist
-- [ ] Code follows style guidelines
-- [ ] Documentation updated
-- [ ] Tests pass
-- [ ] CHANGELOG updated
+## 检查清单
+- [ ] 代码遵循风格指南
+- [ ] 文档已更新
+- [ ] 测试通过
+- [ ] CHANGELOG 已更新
 ```
 
-## Release Process
+## 发布流程
 
-Maintainers follow semantic versioning:
+维护者遵循语义化版本：
 
-- **Major (1.0.0)**: Breaking changes
-- **Minor (0.1.0)**: New features, backward compatible
-- **Patch (0.0.1)**: Bug fixes
+- **主版本（1.0.0）**：破坏性变更
+- **次版本（0.1.0）**：新功能，向后兼容
+- **补丁版本（0.0.1）**：Bug 修复
 
-## Questions?
+## 有疑问？
 
-- Open an [issue](https://github.com/wenbin-wb/dsh-bridge/issues)
-- Start a [discussion](https://github.com/wenbin-wb/dsh-bridge/discussions)
+- 提交 [issue](https://github.com/wenbin-wb/dsh-bridge/issues)
+- 发起 [讨论](https://github.com/wenbin-wb/dsh-bridge/discussions)
 
-## License
+## 许可证
 
-By contributing, you agree that your contributions will be licensed under the MIT License.
+通过贡献，您同意您的贡献将在 MIT License 下授权。
 
 ---
 
-Thank you for contributing to DSH Bridge! 🎉
+感谢您为 DSH Bridge 做出贡献！

@@ -1,6 +1,6 @@
-# 快速开始 | Quick Start
+# 快速开始
 
-## 安装 | Installation
+## 安装
 
 ```bash
 # 进入你的 DSH 项目目录
@@ -13,7 +13,7 @@ npm install dsh-bridge
 pnpm add dsh-bridge
 ```
 
-## 配置 | Configuration
+## 配置
 
 ### 方式 1: 修改 cordis.yml
 
@@ -41,7 +41,7 @@ $env:DSH_BRIDGE_SERVER="wss://tunnel.yourdomain.com"
 $env:DSH_BRIDGE_TOKEN="your-secret-token"
 ```
 
-## 使用 | Usage
+## 使用
 
 ### 1. 启动 DSH
 
@@ -59,25 +59,25 @@ dsh
 
 ### 4. 选择访问方式
 
-#### 🏠 局域网访问 (推荐首选)
-- 无需配置,自动检测
+#### 局域网访问（推荐首选）
+- 无需配置，自动检测
 - 扫描二维码即可访问
-- 适合: 同一 Wi-Fi 下的手机、平板
+- 适合：同一 Wi-Fi 下的手机、平板
 
-#### ☁️ Cloudflare 隧道 (快速公网)
+#### Cloudflare 隧道（快速公网）
 - 点击"启动"按钮
 - 首次使用会自动下载 cloudflared (~20MB)
-- 获得公网地址,扫码或复制链接访问
-- 适合: 快速分享、临时演示
+- 获得公网地址，扫码或复制链接访问
+- 适合：快速分享、临时演示
 
-#### 🔧 自建服务器 (生产环境)
+#### 自建服务器（生产环境）
 - 需要先配置服务器地址和 Token
-- 固定域名,长期使用
-- 适合: 团队协作、生产部署
+- 固定域名，长期使用
+- 适合：团队协作、生产部署
 
-## 自建服务器部署 | Custom Server Setup
+## 自建服务器部署
 
-### 使用 Docker (推荐)
+### 使用 Docker（推荐）
 
 ```bash
 # 克隆仓库
@@ -127,7 +127,7 @@ server {
 }
 ```
 
-## 常见问题 | FAQ
+## 常见问题
 
 ### Q: 局域网访问无法连接?
 
@@ -155,13 +155,13 @@ server {
 
 **A**: 
 - Cloudflare 隧道的 URL 每次启动都会变
-- 如需固定 URL,请使用自建服务器
+- 如需固定 URL，请使用自建服务器
 
 ### Q: 如何停止隧道?
 
 **A**: 在设置页面点击对应的"停止"按钮
 
-## 最佳实践 | Best Practices
+## 最佳实践
 
 ### 开发环境
 - 使用**局域网访问**或 **Cloudflare**
@@ -170,32 +170,28 @@ server {
 ### 生产环境
 - 使用**自建服务器**
 - 配置 HTTPS/SSL
-- 使用强 Token (64 字符)
+- 使用强 Token（64 字符）
 - 定期更换 Token
 - 配置防火墙规则
 
 ### 安全建议
 1. 生产环境必须使用 HTTPS
-2. Token 存储在环境变量,不要写在代码里
+2. Token 存储在环境变量，不要写在代码里
 3. 定期检查服务器日志
 4. 使用复杂的随机 Token
 5. 考虑添加 IP 白名单
 
-## 性能优化 | Performance
+## 性能优化
 
-- **QR 码缓存**: 30 分钟 TTL,最多 50 个
+- **QR 码缓存**: 30 分钟 TTL，最多 50 个
 - **活动连接监控**: 实时追踪连接数
-- **自动重连**: 指数退避,最多 5 次
+- **自动重连**: 指数退避，最多 5 次
 - **心跳检测**: 30 秒一次
 - **优雅关闭**: 清理所有资源
 
-## 更多帮助 | More Help
+## 更多帮助
 
-- 📖 [完整文档](https://github.com/wenbin-wb/dsh-bridge#readme)
-- 📚 [部署指南](https://github.com/wenbin-wb/dsh-bridge/blob/main/server/README.md)
-- 🐛 [问题反馈](https://github.com/wenbin-wb/dsh-bridge/issues)
-- 💬 [讨论区](https://github.com/wenbin-wb/dsh-bridge/discussions)
-
----
-
-🎉 享受 DSH Bridge 带来的便利!
+- 完整文档: https://github.com/wenbin-wb/dsh-bridge#readme
+- 部署指南: https://github.com/wenbin-wb/dsh-bridge/blob/main/DEPLOY.md
+- 问题反馈: https://github.com/wenbin-wb/dsh-bridge/issues
+- 讨论区: https://github.com/wenbin-wb/dsh-bridge/discussions

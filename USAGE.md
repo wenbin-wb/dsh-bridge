@@ -1,8 +1,8 @@
-# DSH Remote 使用指南
+# 使用手册
 
-完整的使用文档,包括安装、配置、使用和最佳实践。
+完整的使用文档，包括安装、配置、使用和最佳实践。
 
-## 📋 目录
+## 目录
 
 - [快速开始](#快速开始)
 - [安装](#安装)
@@ -12,19 +12,18 @@
 - [常见问题](#常见问题)
 - [故障排查](#故障排查)
 
-## 🚀 快速开始
+## 快速开始
 
 ### 5 分钟快速体验
 
 ```bash
 # 1. 安装插件
-npm install dsh-remote
+npm install dsh-bridge
 
-# 2. 配置 DSH (在 cordis.yml 中添加)
+# 2. 配置 DSH（在 cordis.yml 中添加）
 cat >> ~/.dsh/cordis.yml << 'EOF'
 plugins:
-  dsh-remote: {}
-  dsh-remote:client: {}
+  dsh-bridge: {}
 EOF
 
 # 3. 启动 DSH
@@ -33,514 +32,460 @@ dsh web
 # 4. 打开浏览器
 # http://localhost:3080
 
-# 5. 进入设置 -> DSH Remote
+# 5. 进入设置 -> DSH Bridge
 # 点击"启动 Cloudflare 隧道"获取公网地址
 ```
 
-就这么简单! 🎉
+## 安装
 
-## 📦 安装
-
-### 方式一: npm (推荐)
+### 方式一: npm（推荐）
 
 ```bash
-npm install dsh-remote
+npm install dsh-bridge
 ```
 
 ### 方式二: 从源码
 
 ```bash
-# 克隆仓库
-git clone https://github.com/your-username/dsh-remote.git
-cd dsh-remote
-
-# 安装依赖
+git clone https://github.com/wenbin-wb/dsh-bridge.git
+cd dsh-bridge
 npm install
-
-# 链接到全局
 npm link
-
-# 在 DSH 项目中链接
-cd /path/to/your/dsh
-npm link dsh-remote
 ```
 
-### 验证安装
-
-```bash
-# 检查命令行工具
-dsh-remote help
-
-# 生成测试 token
-dsh-remote generate-token
-```
-
-## ⚙️ 配置
+## 配置
 
 ### 基础配置
 
-最小化配置,只使用局域网和 Cloudflare:
+编辑 `cordis.yml`：
 
 ```yaml
-# ~/.dsh/cordis.yml
 plugins:
-  dsh-remote: {}
-  dsh-remote:client: {}
+  dsh-bridge:
+    proxy:
+      port: 3082  # 本地代理端口，默认 3082
 ```
 
-### 完整配置
-
-包含自建服务器:
+### 自建隧道配置
 
 ```yaml
 plugins:
-  dsh-remote:
-    # 本地代理端口
-    port: 3082
-    
-    # 自建服务器配置
-    serverUrl: wss://dsh.your-domain.com
-    accessToken: your-generated-token
-    
-    # cloudflared 缓存目录 (可选)
-    home: ~/.dsh-remote
-  
-  dsh-remote:client: {}
+  dsh-bridge:
+    proxy:
+      port: 3082
+    customTunnel:
+      serverUrl: wss://tunnel.yourdomain.com
+      accessToken: your-secret-token-here
 ```
 
 ### 环境变量配置
 
 ```bash
-# ~/.bashrc 或 ~/.zshrc
-export DSH_REMOTE_SERVER=wss://dsh.your-domain.com
-export DSH_REMOTE_TOKEN=your-generated-token
-export DSH_REMOTE_PORT=3082
+# Linux/macOS
+export DSH_BRIDGE_SERVER=wss://tunnel.yourdomain.com
+export DSH_BRIDGE_TOKEN=your-secret-token
+export DSH_BRIDGE_PORT=3082
+
+# Windows PowerShell
+$env:DSH_BRIDGE_SERVER="wss://tunnel.yourdomain.com"
+$env:DSH_BRIDGE_TOKEN="your-secret-token"
+$env:DSH_BRIDGE_PORT="3082"
 ```
 
-然后简化 cordis.yml:
+环境变量优先级高于配置文件。
 
-```yaml
-plugins:
-  dsh-remote: {}
-  dsh-remote:client: {}
-```
-
-### 生成访问令牌
-
-```bash
-# 使用内置工具
-dsh-remote generate-token
-
-# 使用 Node.js
-node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
-
-# 使用 OpenSSL
-openssl rand -base64 32
-```
-
-## 📱 使用
+## 使用
 
 ### 局域网访问
 
-**适用场景**: 家庭/办公室同一 Wi-Fi 网络
+适合在同一 Wi-Fi 网络下从移动设备访问。
 
-1. 启动 DSH
-2. 打开设置 -> DSH Remote
-3. 查看"局域网访问"部分
-4. 手机扫描二维码或直接访问 URL
+#### 步骤
 
-**优点**:
-- ✅ 最快的访问速度
-- ✅ 最安全 (不暴露到公网)
-- ✅ 无需配置
+1. 打开 DSH Bridge 设置页面
+2. 查看"局域网访问"卡片
+3. 使用移动设备扫描二维码
+4. 或者手动输入显示的 URL
 
-**限制**:
-- ❌ 只能在同一网络下访问
-- ❌ 公司网络可能有防火墙限制
+#### 特点
+
+- 无需配置，自动检测
+- 不依赖互联网
+- 低延迟
+- 数据不经过第三方
+
+#### 适用场景
+
+- 在家或办公室快速访问
+- 开发测试
+- 演示展示
 
 ### Cloudflare 隧道
 
-**适用场景**: 临时公网访问、快速分享
+快速获取公网地址，无需自建服务器。
 
-1. 打开设置 -> DSH Remote
-2. 找到"Cloudflare 隧道"部分
-3. 点击"启动隧道"
-4. 等待 10-30 秒获取公网 URL
-5. 分享 URL 给他人或在其他设备访问
+#### 步骤
 
-**优点**:
-- ✅ 无需服务器
-- ✅ 一键启动
-- ✅ 自动 HTTPS
-- ✅ 免费使用
+1. 打开 DSH Bridge 设置页面
+2. 找到"Cloudflare 隧道"卡片
+3. 点击"启动"按钮
+4. 等待自动下载 cloudflared（首次约 20MB）
+5. 获取公网 URL，扫码或复制访问
 
-**限制**:
-- ❌ URL 每次启动会变化
-- ❌ 速度可能较慢 (取决于 Cloudflare 节点)
-- ❌ 依赖 Cloudflare 服务
+#### 特点
 
-**使用技巧**:
+- 一键启动
+- 无需账户
+- 自动配置
+- 临时 URL
+
+#### 注意事项
+
+- URL 每次重启会改变
+- 依赖 Cloudflare 服务
+- 受 Cloudflare 使用条款约束
+- 可能有速率限制
+
+#### 适用场景
+
+- 快速分享
+- 临时演示
+- 开发测试
+- 远程协作
+
+### 自建隧道
+
+生产级解决方案，提供稳定的自定义域名。
+
+#### 前置要求
+
+- 一台公网服务器
+- 域名（可选，推荐）
+- SSL 证书（生产环境必需）
+
+#### 服务器部署
+
+参见 [部署指南](./DEPLOY.md) 获取完整的服务器部署说明。
+
+快速部署：
 
 ```bash
-# 查看 cloudflared 版本
-~/.dsh-remote/cloudflared --version
+# 克隆仓库
+git clone https://github.com/wenbin-wb/dsh-bridge.git
+cd dsh-bridge/server
 
-# 手动测试
-~/.dsh-remote/cloudflared tunnel --url http://localhost:3080
+# 配置环境
+nano docker-compose.yml
+# 修改 ALLOWED_TOKENS 和 PUBLIC_URL
 
-# 清理缓存
-rm -rf ~/.dsh-remote/
+# 启动服务
+docker-compose up -d
 ```
 
-### 自建服务器隧道
+#### 客户端配置
 
-**适用场景**: 长期使用、固定域名、高速访问
+在 DSH Bridge 设置中：
 
-#### 第一步: 部署服务器
+1. 输入服务器 URL（wss://tunnel.yourdomain.com）
+2. 输入访问 Token
+3. 点击"启动"
 
-参考 [服务器部署指南](./server/README.md)
+#### 特点
 
-#### 第二步: 配置客户端
+- 固定域名
+- 完全自主
+- 生产级可靠性
+- 自定义 SSL
 
-```bash
-# 生成 token
-dsh-remote generate-token
+#### 适用场景
 
-# 设置环境变量
-export DSH_REMOTE_SERVER=wss://dsh.your-domain.com
-export DSH_REMOTE_TOKEN=your-generated-token
-```
+- 生产环境
+- 长期使用
+- 团队协作
+- 企业部署
 
-或在 cordis.yml 中:
+## 最佳实践
+
+### 开发环境
+
+推荐配置：
 
 ```yaml
 plugins:
-  dsh-remote:
-    serverUrl: wss://dsh.your-domain.com
-    accessToken: your-generated-token
+  dsh-bridge:
+    proxy:
+      port: 3082
 ```
 
-#### 第三步: 启动隧道
+访问方式：
+- 主要使用**局域网访问**（快速、零配置）
+- 需要分享时使用 **Cloudflare 隧道**
 
-1. 打开设置 -> DSH Remote
-2. 找到"自建服务器隧道"部分
-3. 确认配置正确 (绿色 ✓)
-4. 点击"启动隧道"
-5. 等待连接成功
-6. 复制公网 URL
+### 生产环境
 
-**优点**:
-- ✅ 固定域名
-- ✅ 最快的速度
-- ✅ 完全掌控
-- ✅ 支持多用户
+推荐配置：
 
-**限制**:
-- ❌ 需要自己的服务器
-- ❌ 需要配置和维护
-
-### 多设备使用
-
-#### 场景 1: 手机访问桌面 DSH
-
-```
-1. 桌面启动 DSH
-2. 选择访问方式:
-   - 同一 Wi-Fi: 扫描局域网二维码
-   - 不同网络: 启动 Cloudflare 或自建隧道
-3. 手机浏览器打开 URL
+```yaml
+plugins:
+  dsh-bridge:
+    proxy:
+      port: 3082
+    customTunnel:
+      serverUrl: wss://tunnel.yourdomain.com
+      accessToken: ${DSH_BRIDGE_TOKEN}  # 从环境变量读取
 ```
 
-#### 场景 2: 平板访问
+访问方式：
+- 使用**自建隧道**（稳定、可控）
+- 配置 HTTPS/WSS
+- 使用强 Token（64+ 字符）
+- 定期轮换 Token
 
-```
-1. 使用局域网访问最流畅
-2. 或使用自建服务器固定域名
-3. 建议添加书签方便访问
-```
+### 安全建议
 
-#### 场景 3: 远程办公
+1. **Token 管理**
+   - 生成强随机 Token：`node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+   - 存储在环境变量或密钥管理服务
+   - 定期轮换（建议 90 天）
+   - 不要提交到代码仓库
 
-```
-1. 使用自建服务器
-2. 配置 VPN (可选)
-3. 设置访问控制
-```
+2. **网络安全**
+   - 生产环境必须使用 HTTPS/WSS
+   - 配置防火墙规则
+   - 考虑使用 VPN
+   - 限制访问 IP（可选）
 
-## 🎯 最佳实践
-
-### 安全实践
-
-#### 1. 使用强随机 token
-
-```bash
-# ❌ 弱 token
-export DSH_REMOTE_TOKEN=123456
-
-# ✅ 强 token
-export DSH_REMOTE_TOKEN=$(dsh-remote generate-token)
-```
-
-#### 2. 使用 HTTPS/WSS
-
-```bash
-# ❌ 不加密
-export DSH_REMOTE_SERVER=ws://dsh.your-domain.com
-
-# ✅ 加密传输
-export DSH_REMOTE_SERVER=wss://dsh.your-domain.com
-```
-
-#### 3. 不分享包含 token 的 URL
-
-```bash
-# ❌ 错误做法
-https://dsh.your-domain.com/abc123?token=your-secret-token
-
-# ✅ 正确做法
-# Token 应该在 WebSocket 握手时发送,而不是在 HTTP URL 中
-```
-
-#### 4. 定期更换 token
-
-```bash
-#!/bin/bash
-# rotate-token.sh
-
-# 生成新 token
-NEW_TOKEN=$(dsh-remote generate-token | head -1)
-
-# 更新服务器
-ssh your-server "echo ALLOWED_TOKENS=$NEW_TOKEN > /opt/dsh-remote/.env && systemctl restart dsh-remote"
-
-# 更新本地配置
-echo "export DSH_REMOTE_TOKEN=$NEW_TOKEN" >> ~/.bashrc
-source ~/.bashrc
-
-echo "Token 已更换: $NEW_TOKEN"
-```
+3. **监控和日志**
+   - 监控活动连接数
+   - 记录访问日志
+   - 设置异常告警
+   - 定期检查日志
 
 ### 性能优化
 
-#### 1. 选择合适的访问方式
+1. **本地代理端口**
+   - 默认 3082，如有冲突会自动递增
+   - 确保端口未被占用
 
-```
-局域网 > 自建服务器 > Cloudflare
-(速度从快到慢)
+2. **网络优化**
+   - 局域网访问：确保同一网络
+   - 自建隧道：选择低延迟服务器
+   - Cloudflare：依赖 Cloudflare CDN
+
+3. **资源监控**
+   - 查看活动连接数
+   - 监控内存使用
+   - 定期重启服务（长期运行）
+
+## 常见问题
+
+### Q: 局域网访问无法连接？
+
+**A**: 检查以下几点：
+1. 设备在同一 Wi-Fi 网络
+2. 防火墙允许端口 3082
+3. 尝试手动输入 IP:端口
+4. 检查路由器是否开启 AP 隔离
+
+### Q: Cloudflare 启动失败？
+
+**A**: 可能的原因：
+1. 网络连接问题
+2. 磁盘空间不足（需要约 20MB）
+3. 下载被中断
+
+解决方案：
+- 检查网络连接
+- 查看浏览器控制台错误
+- 重新启动
+
+### Q: 自建服务器连接不上？
+
+**A**: 排查步骤：
+1. 确认服务器 URL 正确（注意 wss:// 前缀）
+2. 确认 Token 正确
+3. 检查服务器是否运行：`curl https://your-server.com/health`
+4. 查看服务器日志
+5. 确认防火墙允许 WebSocket 连接
+
+### Q: URL 每次重启都变化？
+
+**A**: 
+- Cloudflare 隧道的 URL 每次启动都会变
+- 如需固定 URL，请使用自建服务器
+- 自建服务器可以配置自定义域名
+
+### Q: 如何停止隧道？
+
+**A**: 在设置页面点击对应的"停止"按钮即可。
+
+### Q: 支持哪些平台？
+
+**A**: 
+- 客户端：所有支持 Node.js 18+ 的平台
+- 服务器：Linux、macOS、Windows
+- 浏览器：Chrome、Firefox、Safari、Edge
+
+### Q: 数据安全吗？
+
+**A**: 
+- 局域网访问：数据不离开本地网络
+- Cloudflare 隧道：数据经过 Cloudflare
+- 自建隧道：完全自主，使用 HTTPS/WSS 加密
+
+### Q: 有连接数限制吗？
+
+**A**: 
+- 插件本身无硬性限制
+- 取决于服务器资源
+- Cloudflare 可能有速率限制
+
+## 故障排查
+
+### 日志查看
+
+#### 客户端日志
+
+浏览器控制台（F12）：
+- 查看网络请求
+- 查看控制台错误
+- 查看 WebSocket 连接状态
+
+#### 服务器日志
+
+Docker 部署：
+```bash
+docker-compose logs -f dsh-bridge-server
 ```
 
-#### 2. 使用地理位置接近的服务器
+PM2 部署：
+```bash
+pm2 logs dsh-bridge-server
+```
+
+Systemd 部署：
+```bash
+sudo journalctl -u dsh-bridge -f
+```
+
+### 常见错误
+
+#### 错误: Port already in use
+
+**原因**: 端口 3082 已被占用
+
+**解决方案**:
+```yaml
+plugins:
+  dsh-bridge:
+    proxy:
+      port: 3083  # 更改为其他端口
+```
+
+或者，插件会自动尝试递增端口。
+
+#### 错误: Connection timeout
+
+**原因**: 网络连接超时
+
+**解决方案**:
+1. 检查网络连接
+2. 检查防火墙规则
+3. 检查服务器是否运行
+4. 增加超时时间（服务器配置）
+
+#### 错误: Authentication failed
+
+**原因**: Token 验证失败
+
+**解决方案**:
+1. 确认 Token 正确
+2. 检查服务器 `ALLOWED_TOKENS` 配置
+3. 确保 Token 之间用逗号分隔，无空格
+
+#### 错误: WebSocket upgrade failed
+
+**原因**: WebSocket 协议升级失败
+
+**解决方案**:
+1. 检查 Nginx 配置是否支持 WebSocket
+2. 确认使用 wss:// 而非 ws://（生产环境）
+3. 检查代理配置
+
+### 调试模式
+
+启用详细日志：
 
 ```bash
-# 如果在中国,使用中国服务器
-export DSH_REMOTE_SERVER=wss://dsh.cn.your-domain.com
+# 设置环境变量
+export DEBUG=dsh-bridge:*
 
-# 如果在美国,使用美国服务器
-export DSH_REMOTE_SERVER=wss://dsh.us.your-domain.com
+# 启动 DSH
+dsh web
 ```
 
-#### 3. 启用压缩 (服务器端)
+### 网络诊断
 
-```nginx
-# Nginx 配置
-location / {
-    proxy_pass http://127.0.0.1:8080;
-    
-    # 启用压缩
-    gzip on;
-    gzip_types text/plain application/json;
+```bash
+# 测试服务器连通性
+curl -v https://tunnel.yourdomain.com/health
+
+# 测试 WebSocket 连接
+wscat -c wss://tunnel.yourdomain.com?token=your-token
+
+# 检查端口占用
+netstat -an | grep 3082
+
+# 测试防火墙
+telnet your-server.com 443
+```
+
+## 高级用法
+
+### 多实例部署
+
+在不同端口运行多个 DSH 实例：
+
+```yaml
+# 实例 1 - cordis.yml
+plugins:
+  dsh-bridge:
+    proxy:
+      port: 3082
+
+# 实例 2 - cordis-2.yml
+plugins:
+  dsh-bridge:
+    proxy:
+      port: 3083
+```
+
+### 自定义代理逻辑
+
+如需修改代理行为，可以 fork 项目并修改 `index.js` 中的 `ProxyServer` 类。
+
+### API 集成
+
+服务器提供健康检查端点：
+
+```bash
+GET /health
+
+响应：
+{
+  "status": "ok",
+  "uptime": 12345,
+  "connections": 2
 }
 ```
 
-### 多用户管理
+## 更多帮助
 
-#### 服务器端配置
-
-```bash
-# 为不同用户生成不同的 token
-ALICE_TOKEN=$(dsh-remote generate-token)
-BOB_TOKEN=$(dsh-remote generate-token)
-CHARLIE_TOKEN=$(dsh-remote generate-token)
-
-# 配置服务器
-export ALLOWED_TOKENS="$ALICE_TOKEN,$BOB_TOKEN,$CHARLIE_TOKEN"
-```
-
-#### 分发 token
-
-```bash
-# Alice
-echo "你的访问令牌: $ALICE_TOKEN" | mail alice@example.com
-
-# Bob
-echo "你的访问令牌: $BOB_TOKEN" | mail bob@example.com
-
-# Charlie
-echo "你的访问令牌: $CHARLIE_TOKEN" | mail charlie@example.com
-```
-
-#### 撤销访问
-
-```bash
-# 从 ALLOWED_TOKENS 中移除对应的 token
-export ALLOWED_TOKENS="$ALICE_TOKEN,$BOB_TOKEN"  # 移除了 CHARLIE_TOKEN
-systemctl restart dsh-remote
-```
-
-## ❓ 常见问题
-
-### Q1: 如何选择访问方式?
-
-**A**: 根据场景选择:
-
-- **同一 Wi-Fi**: 使用局域网 (最快)
-- **临时分享**: 使用 Cloudflare (最方便)
-- **长期使用**: 使用自建服务器 (最稳定)
-
-### Q2: Cloudflare 隧道很慢怎么办?
-
-**A**: 
-1. 检查本地网络速度
-2. 尝试重启隧道 (可能分配到更近的节点)
-3. 考虑使用自建服务器
-
-### Q3: 自建服务器需要多少成本?
-
-**A**: 
-- 最低: $5/月 (VPS)
-- 推荐: $10-20/月 (更好的性能)
-- 域名: $10/年
-
-### Q4: 支持哪些平台?
-
-**A**: 
-- **服务端**: Windows, macOS, Linux
-- **客户端**: 任何支持现代浏览器的设备
-
-### Q5: 可以同时使用多种方式吗?
-
-**A**: 可以! 三种方式可以同时启用:
-- 局域网: 自动可用
-- Cloudflare: 按需启动
-- 自建服务器: 按需启动
-
-### Q6: Token 泄露了怎么办?
-
-**A**: 
-1. 立即生成新 token
-2. 更新服务器配置
-3. 重启服务器
-4. 检查访问日志
-
-### Q7: 如何限制访问来源?
-
-**A**: 在服务器端使用防火墙:
-
-```bash
-# 只允许特定 IP
-sudo ufw allow from 1.2.3.4 to any port 8080
-
-# 或在 Nginx 中配置
-location / {
-    allow 1.2.3.4;
-    deny all;
-}
-```
-
-## 🔧 故障排查
-
-### 问题 1: 局域网地址无法访问
-
-**症状**: 手机无法访问局域网 URL
-
-**解决方案**:
-```bash
-# 1. 检查是否在同一 Wi-Fi
-ip addr show  # Linux
-ipconfig      # Windows
-
-# 2. 检查防火墙
-sudo ufw status
-sudo ufw allow 3082
-
-# 3. 测试端口
-nc -zv 192.168.1.100 3082
-```
-
-### 问题 2: Cloudflare 隧道启动失败
-
-**症状**: 点击启动后一直显示"启动中"
-
-**解决方案**:
-```bash
-# 1. 检查 cloudflared 是否下载成功
-ls -la ~/.dsh-remote/
-
-# 2. 手动测试
-~/.dsh-remote/cloudflared tunnel --url http://localhost:3080
-
-# 3. 查看日志
-# 在 DSH 终端中查看错误信息
-
-# 4. 重新下载
-rm -rf ~/.dsh-remote/
-# 然后重新启动隧道
-```
-
-### 问题 3: 自建服务器连接失败
-
-**症状**: "连接服务器失败" 错误
-
-**解决方案**:
-```bash
-# 1. 测试服务器是否运行
-curl https://dsh.your-domain.com/health
-
-# 2. 测试 WebSocket 连接
-wscat -c wss://dsh.your-domain.com?token=your-token
-
-# 3. 检查 token 是否正确
-echo $DSH_REMOTE_TOKEN
-
-# 4. 查看服务器日志
-sudo journalctl -u dsh-remote -f
-```
-
-### 问题 4: Token 认证失败
-
-**症状**: "Invalid token" 错误
-
-**解决方案**:
-```bash
-# 1. 确认客户端 token
-echo $DSH_REMOTE_TOKEN
-
-# 2. 确认服务器端配置
-ssh your-server "cat /opt/dsh-remote/.env"
-
-# 3. 确保 token 完全匹配
-# 注意空格、换行等
-
-# 4. 重新生成并配置
-dsh-remote generate-token
-```
-
-### 获取帮助
-
-如果以上方法都无法解决:
-
-1. 查看详细日志
-2. 提交 Issue: https://github.com/your-username/dsh-remote/issues
-3. 包含以下信息:
-   - 操作系统和版本
-   - Node.js 版本
-   - DSH 版本
-   - 错误信息
-   - 相关日志
+- 文档：https://github.com/wenbin-wb/dsh-bridge#readme
+- 部署指南：https://github.com/wenbin-wb/dsh-bridge/blob/main/DEPLOY.md
+- 问题反馈：https://github.com/wenbin-wb/dsh-bridge/issues
+- 讨论区：https://github.com/wenbin-wb/dsh-bridge/discussions
 
 ---
 
-更多信息请查看:
-- [README](./README.md) - 项目概览
-- [服务器部署指南](./server/README.md) - 服务器端详细配置
-- [配置示例](./examples/config.md) - 更多配置示例
+如有其他问题，欢迎在 GitHub 上提 issue 或参与讨论。

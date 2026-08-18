@@ -55,3 +55,8 @@ bin/cloudflared*
 
 # Debug
 debug.log
+
+# Internal delivery files (not for public repo)
+DELIVERY_*.md
+PUSH_READY.md
+push-to-github.ps1
