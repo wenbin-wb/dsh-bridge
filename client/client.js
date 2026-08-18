@@ -1,5 +1,5 @@
 window.__ModuleLoader__.load({
-  id: "dsh-bridge",
+  id: "@wenbin_wb/dsh-bridge",
   factory: (require) => {
     var module = { exports: {} };
     var exports = module.exports;
