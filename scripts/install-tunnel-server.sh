@@ -247,7 +247,49 @@ const httpServer = createServer((req, res) => {
   forwardRequest(ws, req, res, url);
 });
 
-const wss = new WebSocketServer({ server: httpServer, path: '/connect' });
+// 控制通道 WebSocket（tunnel client 连进来的）
+const wss = new WebSocketServer({ noServer: true });
+
+// 浏览器 WebSocket 代理（/api/events.host 等）— 等待 tunnel client 的 ws-accept
+const pendingWsUpgrades = new Map(); // wsId -> { socket, head, req }
+const browserWsSockets  = new Map(); // wsId -> net.Socket (已升级)
+
+httpServer.on('upgrade', (req, socket, head) => {
+  const url = req.url ?? '/';
+
+  // tunnel client 自己的控制通道
+  if (url.startsWith('/connect')) {
+    wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req));
+    return;
+  }
+
+  // 浏览器发来的 WebSocket 升级（如 /api/events.host）
+  const [, tunnelWs] = [...tunnelClients.entries()][0] ?? [];
+  if (!tunnelWs) { socket.destroy(); return; }
+
+  // 剥前缀
+  let forwardPath = url;
+  if (url === PATH_PREFIX || url.startsWith(PATH_PREFIX + '/') || url.startsWith(PATH_PREFIX + '?')) {
+    forwardPath = url.slice(PATH_PREFIX.length) || '/';
+  }
+
+  const wsId = `ws-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  pendingWsUpgrades.set(wsId, { socket, head, req: { url: forwardPath, headers: req.headers } });
+
+  tunnelWs.send(JSON.stringify({
+    type: 'ws-open', wsId,
+    path: forwardPath,
+    headers: req.headers,
+  }));
+
+  // 超时清理
+  setTimeout(() => {
+    if (pendingWsUpgrades.has(wsId)) {
+      pendingWsUpgrades.get(wsId).socket.destroy();
+      pendingWsUpgrades.delete(wsId);
+    }
+  }, 10000);
+});
 
 wss.on('connection', (ws, req) => {
   const params = new URL(req.url, 'http://x').searchParams;
@@ -261,27 +303,72 @@ wss.on('connection', (ws, req) => {
   ws.on('message', raw => {
     try {
       const msg = JSON.parse(raw.toString());
+
+      // HTTP 响应
       if (msg.type === 'response') {
         const p = pending.get(msg.requestId);
         if (!p) return;
         clearTimeout(p.timer);
         pending.delete(msg.requestId);
-
         const HOP_BY_HOP = new Set(['transfer-encoding', 'connection', 'keep-alive', 'te', 'trailer', 'upgrade']);
         const headers = Object.fromEntries(
           Object.entries(msg.headers ?? {}).filter(([k]) => !HOP_BY_HOP.has(k.toLowerCase()))
         );
-        const body = Buffer.from(msg.body || '', 'base64');
         p.res.writeHead(msg.statusCode ?? 502, headers);
-        p.res.end(body);
-      } else if (msg.type === 'ping') {
-        ws.send(JSON.stringify({ type: 'pong' }));
+        p.res.end(Buffer.from(msg.body || '', 'base64'));
+        return;
       }
+
+      // WebSocket 握手成功，完成升级并接管 socket
+      if (msg.type === 'ws-accept') {
+        const { wsId, replyHeaders } = msg;
+        const upgrade = pendingWsUpgrades.get(wsId);
+        if (!upgrade) return;
+        pendingWsUpgrades.delete(wsId);
+
+        const { socket } = upgrade;
+        // 回写 101 Switching Protocols
+        const lines = ['HTTP/1.1 101 Switching Protocols'];
+        for (const [k, v] of Object.entries(replyHeaders ?? {})) lines.push(`${k}: ${v}`);
+        lines.push('', '');
+        socket.write(lines.join('\r\n'));
+        browserWsSockets.set(wsId, socket);
+
+        socket.on('data', chunk => {
+          if (ws.readyState === ws.OPEN) {
+            ws.send(JSON.stringify({ type: 'ws-frame', wsId, data: chunk.toString('base64') }));
+          }
+        });
+        socket.on('close', () => {
+          if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ type: 'ws-close', wsId }));
+          browserWsSockets.delete(wsId);
+        });
+        socket.on('error', () => socket.destroy());
+        return;
+      }
+
+      // WebSocket 数据帧（来自本地 DSH，转给浏览器）
+      if (msg.type === 'ws-frame') {
+        const sock = browserWsSockets.get(msg.wsId);
+        if (sock && !sock.destroyed) sock.write(Buffer.from(msg.data, 'base64'));
+        return;
+      }
+
+      // WebSocket 关闭
+      if (msg.type === 'ws-close') {
+        const sock = browserWsSockets.get(msg.wsId);
+        if (sock) { sock.destroy(); browserWsSockets.delete(msg.wsId); }
+        return;
+      }
+
+      if (msg.type === 'ping') ws.send(JSON.stringify({ type: 'pong' }));
     } catch {}
   });
 
   ws.on('close', code => {
     tunnelClients.delete(id);
+    // 清理所有挂在这个 client 上的 browser socket
+    for (const [wsId, sock] of browserWsSockets) { sock.destroy(); browserWsSockets.delete(wsId); }
     console.log(`[dsh-tunnel] client disconnected  id=${id}  code=${code}  remaining=${tunnelClients.size}`);
   });
   ws.on('error', err => console.error(`[dsh-tunnel] client error id=${id}: ${err.message}`));
