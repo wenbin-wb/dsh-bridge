@@ -16,7 +16,6 @@
 ![npm](https://img.shields.io/npm/v/@wenbin_wb/dsh-bridge?label=npm)
 ![npm downloads](https://img.shields.io/npm/dt/@wenbin_wb/dsh-bridge?label=downloads)
 ![npm license](https://img.shields.io/npm/l/@wenbin_wb/dsh-bridge?label=license)
-![DSH Plugin](https://img.shields.io/badge/dsh--plugin-0.1.0--rc.6-blue)
 ![Node](https://img.shields.io/badge/node-%3E%3D22-brightgreen)
 
 ## 功能
@@ -39,12 +38,6 @@
 | **OpenClaw** | 与 OpenClaw 生态打通 | 规划中 |
 | **Telegram** | 适合自托管的 IM 渠道 | 规划中 |
 
-## 兼容性
-
-> - **插件版本**：当前发布 `@wenbin_wb/dsh-bridge@1.0.3`（见顶部 npm 徽章，最新版本会自动同步）
-> - **基于 DeepSeek Harness v0.1.0-rc.6** 开发测试。
-> - DSH 是开发者预览版，插件契约可能随版本变化，请关注 [CHANGELOG](./CHANGELOG.md)。
-
 ## 环境要求
 
 安装插件前，请先确保：
@@ -63,10 +56,9 @@ dsh --version
 如果 `dsh` 命令提示"无法识别/找不到"，说明它没有全局安装，先安装 DSH：
 
 ```bash
-npm install -g @deepseek-ai/dsh@0.1.0-rc.6
+npm install -g @deepseek-ai/dsh
 ```
 
-> 与 DSH 版本保持一致：本插件基于 `0.1.0-rc.6` 测试，建议安装相同版本以免契约不匹配。  
 > 若没有全局安装的权限，也可以用 `npx` 方式（无需全局安装）：
 > ```bash
 > npx --yes @deepseek-ai/dsh plugin --profile web add @wenbin_wb/dsh-bridge
@@ -104,8 +96,10 @@ dsh plugin --profile web add ./dsh-bridge
 
 ### 自建隧道
 
-1. 展开「如何搭建自建隧道服务器？」查看搭建步骤
-2. 填写 WebSocket 服务器地址（`wss://...`）和访问令牌
+需要一台有公网 IP 的服务器。详细搭建步骤见 [自建隧道教程](docs/custom-tunnel.md)。
+
+1. 按教程在服务器上部署隧道服务端
+2. 在「自建隧道」卡片中填写 WebSocket 地址（`wss://...`）和访问令牌
 3. 点「保存配置」后点「开启」
 
 配置自动持久化到 `~/.dsh/dsh-bridge/config.json`，重启后无需重新填写。

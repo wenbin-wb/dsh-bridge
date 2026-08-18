@@ -47,6 +47,7 @@ var BRIDGE_ENDPOINTS = {
 // client/index.js
 var GITHUB_URL = "https://github.com/wenbin-wb/dsh-bridge";
 var ISSUES_URL = "https://github.com/wenbin-wb/dsh-bridge/issues/new";
+var TUNNEL_DOCS_URL = "https://github.com/wenbin-wb/dsh-bridge/blob/main/docs/custom-tunnel.md";
 var name = "dsh-bridge";
 var inject = ["slots", "connection"];
 function semverGt(a, b) {
@@ -64,17 +65,17 @@ function semverGt(a, b) {
   return av.pre > bv.pre;
 }
 var s = {
-  card: { background: "var(--dsw-alias-bg-layer-1,#fff)", border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", borderRadius: 12, padding: "16px 20px", marginBottom: 16 },
+  card: { background: "var(--dsw-alias-bg-layer-1,transparent)", border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", borderRadius: 12, padding: "16px 20px", marginBottom: 16 },
   block: { borderTop: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", marginTop: 12, paddingTop: 12 },
   muted: { color: "var(--dsw-alias-label-tertiary,#8b93a1)", fontSize: 12, lineHeight: 1.5 },
-  label: { color: "var(--dsw-alias-label-primary,inherit)", fontSize: 13, fontWeight: 500 },
-  code: { fontFamily: "ui-monospace,Menlo,monospace", fontSize: 12, wordBreak: "break-all", color: "var(--dsw-alias-label-primary,inherit)" },
+  label: { color: "var(--dsw-alias-label-primary,currentColor)", fontSize: 13, fontWeight: 500 },
+  code: { fontFamily: "ui-monospace,Menlo,monospace", fontSize: 12, wordBreak: "break-all", color: "var(--dsw-alias-label-primary,currentColor)" },
   btnPri: { font: "inherit", cursor: "pointer", border: "none", background: "var(--dsw-alias-button-primary-fill,var(--dsw-alias-brand-primary,#4f6ef7))", color: "#fff", height: 32, padding: "0 14px", borderRadius: 999, fontSize: 13, fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 4 },
-  btnGhost: { font: "inherit", cursor: "pointer", border: "1px solid var(--dsw-alias-border-l2,#d1d5db)", background: "var(--dsw-alias-bg-layer-1,#fff)", color: "var(--dsw-alias-label-primary,inherit)", height: 32, padding: "0 14px", borderRadius: 999, fontSize: 13, display: "inline-flex", alignItems: "center", gap: 4 },
+  btnGhost: { font: "inherit", cursor: "pointer", border: "1px solid var(--dsw-alias-border-l2,#d1d5db)", background: "var(--dsw-alias-bg-layer-1,transparent)", color: "var(--dsw-alias-label-primary,currentColor)", height: 32, padding: "0 14px", borderRadius: 999, fontSize: 13, display: "inline-flex", alignItems: "center", gap: 4, textDecoration: "none" },
   btnLink: { font: "inherit", cursor: "pointer", border: "none", background: "none", color: "var(--dsw-alias-brand-primary,#4f6ef7)", fontSize: 12, padding: 0, display: "inline-flex", alignItems: "center", gap: 3, textDecoration: "none" },
   qr: { width: 200, height: 200, borderRadius: 10, border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", margin: "8px 0", display: "block" },
   tag: { display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: 999, fontSize: 12, fontWeight: 500 },
-  input: { width: "100%", font: "inherit", fontSize: 13, padding: "7px 10px", borderRadius: 8, border: "1px solid var(--dsw-alias-border-l2,#d1d5db)", background: "var(--dsw-alias-bg-layer-1,#fff)", color: "var(--dsw-alias-label-primary,inherit)", outline: "none", boxSizing: "border-box" },
+  input: { width: "100%", font: "inherit", fontSize: 13, padding: "7px 10px", borderRadius: 8, border: "1px solid var(--dsw-alias-border-l2,#d1d5db)", background: "var(--dsw-alias-bg-layer-1,transparent)", color: "var(--dsw-alias-label-primary,currentColor)", outline: "none", boxSizing: "border-box" },
   warn: { background: "var(--dsw-alias-state-warn-bg,#fffbeb)", border: "1px solid var(--dsw-alias-state-warn-border,#fde68a)", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "var(--dsw-alias-state-warn-primary,#92400e)", lineHeight: 1.6 },
   tip: { background: "var(--dsw-alias-bg-layer-2,#f9fafb)", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "var(--dsw-alias-label-secondary,#6b7280)", lineHeight: 1.6 }
 };
@@ -137,38 +138,15 @@ function QrBlock({ url, qr, onReset }) {
   );
 }
 var CustomTunnelGuide = React.memo(function CustomTunnelGuide2() {
-  const [open, setOpen] = React.useState(false);
-  const toggle = React.useCallback(() => setOpen((v) => !v), []);
   return React.createElement(
     "div",
     { style: s.block },
-    React.createElement("button", {
-      style: { ...s.btnGhost, fontSize: 12, height: 28, marginBottom: open ? 10 : 0 },
-      onClick: toggle
-    }, open ? "\u25B2 \u6536\u8D77\u642D\u5EFA\u6559\u7A0B" : "\u25B6 \u5982\u4F55\u642D\u5EFA\u81EA\u5EFA\u96A7\u9053\u670D\u52A1\u5668\uFF1F"),
-    open && React.createElement(
-      "div",
-      { style: s.tip },
-      React.createElement("div", { style: { fontWeight: 500, marginBottom: 6, color: "var(--dsw-alias-label-primary,inherit)" } }, "\u642D\u5EFA\u6B65\u9AA4"),
-      React.createElement(
-        "ol",
-        { style: { margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 4 } },
-        React.createElement("li", null, "\u5728\u516C\u7F51\u670D\u52A1\u5668\u4E0A\u5B89\u88C5 Node.js 18+"),
-        React.createElement("li", null, "\u90E8\u7F72\u96A7\u9053\u670D\u52A1\u7AEF\uFF0C\u63A8\u8350\u4F7F\u7528 frp \u6216\u517C\u5BB9 WebSocket \u7684\u53CD\u5411\u4EE3\u7406"),
-        React.createElement("li", null, "\u8BB0\u5F55\u670D\u52A1\u5668\u7684\u516C\u7F51\u57DF\u540D\uFF08\u5982 tunnel.example.com\uFF09\u548C\u8BBF\u95EE\u4EE4\u724C"),
-        React.createElement("li", null, "\u5728\u4E0B\u65B9\u586B\u5199 WebSocket \u5730\u5740\uFF08wss://...\uFF09\u548C\u4EE4\u724C\uFF0C\u4FDD\u5B58\u540E\u70B9\u5F00\u542F")
-      ),
-      React.createElement(
-        "div",
-        { style: { marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--dsw-alias-border-l2,#e5e7eb)" } },
-        React.createElement("div", { style: { fontWeight: 500, marginBottom: 4, color: "var(--dsw-alias-label-primary,inherit)" } }, "\u5730\u5740\u683C\u5F0F"),
-        React.createElement(
-          "code",
-          { style: { ...s.code, display: "block", padding: "6px 8px", background: "var(--dsw-alias-bg-layer-2,#f3f4f6)", borderRadius: 6 } },
-          "wss://tunnel.example.com/connect"
-        )
-      )
-    )
+    React.createElement("a", {
+      href: TUNNEL_DOCS_URL,
+      target: "_blank",
+      rel: "noreferrer",
+      style: { ...s.btnGhost, fontSize: 12, height: 28, display: "inline-flex" }
+    }, "\u67E5\u770B\u81EA\u5EFA\u96A7\u9053\u670D\u52A1\u5668\u642D\u5EFA\u6559\u7A0B")
   );
 });
 var CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm2({ serverUrl: initUrl, accessToken: initToken, onSave }) {

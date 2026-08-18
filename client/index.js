@@ -4,6 +4,7 @@ import { BRIDGE_RPC_CHANNEL, BRIDGE_ENDPOINTS } from '../lib/bridge-rpc.js';
 
 const GITHUB_URL = 'https://github.com/wenbin-wb/dsh-bridge';
 const ISSUES_URL = 'https://github.com/wenbin-wb/dsh-bridge/issues/new';
+const TUNNEL_DOCS_URL = 'https://github.com/wenbin-wb/dsh-bridge/blob/main/docs/custom-tunnel.md';
 
 const name = 'dsh-bridge';
 const inject = ['slots', 'connection'];
@@ -25,17 +26,17 @@ function semverGt(a, b) {
 }
 
 const s = {
-  card:     { background: 'var(--dsw-alias-bg-layer-1,#fff)', border: '1px solid var(--dsw-alias-border-l2,#e5e7eb)', borderRadius: 12, padding: '16px 20px', marginBottom: 16 },
+  card:     { background: 'var(--dsw-alias-bg-layer-1,transparent)', border: '1px solid var(--dsw-alias-border-l2,#e5e7eb)', borderRadius: 12, padding: '16px 20px', marginBottom: 16 },
   block:    { borderTop: '1px solid var(--dsw-alias-border-l2,#e5e7eb)', marginTop: 12, paddingTop: 12 },
   muted:    { color: 'var(--dsw-alias-label-tertiary,#8b93a1)', fontSize: 12, lineHeight: 1.5 },
-  label:    { color: 'var(--dsw-alias-label-primary,inherit)', fontSize: 13, fontWeight: 500 },
-  code:     { fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 12, wordBreak: 'break-all', color: 'var(--dsw-alias-label-primary,inherit)' },
+  label:    { color: 'var(--dsw-alias-label-primary,currentColor)', fontSize: 13, fontWeight: 500 },
+  code:     { fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 12, wordBreak: 'break-all', color: 'var(--dsw-alias-label-primary,currentColor)' },
   btnPri:   { font: 'inherit', cursor: 'pointer', border: 'none', background: 'var(--dsw-alias-button-primary-fill,var(--dsw-alias-brand-primary,#4f6ef7))', color: '#fff', height: 32, padding: '0 14px', borderRadius: 999, fontSize: 13, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 },
-  btnGhost: { font: 'inherit', cursor: 'pointer', border: '1px solid var(--dsw-alias-border-l2,#d1d5db)', background: 'var(--dsw-alias-bg-layer-1,#fff)', color: 'var(--dsw-alias-label-primary,inherit)', height: 32, padding: '0 14px', borderRadius: 999, fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 4 },
+  btnGhost: { font: 'inherit', cursor: 'pointer', border: '1px solid var(--dsw-alias-border-l2,#d1d5db)', background: 'var(--dsw-alias-bg-layer-1,transparent)', color: 'var(--dsw-alias-label-primary,currentColor)', height: 32, padding: '0 14px', borderRadius: 999, fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 4, textDecoration: 'none' },
   btnLink:  { font: 'inherit', cursor: 'pointer', border: 'none', background: 'none', color: 'var(--dsw-alias-brand-primary,#4f6ef7)', fontSize: 12, padding: 0, display: 'inline-flex', alignItems: 'center', gap: 3, textDecoration: 'none' },
   qr:       { width: 200, height: 200, borderRadius: 10, border: '1px solid var(--dsw-alias-border-l2,#e5e7eb)', margin: '8px 0', display: 'block' },
   tag:      { display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 999, fontSize: 12, fontWeight: 500 },
-  input:    { width: '100%', font: 'inherit', fontSize: 13, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--dsw-alias-border-l2,#d1d5db)', background: 'var(--dsw-alias-bg-layer-1,#fff)', color: 'var(--dsw-alias-label-primary,inherit)', outline: 'none', boxSizing: 'border-box' },
+  input:    { width: '100%', font: 'inherit', fontSize: 13, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--dsw-alias-border-l2,#d1d5db)', background: 'var(--dsw-alias-bg-layer-1,transparent)', color: 'var(--dsw-alias-label-primary,currentColor)', outline: 'none', boxSizing: 'border-box' },
   warn:     { background: 'var(--dsw-alias-state-warn-bg,#fffbeb)', border: '1px solid var(--dsw-alias-state-warn-border,#fde68a)', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: 'var(--dsw-alias-state-warn-primary,#92400e)', lineHeight: 1.6 },
   tip:      { background: 'var(--dsw-alias-bg-layer-2,#f9fafb)', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: 'var(--dsw-alias-label-secondary,#6b7280)', lineHeight: 1.6 },
 };
@@ -95,28 +96,13 @@ function QrBlock({ url, qr, onReset }) {
 }
 
 const CustomTunnelGuide = React.memo(function CustomTunnelGuide() {
-  const [open, setOpen] = React.useState(false);
-  const toggle = React.useCallback(() => setOpen(v => !v), []);
   return React.createElement('div', { style: s.block },
-    React.createElement('button', {
-      style: { ...s.btnGhost, fontSize: 12, height: 28, marginBottom: open ? 10 : 0 },
-      onClick: toggle,
-    }, open ? '▲ 收起搭建教程' : '▶ 如何搭建自建隧道服务器？'),
-    open && React.createElement('div', { style: s.tip },
-      React.createElement('div', { style: { fontWeight: 500, marginBottom: 6, color: 'var(--dsw-alias-label-primary,inherit)' } }, '搭建步骤'),
-      React.createElement('ol', { style: { margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 } },
-        React.createElement('li', null, '在公网服务器上安装 Node.js 18+'),
-        React.createElement('li', null, '部署隧道服务端，推荐使用 frp 或兼容 WebSocket 的反向代理'),
-        React.createElement('li', null, '记录服务器的公网域名（如 tunnel.example.com）和访问令牌'),
-        React.createElement('li', null, '在下方填写 WebSocket 地址（wss://...）和令牌，保存后点开启'),
-      ),
-      React.createElement('div', { style: { marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--dsw-alias-border-l2,#e5e7eb)' } },
-        React.createElement('div', { style: { fontWeight: 500, marginBottom: 4, color: 'var(--dsw-alias-label-primary,inherit)' } }, '地址格式'),
-        React.createElement('code', { style: { ...s.code, display: 'block', padding: '6px 8px', background: 'var(--dsw-alias-bg-layer-2,#f3f4f6)', borderRadius: 6 } },
-          'wss://tunnel.example.com/connect'
-        ),
-      ),
-    ),
+    React.createElement('a', {
+      href: TUNNEL_DOCS_URL,
+      target: '_blank',
+      rel: 'noreferrer',
+      style: { ...s.btnGhost, fontSize: 12, height: 28, display: 'inline-flex' },
+    }, '查看自建隧道服务器搭建教程'),
   );
 });
 
