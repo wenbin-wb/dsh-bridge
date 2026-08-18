@@ -34,17 +34,39 @@ echo -e "  ───────────────────────
 # ── 1/4 检测环境 ────────────────────────────────────────────────────────────
 step "1/4  检测环境"
 
-# 端口
-AUTO_PORT="${PORT:-3000}"
-if ss -tlnp 2>/dev/null | grep -q ":${AUTO_PORT} " || \
-   netstat -tlnp 2>/dev/null | grep -q ":${AUTO_PORT} "; then
-  for p in 3001 3002 3003 8080 8088 9000; do
-    if ! ss -tlnp 2>/dev/null | grep -q ":${p} "; then
-      AUTO_PORT=$p; break
-    fi
-  done
+# ── 1/4 检测环境 ────────────────────────────────────────────────────────────
+step "1/4  检测环境"
+
+# 如果已有 .env，直接复用（重复执行时保留配置，不重新生成）
+EXISTING_ENV="$INSTALL_DIR/.env"
+if [ -f "$EXISTING_ENV" ] && [ -z "${FORCE_REINIT:-}" ]; then
+  info "检测到已有配置，复用现有参数（令牌/路径/端口不变）"
+  _read_env() { grep -E "^$1=" "$EXISTING_ENV" 2>/dev/null | head -1 | cut -d= -f2-; }
+  AUTO_PORT="${PORT:-$(_read_env PORT)}"
+  TOKEN="${TOKEN:-$(_read_env TOKEN)}"
+  ACCESS_PATH="${ACCESS_PATH:-$(_read_env ACCESS_PATH)}"
+  SAVED_PUBLIC_URL="$(_read_env PUBLIC_URL)"
+  ok "复用端口：$AUTO_PORT"
+  ok "复用令牌：（已保留）"
+  ok "复用访问路径：/$ACCESS_PATH"
+  IS_REINSTALL=true
+else
+  IS_REINSTALL=false
 fi
-info "服务端口：$AUTO_PORT"
+
+# 端口（新安装时自动选择空闲端口）
+AUTO_PORT="${AUTO_PORT:-3000}"
+if [ "$IS_REINSTALL" = false ]; then
+  if ss -tlnp 2>/dev/null | grep -q ":${AUTO_PORT} " || \
+     netstat -tlnp 2>/dev/null | grep -q ":${AUTO_PORT} "; then
+    for p in 3001 3002 3003 8080 8088 9000; do
+      if ! ss -tlnp 2>/dev/null | grep -q ":${p} "; then
+        AUTO_PORT=$p; break
+      fi
+    done
+  fi
+  info "服务端口：$AUTO_PORT"
+fi
 
 # 公网 IP
 PUBLIC_IP=""
@@ -54,9 +76,9 @@ for svc in "ifconfig.me" "api.ipify.org" "ipinfo.io/ip" "icanhazip.com"; do
 done
 [ -n "$PUBLIC_IP" ] && ok "公网 IP：$PUBLIC_IP" || warn "无法获取公网 IP，稍后手动修改配置"
 
-# 随机访问路径（作为 URL 密钥，不知道就看不到内容）
+# 随机访问路径（新安装时生成，重装时已从 .env 读取）
 ACCESS_PATH="${ACCESS_PATH:-$(head -c 24 /dev/urandom | base64 | tr -d '+/=\n' | head -c 16)}"
-ok "访问路径：/$ACCESS_PATH（随机生成，保密）"
+[ "$IS_REINSTALL" = false ] && ok "访问路径：/$ACCESS_PATH（随机生成，保密）"
 
 # 访问地址
 if [ -n "${DOMAIN:-}" ]; then
@@ -64,18 +86,18 @@ if [ -n "${DOMAIN:-}" ]; then
   ok "公网地址：$BASE_URL（域名）"
 elif [ -n "$PUBLIC_IP" ]; then
   BASE_URL="http://${PUBLIC_IP}:${AUTO_PORT}"
-  ok "公网地址：$BASE_URL"
+  [ "$IS_REINSTALL" = false ] && ok "公网地址：$BASE_URL"
 else
   BASE_URL="http://YOUR_SERVER_IP:${AUTO_PORT}"
-  warn "公网地址：待确认（安装后修改 $INSTALL_DIR/.env 中的 BASE_URL）"
+  warn "公网地址：待确认（安装后修改 $INSTALL_DIR/.env 中的 PUBLIC_URL）"
 fi
 
-# PUBLIC_URL 嵌入访问路径——这是真正对外暴露的地址
-PUBLIC_URL="${BASE_URL}/${ACCESS_PATH}"
+# 复用已有 PUBLIC_URL（重装时不覆盖用户可能手动修改过的地址）
+PUBLIC_URL="${SAVED_PUBLIC_URL:-${BASE_URL}/${ACCESS_PATH}}"
 
-# WebSocket 连接令牌（独立于访问路径，双重保护）
+# WebSocket 连接令牌
 TOKEN="${TOKEN:-$(head -c 32 /dev/urandom | base64 | tr -d '+/=\n' | head -c 32)}"
-ok "连接令牌：已生成"
+[ "$IS_REINSTALL" = false ] && ok "连接令牌：已生成"
 
 # ── 2/4 安装 Node.js ─────────────────────────────────────────────────────────
 step "2/4  安装 Node.js"
@@ -111,6 +133,27 @@ fi
 
 # ── 3/4 部署服务端 ───────────────────────────────────────────────────────────
 step "3/4  部署服务端"
+
+# 先停止一切旧实例，防止端口冲突
+info "清理旧进程..."
+# 停 systemd 服务
+if systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
+  systemctl stop "$SERVICE_NAME" &>/dev/null
+  ok "已停止旧 systemd 服务"
+fi
+# 杀掉所有仍在跑的 server.mjs 进程（手动启动的残留）
+OLD_PIDS=$(pgrep -f "$INSTALL_DIR/server.mjs" 2>/dev/null || true)
+if [ -n "$OLD_PIDS" ]; then
+  echo "$OLD_PIDS" | xargs kill -9 2>/dev/null || true
+  ok "已终止残留进程：$OLD_PIDS"
+fi
+# 如果目标端口仍被占用，再按端口强杀
+if ss -tlnp 2>/dev/null | grep -q ":${AUTO_PORT} "; then
+  PIDS_ON_PORT=$(ss -tlnp 2>/dev/null | grep ":${AUTO_PORT} " | grep -oP 'pid=\K[0-9]+' || true)
+  [ -n "$PIDS_ON_PORT" ] && echo "$PIDS_ON_PORT" | xargs kill -9 2>/dev/null || true
+  sleep 1
+fi
+ok "端口 $AUTO_PORT 已就绪"
 
 mkdir -p "$INSTALL_DIR"
 info "安装目录：$INSTALL_DIR"
