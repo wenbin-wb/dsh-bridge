@@ -10,7 +10,7 @@
 
 - **局域网访问**：手机扫码，同一 Wi-Fi 直接访问
 - **Cloudflare 隧道**：一键暴露公网地址，随时随地连接
-- **自建隧道**：连接自己的隧道服务器，获得固定域名
+- **自建隧道**：连接自己的隧道服务器，获得固定域名（[搭建教程](docs/custom-tunnel.md)）
 - **IM 集成（规划中）**：微信 / QQ / 飞书 / OpenClaw，直接在聊天软件里呼唤你的 Agent
 
 ![npm](https://img.shields.io/npm/v/@wenbin_wb/dsh-bridge?label=npm)
