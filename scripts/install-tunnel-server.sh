@@ -174,7 +174,7 @@ const env = Object.fromEntries(
 
 const PORT        = parseInt(env.PORT || '3000', 10);
 const TOKEN       = env.TOKEN || '';
-const ACCESS_PATH = (env.ACCESS_PATH || '').replace(/^\/+|\/+$/g, ''); // 去掉首尾斜杠
+const ACCESS_PATH = (env.ACCESS_PATH || '').replace(/^\/+|\/+$/g, '');
 const PUBLIC_URL  = env.PUBLIC_URL || `http://localhost:${PORT}/${ACCESS_PATH}`;
 
 if (!TOKEN)       { console.error('[dsh-tunnel] ERROR: TOKEN is not set');       process.exit(1); }
@@ -182,35 +182,41 @@ if (!ACCESS_PATH) { console.error('[dsh-tunnel] ERROR: ACCESS_PATH is not set');
 
 console.log(`[dsh-tunnel] starting  port=${PORT}  path=/${ACCESS_PATH}  url=${PUBLIC_URL}`);
 
-const PATH_PREFIX = `/${ACCESS_PATH}`;   // 必须以此开头才是合法请求
+const PATH_PREFIX = `/${ACCESS_PATH}`;
 const tunnelClients = new Map();
 const pending       = new Map();
+
+// 向 HTML 注入 <base href>，让浏览器把绝对资源路径自动补上隧道前缀
+function injectBase(html, base) {
+  const tag = `<base href="${base}">`;
+  // 优先插在 <head> 后，其次 <html> 后，最后前置
+  if (/<head[^>]*>/i.test(html)) return html.replace(/(<head[^>]*>)/i, `$1${tag}`);
+  if (/<html[^>]*>/i.test(html)) return html.replace(/(<html[^>]*>)/i, `$1${tag}`);
+  return tag + html;
+}
 
 const httpServer = createServer((req, res) => {
   const url = req.url ?? '/';
 
-  // 健康检查：仅允许本机访问，外网扫不到
+  // 健康检查：仅允许本机访问
   if (url === '/healthz') {
     const ip = req.socket.remoteAddress ?? '';
     if (ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1') {
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ ok: true, clients: tunnelClients.size, uptime: process.uptime() | 0 }));
     } else {
-      // 外网请求 /healthz 也看不出服务存在
-      res.writeHead(404);
-      res.end();
+      res.writeHead(404); res.end();
     }
     return;
   }
 
-  // 路径鉴权：不以 ACCESS_PATH 开头的请求，一律返回 404，不泄露任何信息
-  if (url !== PATH_PREFIX && !url.startsWith(PATH_PREFIX + '/')) {
-    res.writeHead(404);
-    res.end();
+  // 路径鉴权：不以 ACCESS_PATH 开头一律 404
+  if (url !== PATH_PREFIX && !url.startsWith(PATH_PREFIX + '/') && !url.startsWith(PATH_PREFIX + '?')) {
+    res.writeHead(404); res.end();
     return;
   }
 
-  // 没有隧道客户端连接
+  // 没有隧道客户端
   const [, ws] = [...tunnelClients.entries()][0] ?? [];
   if (!ws) {
     res.writeHead(503, { 'content-type': 'text/plain; charset=utf-8' });
@@ -218,8 +224,9 @@ const httpServer = createServer((req, res) => {
     return;
   }
 
-  // 剥离访问路径前缀，把剩余路径转发给本地 DSH
+  // 剥离前缀转发
   const stripped = url.slice(PATH_PREFIX.length) || '/';
+  const acceptsHtml = (req.headers['accept'] || '').includes('text/html');
 
   const chunks = [];
   req.on('data', c => chunks.push(c));
@@ -227,8 +234,7 @@ const httpServer = createServer((req, res) => {
     const requestId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
     ws.send(JSON.stringify({
       type: 'request', requestId,
-      method: req.method,
-      path: stripped,           // 转发时去掉访问路径前缀
+      method: req.method, path: stripped,
       headers: req.headers,
       body: Buffer.concat(chunks).toString('base64'),
     }));
@@ -240,12 +246,11 @@ const httpServer = createServer((req, res) => {
       res.end('Gateway Timeout');
     }, 30000);
 
-    pending.set(requestId, { res, timer });
+    pending.set(requestId, { res, timer, acceptsHtml });
   });
   req.on('error', () => res.destroy());
 });
 
-// WebSocket 连接端点（使用 token 鉴权，与 HTTP 路径独立）
 const wss = new WebSocketServer({ server: httpServer, path: '/connect' });
 
 wss.on('connection', (ws, req) => {
@@ -255,7 +260,6 @@ wss.on('connection', (ws, req) => {
   const id = Math.random().toString(36).slice(2);
   tunnelClients.set(id, ws);
   console.log(`[dsh-tunnel] client connected  id=${id}  ip=${req.socket.remoteAddress}  total=${tunnelClients.size}`);
-  // 告知客户端公网地址（含路径前缀）
   ws.send(JSON.stringify({ type: 'ready', publicUrl: PUBLIC_URL }));
 
   ws.on('message', raw => {
@@ -266,12 +270,24 @@ wss.on('connection', (ws, req) => {
         if (!p) return;
         clearTimeout(p.timer);
         pending.delete(msg.requestId);
+
+        const HOP_BY_HOP = new Set(['transfer-encoding', 'connection', 'keep-alive', 'te', 'trailer', 'upgrade']);
         const headers = Object.fromEntries(
-          Object.entries(msg.headers ?? {})
-            .filter(([k]) => !['transfer-encoding', 'connection'].includes(k.toLowerCase()))
+          Object.entries(msg.headers ?? {}).filter(([k]) => !HOP_BY_HOP.has(k.toLowerCase()))
         );
+
+        let body = Buffer.from(msg.body || '', 'base64');
+        const ct = (headers['content-type'] || '');
+
+        // 是 HTML 响应 → 注入 <base href> 让浏览器资源路径自动补前缀
+        if (p.acceptsHtml && ct.includes('text/html')) {
+          const html = injectBase(body.toString('utf8'), `${PATH_PREFIX}/`);
+          body = Buffer.from(html, 'utf8');
+          headers['content-length'] = String(body.length);
+        }
+
         p.res.writeHead(msg.statusCode ?? 502, headers);
-        p.res.end(Buffer.from(msg.body || '', 'base64'));
+        p.res.end(body);
       } else if (msg.type === 'ping') {
         ws.send(JSON.stringify({ type: 'pong' }));
       }
