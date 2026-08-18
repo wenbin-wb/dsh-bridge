@@ -37,6 +37,19 @@ step "1/4  检测环境"
 # ── 1/4 检测环境 ────────────────────────────────────────────────────────────
 step "1/4  检测环境"
 
+# 先杀掉旧进程，再检测端口——避免旧进程占着端口导致脚本选了新端口
+info "清理旧进程..."
+if systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
+  systemctl stop "$SERVICE_NAME" &>/dev/null
+  ok "已停止旧 systemd 服务"
+fi
+OLD_PIDS=$(pgrep -f "$INSTALL_DIR/server.mjs" 2>/dev/null || true)
+if [ -n "$OLD_PIDS" ]; then
+  echo "$OLD_PIDS" | xargs kill -9 2>/dev/null || true
+  ok "已终止残留进程"
+fi
+sleep 1  # 等端口释放
+
 # 如果已有 .env，直接复用（重复执行时保留配置，不重新生成）
 EXISTING_ENV="$INSTALL_DIR/.env"
 if [ -f "$EXISTING_ENV" ] && [ -z "${FORCE_REINIT:-}" ]; then
@@ -54,7 +67,7 @@ else
   IS_REINSTALL=false
 fi
 
-# 端口（新安装时自动选择空闲端口）
+# 端口（新安装时自动选择空闲端口，此时旧进程已清理，端口已释放）
 AUTO_PORT="${AUTO_PORT:-3000}"
 if [ "$IS_REINSTALL" = false ]; then
   if ss -tlnp 2>/dev/null | grep -q ":${AUTO_PORT} " || \
@@ -134,20 +147,7 @@ fi
 # ── 3/4 部署服务端 ───────────────────────────────────────────────────────────
 step "3/4  部署服务端"
 
-# 先停止一切旧实例，防止端口冲突
-info "清理旧进程..."
-# 停 systemd 服务
-if systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
-  systemctl stop "$SERVICE_NAME" &>/dev/null
-  ok "已停止旧 systemd 服务"
-fi
-# 杀掉所有仍在跑的 server.mjs 进程（手动启动的残留）
-OLD_PIDS=$(pgrep -f "$INSTALL_DIR/server.mjs" 2>/dev/null || true)
-if [ -n "$OLD_PIDS" ]; then
-  echo "$OLD_PIDS" | xargs kill -9 2>/dev/null || true
-  ok "已终止残留进程：$OLD_PIDS"
-fi
-# 如果目标端口仍被占用，再按端口强杀
+# 旧进程已在步骤1提前清理，这里只做端口二次确认
 if ss -tlnp 2>/dev/null | grep -q ":${AUTO_PORT} "; then
   PIDS_ON_PORT=$(ss -tlnp 2>/dev/null | grep ":${AUTO_PORT} " | grep -oP 'pid=\K[0-9]+' || true)
   [ -n "$PIDS_ON_PORT" ] && echo "$PIDS_ON_PORT" | xargs kill -9 2>/dev/null || true
