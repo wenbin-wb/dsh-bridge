@@ -186,13 +186,26 @@ const PATH_PREFIX = `/${ACCESS_PATH}`;
 const tunnelClients = new Map();
 const pending       = new Map();
 
-// 向 HTML 注入 <base href>，让浏览器把绝对资源路径自动补上隧道前缀
-function injectBase(html, base) {
-  const tag = `<base href="${base}">`;
-  // 优先插在 <head> 后，其次 <html> 后，最后前置
-  if (/<head[^>]*>/i.test(html)) return html.replace(/(<head[^>]*>)/i, `$1${tag}`);
-  if (/<html[^>]*>/i.test(html)) return html.replace(/(<html[^>]*>)/i, `$1${tag}`);
-  return tag + html;
+function forwardRequest(ws, req, res, forwardPath) {
+  const chunks = [];
+  req.on('data', c => chunks.push(c));
+  req.on('end', () => {
+    const requestId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+    ws.send(JSON.stringify({
+      type: 'request', requestId,
+      method: req.method, path: forwardPath,
+      headers: req.headers,
+      body: Buffer.concat(chunks).toString('base64'),
+    }));
+    const timer = setTimeout(() => {
+      if (!pending.has(requestId)) return;
+      pending.delete(requestId);
+      res.writeHead(504, { 'content-type': 'text/plain; charset=utf-8' });
+      res.end('Gateway Timeout');
+    }, 30000);
+    pending.set(requestId, { res, timer });
+  });
+  req.on('error', () => res.destroy());
 }
 
 const httpServer = createServer((req, res) => {
@@ -210,45 +223,28 @@ const httpServer = createServer((req, res) => {
     return;
   }
 
-  // 路径鉴权：不以 ACCESS_PATH 开头一律 404
-  if (url !== PATH_PREFIX && !url.startsWith(PATH_PREFIX + '/') && !url.startsWith(PATH_PREFIX + '?')) {
+  const [, ws] = [...tunnelClients.entries()][0] ?? [];
+
+  // 带前缀的请求：剥离前缀再转发（主页面入口）
+  if (url === PATH_PREFIX || url.startsWith(PATH_PREFIX + '/') || url.startsWith(PATH_PREFIX + '?')) {
+    if (!ws) {
+      res.writeHead(503, { 'content-type': 'text/plain; charset=utf-8' });
+      res.end('No tunnel client connected. Please enable the custom tunnel in dsh-bridge.');
+      return;
+    }
+    const stripped = url.slice(PATH_PREFIX.length) || '/';
+    forwardRequest(ws, req, res, stripped);
+    return;
+  }
+
+  // 不带前缀的请求（/assets/xxx.js、/api/xxx 等）：
+  // 仅在已有 tunnel client 时透传——浏览器加载页面资源必须走这条路
+  // 无 client 时返回 404，不泄露服务存在
+  if (!ws) {
     res.writeHead(404); res.end();
     return;
   }
-
-  // 没有隧道客户端
-  const [, ws] = [...tunnelClients.entries()][0] ?? [];
-  if (!ws) {
-    res.writeHead(503, { 'content-type': 'text/plain; charset=utf-8' });
-    res.end('No tunnel client connected. Please enable the custom tunnel in dsh-bridge.');
-    return;
-  }
-
-  // 剥离前缀转发
-  const stripped = url.slice(PATH_PREFIX.length) || '/';
-  const acceptsHtml = (req.headers['accept'] || '').includes('text/html');
-
-  const chunks = [];
-  req.on('data', c => chunks.push(c));
-  req.on('end', () => {
-    const requestId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-    ws.send(JSON.stringify({
-      type: 'request', requestId,
-      method: req.method, path: stripped,
-      headers: req.headers,
-      body: Buffer.concat(chunks).toString('base64'),
-    }));
-
-    const timer = setTimeout(() => {
-      if (!pending.has(requestId)) return;
-      pending.delete(requestId);
-      res.writeHead(504, { 'content-type': 'text/plain; charset=utf-8' });
-      res.end('Gateway Timeout');
-    }, 30000);
-
-    pending.set(requestId, { res, timer, acceptsHtml });
-  });
-  req.on('error', () => res.destroy());
+  forwardRequest(ws, req, res, url);
 });
 
 const wss = new WebSocketServer({ server: httpServer, path: '/connect' });
@@ -275,17 +271,7 @@ wss.on('connection', (ws, req) => {
         const headers = Object.fromEntries(
           Object.entries(msg.headers ?? {}).filter(([k]) => !HOP_BY_HOP.has(k.toLowerCase()))
         );
-
-        let body = Buffer.from(msg.body || '', 'base64');
-        const ct = (headers['content-type'] || '');
-
-        // 是 HTML 响应 → 注入 <base href> 让浏览器资源路径自动补前缀
-        if (p.acceptsHtml && ct.includes('text/html')) {
-          const html = injectBase(body.toString('utf8'), `${PATH_PREFIX}/`);
-          body = Buffer.from(html, 'utf8');
-          headers['content-length'] = String(body.length);
-        }
-
+        const body = Buffer.from(msg.body || '', 'base64');
         p.res.writeHead(msg.statusCode ?? 502, headers);
         p.res.end(body);
       } else if (msg.type === 'ping') {
