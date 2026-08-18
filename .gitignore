@@ -66,3 +66,8 @@ push-to-github.ps1
 DELIVERY_*.md
 PUSH_READY.md
 push-to-github.ps1
+CODE_STANDARDS.md
+CODE_REVIEW.md
+CODE_STYLE.md
+PROJECT_DELIVERY.md
+COMPLETION_REPORT.md
