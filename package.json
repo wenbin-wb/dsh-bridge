@@ -1,6 +1,6 @@
 {
   "name": "@wenbin_wb/dsh-bridge",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "DSH 多渠道接入桥：局域网二维码、自建隧道、机器人集成",
   "type": "module",
   "main": "lib/index.js",
