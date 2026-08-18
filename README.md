@@ -2,16 +2,16 @@
 
 ![dsh-bridge banner](docs/banner.jpg)
 
-> 🚀 DeepSeek Harness 多通道远程访问插件 —— 让 AI 无处不达
+> DeepSeek Harness 多通道远程访问插件
 
-把你本地的 DeepSeek Harness 无缝延伸到**手机、平板、公网、甚至 IM 聊天软件**。无论你在哪，都能通过扫码、网页或未来的微信/QQ/飞书，随时调用你的 AI 助手。
+把你本地的 DeepSeek Harness 无缝延伸到手机、平板、公网、甚至 IM 聊天软件。无论你在哪，都能通过扫码、网页或未来的微信/QQ/飞书，随时调用你的 AI 助手。
 
 在 DSH 设置页新增「远程访问」面板，开箱即用地获得：
 
-- **📱 局域网访问**：手机扫码，同一 Wi-Fi 直接访问
-- **🌍 Cloudflare 隧道**：一键暴露公网地址，随时随地连接
-- **🔗 自建隧道**：连接自己的隧道服务器，获得固定域名
-- **💬 IM 集成（规划中）**：微信 / QQ / 飞书 / OpenClaw，直接在聊天软件里呼唤你的 Agent
+- **局域网访问**：手机扫码，同一 Wi-Fi 直接访问
+- **Cloudflare 隧道**：一键暴露公网地址，随时随地连接
+- **自建隧道**：连接自己的隧道服务器，获得固定域名
+- **IM 集成（规划中）**：微信 / QQ / 飞书 / OpenClaw，直接在聊天软件里呼唤你的 Agent
 
 ![npm](https://img.shields.io/npm/v/@wenbin_wb/dsh-bridge?label=npm)
 ![npm downloads](https://img.shields.io/npm/dt/@wenbin_wb/dsh-bridge?label=downloads)
@@ -27,19 +27,17 @@
 - **安全提示**：URL 和二维码带访问警告，防止误分享
 - **版本检查**：进入面板自动检测是否有新版本
 
-## Roadmap（路线图）
+## Roadmap
 
-本项目致力于把 DSH 打造成**随时随地可用的 AI 基础设施**。除了现有的三种访问方式，正在规划：
+除了现有的三种访问方式，正在规划：
 
 | 目标 | 说明 | 状态 |
 |------|------|------|
-| 💬 **微信 / 公众号** | 在微信里直接与你的 Agent 对话 | 规划中 |
-| 🐧 **QQ Bot** | 接入手Q QQ 机器人，群聊/私聊唤起 Agent | 规划中 |
-| ✈️ **飞书** | 飞书消息/机器人集成，办公场景直接调用 | 规划中 |
-| 🤖 **OpenClaw** | 与 OpenClaw 生态打通 | 规划中 |
-| 📨 **Telegram** | 高度可定制、适合自托管的 IM 渠道 | 规划中 |
-
-> **为什么关注这个项目**：DSH 的能力全在插件里，而 dsh-bridge 正是那个"把 DSH 从本机解放出来"的关键插件。未来的 IM 集成会让你的 AI 助手真正做到"随叫随到"。
+| **微信** | 在微信里直接与你的 Agent 对话 | 规划中 |
+| **QQ Bot** | 接入 QQ 机器人，群聊/私聊唤起 Agent | 规划中 |
+| **飞书** | 飞书消息/机器人集成，办公场景直接调用 | 规划中 |
+| **OpenClaw** | 与 OpenClaw 生态打通 | 规划中 |
+| **Telegram** | 适合自托管的 IM 渠道 | 规划中 |
 
 ## 兼容性
 
@@ -68,7 +66,7 @@ dsh --version
 npm install -g @deepseek-ai/dsh@0.1.0-rc.6
 ```
 
-> ⚠️ 与 DSH 版本保持一致：本插件基于 `0.1.0-rc.6` 测试，建议安装相同版本以免契约不匹配。  
+> 与 DSH 版本保持一致：本插件基于 `0.1.0-rc.6` 测试，建议安装相同版本以免契约不匹配。  
 > 若没有全局安装的权限，也可以用 `npx` 方式（无需全局安装）：
 > ```bash
 > npx --yes @deepseek-ai/dsh plugin --profile web add @wenbin_wb/dsh-bridge
