@@ -186,7 +186,7 @@ function TunnelCard({ title, desc, data, onStart, onStop, onReset, children }) {
   );
 }
 
-// 版本检查横幅
+// 版本检查横幅（进入页面自动检测）
 function VersionBanner({ rpcCall }) {
   const [info, setInfo] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
@@ -201,36 +201,55 @@ function VersionBanner({ rpcCall }) {
     }
   }, [rpcCall]);
 
+  // 进页面自动检测一次
+  React.useEffect(() => { check(); }, [check]);
+
   const hasUpdate = info?.latest && info?.current && info.latest !== info.current && !info.error;
 
-  if (!info) {
-    return React.createElement('div', { style: { ...s.muted, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 } },
+  // 有新版本：显示醒目横幅
+  if (hasUpdate) {
+    return React.createElement('div', {
+      style: {
+        display: 'flex', alignItems: 'center', gap: 12,
+        background: 'linear-gradient(135deg, var(--dsw-alias-brand-primary,#4f6ef7) 0%, #6366f1 100%)',
+        borderRadius: 10, padding: '12px 16px', marginBottom: 16, color: '#fff',
+      },
+    },
+      React.createElement('span', { style: { fontSize: 20 } }, '🎉'),
+      React.createElement('div', { style: { flex: 1 } },
+        React.createElement('div', { style: { fontSize: 13, fontWeight: 600 } },
+          `发现新版本 v${info.latest}（当前 v${info.current}）`
+        ),
+        React.createElement('code', {
+          style: { fontSize: 11, opacity: 0.85, fontFamily: 'ui-monospace,Menlo,monospace', wordBreak: 'break-all' },
+        }, 'dsh plugin --profile web update dsh-bridge --latest'),
+      ),
       React.createElement('button', {
-        style: { ...s.btnGhost, height: 22, padding: '0 8px', fontSize: 11, opacity: loading ? 0.5 : 1 },
-        onClick: check,
-        disabled: loading,
-      }, loading ? '检查中…' : '检查更新'),
+        style: {
+          font: 'inherit', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.4)',
+          background: 'rgba(255,255,255,0.15)', color: '#fff', height: 30, padding: '0 12px',
+          borderRadius: 999, fontSize: 12, display: 'inline-flex', alignItems: 'center',
+          opacity: loading ? 0.5 : 1, flexShrink: 0,
+        },
+        onClick: check, disabled: loading,
+      }, loading ? '…' : '刷新'),
     );
   }
 
-  return React.createElement('div', { style: { marginBottom: 12 } },
-    React.createElement('div', { style: { ...s.muted, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' } },
-      React.createElement('span', null, `当前版本 v${info.current}`),
-      info.latest && !info.error && React.createElement('span', null, `· 最新 v${info.latest}`),
-      React.createElement('button', {
-        style: { ...s.btnGhost, height: 22, padding: '0 8px', fontSize: 11, opacity: loading ? 0.5 : 1 },
-        onClick: check,
-        disabled: loading,
-      }, loading ? '检查中…' : '刷新'),
+  // 无新版本或检查中：紧凑一行
+  return React.createElement('div', {
+    style: { ...s.muted, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  },
+    loading && !info && React.createElement('span', null, '检查更新中…'),
+    info && !info.error && React.createElement('span', null,
+      `v${info.current}` + (info.latest ? ` · 已是最新` : ''),
     ),
-    hasUpdate && React.createElement('div', { style: { ...s.warn, marginTop: 6 } },
-      `🎉 发现新版本 v${info.latest}，运行以下命令升级：`,
-      React.createElement('br'),
-      React.createElement('code', { style: s.code }, 'dsh plugin --profile web update dsh-bridge --latest'),
-    ),
-    info.error && React.createElement('div', { style: { ...s.muted, marginTop: 4 } },
-      `检查失败: ${info.error}`,
-    ),
+    info?.error && React.createElement('span', null, `v${info.current} · 检查失败`),
+    // 加载完成后才显示刷新按钮，避免布局跳动
+    info && React.createElement('button', {
+      style: { ...s.btnGhost, height: 22, padding: '0 8px', fontSize: 11, opacity: loading ? 0.5 : 1 },
+      onClick: check, disabled: loading,
+    }, loading ? '…' : '重新检查'),
   );
 }
 

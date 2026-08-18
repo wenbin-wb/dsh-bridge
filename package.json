@@ -19,8 +19,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build:client": "node client/build.mjs",
-    "test": "node test/basic.mjs"
+    "build:client": "node client/build.mjs"
   },
   "dependencies": {
     "qrcode": "^1.5.3",

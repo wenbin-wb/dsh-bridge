@@ -256,44 +256,77 @@ function VersionBanner({ rpcCall }) {
       setLoading(false);
     }
   }, [rpcCall]);
+  React.useEffect(() => {
+    check();
+  }, [check]);
   const hasUpdate = info?.latest && info?.current && info.latest !== info.current && !info.error;
-  if (!info) {
+  if (hasUpdate) {
     return React.createElement(
       "div",
-      { style: { ...s.muted, marginBottom: 12, display: "flex", alignItems: "center", gap: 8 } },
+      {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          background: "linear-gradient(135deg, var(--dsw-alias-brand-primary,#4f6ef7) 0%, #6366f1 100%)",
+          borderRadius: 10,
+          padding: "12px 16px",
+          marginBottom: 16,
+          color: "#fff"
+        }
+      },
+      React.createElement("span", { style: { fontSize: 20 } }, "\u{1F389}"),
+      React.createElement(
+        "div",
+        { style: { flex: 1 } },
+        React.createElement(
+          "div",
+          { style: { fontSize: 13, fontWeight: 600 } },
+          `\u53D1\u73B0\u65B0\u7248\u672C v${info.latest}\uFF08\u5F53\u524D v${info.current}\uFF09`
+        ),
+        React.createElement("code", {
+          style: { fontSize: 11, opacity: 0.85, fontFamily: "ui-monospace,Menlo,monospace", wordBreak: "break-all" }
+        }, "dsh plugin --profile web update dsh-bridge --latest")
+      ),
       React.createElement("button", {
-        style: { ...s.btnGhost, height: 22, padding: "0 8px", fontSize: 11, opacity: loading ? 0.5 : 1 },
+        style: {
+          font: "inherit",
+          cursor: "pointer",
+          border: "1px solid rgba(255,255,255,0.4)",
+          background: "rgba(255,255,255,0.15)",
+          color: "#fff",
+          height: 30,
+          padding: "0 12px",
+          borderRadius: 999,
+          fontSize: 12,
+          display: "inline-flex",
+          alignItems: "center",
+          opacity: loading ? 0.5 : 1,
+          flexShrink: 0
+        },
         onClick: check,
         disabled: loading
-      }, loading ? "\u68C0\u67E5\u4E2D\u2026" : "\u68C0\u67E5\u66F4\u65B0")
+      }, loading ? "\u2026" : "\u5237\u65B0")
     );
   }
   return React.createElement(
     "div",
-    { style: { marginBottom: 12 } },
-    React.createElement(
-      "div",
-      { style: { ...s.muted, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } },
-      React.createElement("span", null, `\u5F53\u524D\u7248\u672C v${info.current}`),
-      info.latest && !info.error && React.createElement("span", null, `\xB7 \u6700\u65B0 v${info.latest}`),
-      React.createElement("button", {
-        style: { ...s.btnGhost, height: 22, padding: "0 8px", fontSize: 11, opacity: loading ? 0.5 : 1 },
-        onClick: check,
-        disabled: loading
-      }, loading ? "\u68C0\u67E5\u4E2D\u2026" : "\u5237\u65B0")
+    {
+      style: { ...s.muted, marginBottom: 12, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }
+    },
+    loading && !info && React.createElement("span", null, "\u68C0\u67E5\u66F4\u65B0\u4E2D\u2026"),
+    info && !info.error && React.createElement(
+      "span",
+      null,
+      `v${info.current}` + (info.latest ? ` \xB7 \u5DF2\u662F\u6700\u65B0` : "")
     ),
-    hasUpdate && React.createElement(
-      "div",
-      { style: { ...s.warn, marginTop: 6 } },
-      `\u{1F389} \u53D1\u73B0\u65B0\u7248\u672C v${info.latest}\uFF0C\u8FD0\u884C\u4EE5\u4E0B\u547D\u4EE4\u5347\u7EA7\uFF1A`,
-      React.createElement("br"),
-      React.createElement("code", { style: s.code }, "dsh plugin --profile web update dsh-bridge --latest")
-    ),
-    info.error && React.createElement(
-      "div",
-      { style: { ...s.muted, marginTop: 4 } },
-      `\u68C0\u67E5\u5931\u8D25: ${info.error}`
-    )
+    info?.error && React.createElement("span", null, `v${info.current} \xB7 \u68C0\u67E5\u5931\u8D25`),
+    // 加载完成后才显示刷新按钮，避免布局跳动
+    info && React.createElement("button", {
+      style: { ...s.btnGhost, height: 22, padding: "0 8px", fontSize: 11, opacity: loading ? 0.5 : 1 },
+      onClick: check,
+      disabled: loading
+    }, loading ? "\u2026" : "\u91CD\u65B0\u68C0\u67E5")
   );
 }
 function BridgePanel({ rpcCall }) {
