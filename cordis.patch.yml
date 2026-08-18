@@ -1,0 +1,4 @@
+# dsh-bridge bundle patch
+- insert:
+    - id: dsh-bridge
+      name: dsh-bridge

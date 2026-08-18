@@ -56,18 +56,11 @@ bin/cloudflared*
 # Debug
 debug.log
 
-# Project-specific
+# Temporary project files (not for public repo)
 PROJECT_SUMMARY.md
 DELIVERY_*.md
 PUSH_READY.md
 push-to-github.ps1
 
-# Internal delivery files (not for public repo)
-DELIVERY_*.md
-PUSH_READY.md
-push-to-github.ps1
-CODE_STANDARDS.md
-CODE_REVIEW.md
-CODE_STYLE.md
-PROJECT_DELIVERY.md
-COMPLETION_REPORT.md
+# Note: CODE_STANDARDS.md, CODE_REVIEW.md, and other docs are kept in repo
+# They are part of the project documentation

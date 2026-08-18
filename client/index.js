@@ -1,551 +1,366 @@
-// DSH Bridge - Client UI Plugin
-// Production-grade settings panel with real-time status and elegant design
+// dsh-bridge 客户端插件：设置页「远程访问」面板
 
 import { BRIDGE_RPC_CHANNEL, BRIDGE_ENDPOINTS } from '../lib/bridge-rpc.js';
 
-export const name = 'dsh-bridge:client';
+const name = 'dsh-bridge';
+const inject = ['slots', 'connection'];
 
-/**
- * RPC call wrapper with error handling
- */
-async function callRpc(ctx, endpoint, payload = {}) {
-  const connection = ctx.get('connection');
-  if (!connection?.rpc?.call) {
-    throw new Error('Connection RPC unavailable');
-  }
-  
-  const result = await connection.rpc.call(BRIDGE_RPC_CHANNEL, endpoint, payload);
-  
-  if (!result.ok) {
-    const message = result.error?.message ?? 'Unknown error';
-    throw new Error(message);
-  }
-  
-  return result.value;
-}
+const s = {
+  card:     { background: 'var(--dsw-alias-bg-layer-1,#fff)', border: '1px solid var(--dsw-alias-border-l2,#e5e7eb)', borderRadius: 12, padding: '16px 20px', marginBottom: 16 },
+  block:    { borderTop: '1px solid var(--dsw-alias-border-l2,#e5e7eb)', marginTop: 12, paddingTop: 12 },
+  muted:    { color: 'var(--dsw-alias-label-tertiary,#8b93a1)', fontSize: 12, lineHeight: 1.5 },
+  label:    { color: 'var(--dsw-alias-label-primary,inherit)', fontSize: 13, fontWeight: 500 },
+  code:     { fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 12, wordBreak: 'break-all', color: 'var(--dsw-alias-label-primary,inherit)' },
+  btnPri:   { font: 'inherit', cursor: 'pointer', border: 'none', background: 'var(--dsw-alias-button-primary-fill,var(--dsw-alias-brand-primary,#4f6ef7))', color: '#fff', height: 32, padding: '0 14px', borderRadius: 999, fontSize: 13, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 },
+  btnGhost: { font: 'inherit', cursor: 'pointer', border: '1px solid var(--dsw-alias-border-l2,#d1d5db)', background: 'var(--dsw-alias-bg-layer-1,#fff)', color: 'var(--dsw-alias-label-primary,inherit)', height: 32, padding: '0 14px', borderRadius: 999, fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 4 },
+  qr:       { width: 200, height: 200, borderRadius: 10, border: '1px solid var(--dsw-alias-border-l2,#e5e7eb)', margin: '8px 0', display: 'block' },
+  tag:      { display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 999, fontSize: 12, fontWeight: 500 },
+  input:    { width: '100%', font: 'inherit', fontSize: 13, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--dsw-alias-border-l2,#d1d5db)', background: 'var(--dsw-alias-bg-layer-1,#fff)', color: 'var(--dsw-alias-label-primary,inherit)', outline: 'none', boxSizing: 'border-box' },
+  warn:     { background: 'var(--dsw-alias-state-warn-bg,#fffbeb)', border: '1px solid var(--dsw-alias-state-warn-border,#fde68a)', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: 'var(--dsw-alias-state-warn-primary,#92400e)', lineHeight: 1.6 },
+  tip:      { background: 'var(--dsw-alias-bg-layer-2,#f9fafb)', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: 'var(--dsw-alias-label-secondary,#6b7280)', lineHeight: 1.6 },
+};
 
-/**
- * Copy text to clipboard with fallback
- */
-async function copyToClipboard(text) {
-  if (navigator.clipboard?.writeText) {
-    return navigator.clipboard.writeText(text);
-  }
-  
-  // Fallback for older browsers
-  const textarea = document.createElement('textarea');
-  textarea.value = text;
-  textarea.style.position = 'fixed';
-  textarea.style.opacity = '0';
-  textarea.style.pointerEvents = 'none';
-  document.body.appendChild(textarea);
-  textarea.select();
-  
-  try {
-    document.execCommand('copy');
-  } finally {
-    document.body.removeChild(textarea);
-  }
-}
+// ---- 子组件 ----
 
-/**
- * Format bytes to human-readable string
- */
-function formatBytes(bytes) {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
-}
-
-/**
- * Access method card component
- */
-function AccessCard({ ctx, title, description, status, onStart, onStop, children }) {
-  const React = ctx.get('react');
-  const { running, configured, url, qr, state, activeConnections } = status;
-  
-  const canStart = configured !== false && !running;
-  const canStop = running;
-  
-  return React.createElement('div', {
+function StatusTag({ running }) {
+  return React.createElement('span', {
     style: {
-      backgroundColor: '#FBF9F5',
-      borderRadius: '12px',
-      border: '1px solid #E7E1D7',
-      padding: '24px',
-      marginBottom: '24px',
-      transition: 'all 0.3s ease',
-    }
-  },
-    // Header
-    React.createElement('div', {
-      style: {
-        display: 'flex',
-        alignItems: 'flex-start',
-        justifyContent: 'space-between',
-        marginBottom: '16px',
-      }
+      ...s.tag,
+      background: running ? 'var(--dsw-alias-state-success-bg,#ecfdf5)' : 'var(--dsw-alias-bg-layer-2,#f3f4f6)',
+      color: running ? 'var(--dsw-alias-state-success-primary,#059669)' : 'var(--dsw-alias-label-secondary,#6b7280)',
     },
-      React.createElement('div', null,
-        React.createElement('h3', {
-          style: {
-            margin: '0 0 4px 0',
-            fontSize: '20px',
-            fontWeight: '500',
-            color: '#1F2421',
-            fontFamily: 'system-ui, -apple-system, sans-serif',
-          }
-        }, title),
-        React.createElement('p', {
-          style: {
-            margin: 0,
-            fontSize: '14px',
-            color: '#5C635D',
-            lineHeight: '1.5',
-          }
-        }, description)
-      ),
-      
-      // Status badge
-      running ? React.createElement('div', {
-        style: {
-          padding: '6px 12px',
-          backgroundColor: '#C4612F',
-          color: '#FFFFFF',
-          borderRadius: '999px',
-          fontSize: '13px',
-          fontWeight: '500',
-        }
-      }, 'Active') : null
-    ),
-    
-    // Configuration warning
-    configured === false ? React.createElement('div', {
-      style: {
-        padding: '12px 16px',
-        backgroundColor: '#F2E3D6',
-        borderRadius: '8px',
-        marginBottom: '16px',
-        fontSize: '14px',
-        color: '#5C635D',
-      }
-    }, '⚠️ Not configured - see instructions below') : null,
-    
-    // State message (starting, downloading, error, etc.)
-    state && state.phase !== 'idle' && state.phase !== 'ready' ? React.createElement('div', {
-      style: {
-        padding: '12px 16px',
-        backgroundColor: state.phase === 'error' ? '#F2E3D6' : '#F7F4EF',
-        borderRadius: '8px',
-        marginBottom: '16px',
-        fontSize: '14px',
-        color: state.phase === 'error' ? '#C4612F' : '#5C635D',
-      }
-    },
-      React.createElement('div', {
-        style: { fontWeight: '500', marginBottom: '4px' }
-      }, state.phase === 'error' ? 'Error' : state.phase === 'downloading' ? 'Downloading' : 'Connecting'),
-      state.detail
-    ) : null,
-    
-    // URL and QR code
-    url ? React.createElement('div', {
-      style: { marginBottom: '16px' }
-    },
-      qr ? React.createElement('img', {
-        src: qr,
-        alt: 'QR Code',
-        style: {
-          width: '200px',
-          height: '200px',
-          display: 'block',
-          margin: '0 auto 16px auto',
-          padding: '12px',
-          backgroundColor: '#FFFFFF',
-          borderRadius: '8px',
-          border: '1px solid #E7E1D7',
-        }
-      }) : null,
-      
-      React.createElement(UrlDisplay, { ctx, url, activeConnections })
-    ) : null,
-    
-    // Custom content
-    children,
-    
-    // Action buttons
-    React.createElement('div', {
-      style: {
-        display: 'flex',
-        gap: '12px',
-        marginTop: '16px',
-      }
-    },
-      canStart ? React.createElement('button', {
-        onClick: onStart,
-        disabled: !configured,
-        style: {
-          flex: 1,
-          padding: '12px 24px',
-          backgroundColor: configured ? '#C4612F' : '#E7E1D7',
-          color: '#FFFFFF',
-          border: 'none',
-          borderRadius: '999px',
-          cursor: configured ? 'pointer' : 'not-allowed',
-          fontSize: '14px',
-          fontWeight: '500',
-          transition: 'all 0.2s',
-        },
-        onMouseEnter: (e) => {
-          if (configured) e.target.style.backgroundColor = '#A94E22';
-        },
-        onMouseLeave: (e) => {
-          if (configured) e.target.style.backgroundColor = '#C4612F';
-        }
-      }, 'Start') : null,
-      
-      canStop ? React.createElement('button', {
-        onClick: onStop,
-        style: {
-          flex: 1,
-          padding: '12px 24px',
-          backgroundColor: '#FFFFFF',
-          color: '#C4612F',
-          border: '1px solid #C4612F',
-          borderRadius: '999px',
-          cursor: 'pointer',
-          fontSize: '14px',
-          fontWeight: '500',
-          transition: 'all 0.2s',
-        },
-        onMouseEnter: (e) => {
-          e.target.style.backgroundColor = '#F7F4EF';
-        },
-        onMouseLeave: (e) => {
-          e.target.style.backgroundColor = '#FFFFFF';
-        }
-      }, 'Stop') : null
-    )
-  );
+  }, running ? '运行中' : '未启动');
 }
 
-/**
- * URL display with copy button
- */
-function UrlDisplay({ ctx, url, activeConnections }) {
-  const React = ctx.get('react');
-  const { useState } = React;
-  const [copied, setCopied] = useState(false);
-  
-  const handleCopy = async () => {
-    try {
-      await copyToClipboard(url);
+function QrBlock({ url, qr, onReset }) {
+  const [copied, setCopied] = React.useState(false);
+  // 默认展开
+  const [showQr, setShowQr] = React.useState(true);
+
+  const copy = React.useCallback(() => {
+    navigator.clipboard?.writeText(url).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Copy failed:', err);
-    }
-  };
-  
-  return React.createElement('div', {
-    style: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '12px',
-      padding: '12px 16px',
-      backgroundColor: '#FFFFFF',
-      borderRadius: '8px',
-      border: '1px solid #E7E1D7',
-    }
-  },
-    React.createElement('div', { style: { flex: 1 } },
-      React.createElement('code', {
-        style: {
-          fontSize: '13px',
-          fontFamily: 'ui-monospace, monospace',
-          color: '#1F2421',
-          wordBreak: 'break-all',
-        }
-      }, url),
-      
-      activeConnections !== undefined ? React.createElement('div', {
-        style: {
-          fontSize: '12px',
-          color: '#5C635D',
-          marginTop: '4px',
-        }
-      }, `${activeConnections} active connection${activeConnections !== 1 ? 's' : ''}`) : null
+    }).catch(() => {});
+  }, [url]);
+
+  const toggleQr = React.useCallback(() => setShowQr(v => !v), []);
+
+  return React.createElement('div', { style: { marginTop: 10 } },
+    React.createElement('div', { style: s.warn },
+      '⚠️ 请勿将此链接或二维码分享给他人，任何人扫码后都可直接访问您的 DSH。'
     ),
-    
-    React.createElement('button', {
-      onClick: handleCopy,
-      style: {
-        padding: '6px 14px',
-        backgroundColor: copied ? '#C4612F' : '#FFFFFF',
-        color: copied ? '#FFFFFF' : '#C4612F',
-        border: copied ? 'none' : '1px solid #C4612F',
-        borderRadius: '999px',
-        cursor: 'pointer',
-        fontSize: '12px',
-        fontWeight: '500',
-        transition: 'all 0.2s',
-        whiteSpace: 'nowrap',
-      }
-    }, copied ? '✓ Copied' : 'Copy')
+    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 } },
+      React.createElement('code', { style: { ...s.code, flex: 1 } }, url),
+      React.createElement('button', {
+        style: { ...s.btnGhost, height: 26, padding: '0 10px', fontSize: 12, flexShrink: 0 },
+        onClick: copy,
+      }, copied ? '✓ 已复制' : '复制'),
+      React.createElement('button', {
+        style: { ...s.btnGhost, height: 26, padding: '0 10px', fontSize: 12, flexShrink: 0 },
+        onClick: toggleQr,
+      }, showQr ? '隐藏二维码' : '显示二维码'),
+    ),
+    showQr && qr && React.createElement('div', { style: { marginTop: 8 } },
+      React.createElement('img', { src: qr, alt: 'QR', style: s.qr }),
+      React.createElement('div', { style: { ...s.muted, marginTop: 4 } },
+        '二维码仅用于个人快速访问，请在私密环境下使用'
+      ),
+    ),
+    onReset && React.createElement('div', { style: { marginTop: 8 } },
+      React.createElement('button', {
+        style: { ...s.btnGhost, fontSize: 12, height: 28 },
+        onClick: onReset,
+        title: '关闭隧道并重新开启，可获得新的 URL',
+      }, '🔄 重置链接'),
+    ),
   );
 }
 
-/**
- * Main settings panel
- */
-function BridgePanel({ ctx }) {
-  const React = ctx.get('react');
-  const { useState, useEffect } = React;
-  
-  const [status, setStatus] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [actionInProgress, setActionInProgress] = useState({});
-  
-  // Load status
-  const loadStatus = async () => {
+// 自建隧道教程（独立组件，内部状态不受父组件刷新影响）
+const CustomTunnelGuide = React.memo(function CustomTunnelGuide() {
+  const [open, setOpen] = React.useState(false);
+  const toggle = React.useCallback(() => setOpen(v => !v), []);
+  return React.createElement('div', { style: s.block },
+    React.createElement('button', {
+      style: { ...s.btnGhost, fontSize: 12, height: 28, marginBottom: open ? 10 : 0 },
+      onClick: toggle,
+    }, open ? '▲ 收起搭建教程' : '▶ 如何搭建自建隧道服务器？'),
+    open && React.createElement('div', { style: s.tip },
+      React.createElement('div', { style: { fontWeight: 500, marginBottom: 6, color: 'var(--dsw-alias-label-primary,inherit)' } }, '搭建步骤'),
+      React.createElement('ol', { style: { margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 } },
+        React.createElement('li', null, '在公网服务器上安装 Node.js 18+'),
+        React.createElement('li', null, '部署隧道服务端，推荐使用 frp 或兼容 WebSocket 的反向代理'),
+        React.createElement('li', null, '记录服务器的公网域名（如 tunnel.example.com）和访问令牌'),
+        React.createElement('li', null, '在下方填写 WebSocket 地址（wss://...）和令牌，保存后点开启'),
+      ),
+      React.createElement('div', { style: { marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--dsw-alias-border-l2,#e5e7eb)' } },
+        React.createElement('div', { style: { fontWeight: 500, marginBottom: 4, color: 'var(--dsw-alias-label-primary,inherit)' } }, '地址格式'),
+        React.createElement('code', { style: { ...s.code, display: 'block', padding: '6px 8px', background: 'var(--dsw-alias-bg-layer-2,#f3f4f6)', borderRadius: 6 } },
+          'wss://tunnel.example.com/connect'
+        ),
+      ),
+    ),
+  );
+});
+
+// 自建隧道配置表单（独立 memo，避免父组件 3 秒刷新触发输入框重渲染）
+const CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm({ serverUrl: initUrl, accessToken: initToken, onSave, saving }) {
+  const [serverUrl, setServerUrl]     = React.useState(initUrl ?? '');
+  const [accessToken, setAccessToken] = React.useState(initToken ?? '');
+
+  // 仅在初始值（来自服务端）首次变化时同步，不覆盖用户正在输入的内容
+  const syncedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!syncedRef.current && (initUrl || initToken)) {
+      setServerUrl(initUrl ?? '');
+      setAccessToken(initToken ?? '');
+      syncedRef.current = true;
+    }
+  }, [initUrl, initToken]);
+
+  const dirty = serverUrl !== (initUrl ?? '') || accessToken !== (initToken ?? '');
+
+  const handleSave = React.useCallback(() => onSave(serverUrl, accessToken), [onSave, serverUrl, accessToken]);
+  const handleUrlChange   = React.useCallback((e) => setServerUrl(e.target.value), []);
+  const handleTokenChange = React.useCallback((e) => setAccessToken(e.target.value), []);
+
+  return React.createElement('div', { style: s.block },
+    React.createElement('div', { style: { ...s.muted, marginBottom: 8 } }, '服务器配置'),
+    React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } },
+      React.createElement('input', {
+        style: s.input,
+        placeholder: 'WebSocket 地址，例如 wss://tunnel.example.com/connect',
+        value: serverUrl,
+        onChange: handleUrlChange,
+        disabled: saving,
+      }),
+      React.createElement('input', {
+        style: s.input,
+        type: 'password',
+        placeholder: '访问令牌（Access Token）',
+        value: accessToken,
+        onChange: handleTokenChange,
+        disabled: saving,
+      }),
+      React.createElement('button', {
+        style: { ...s.btnPri, alignSelf: 'flex-start', opacity: (!dirty || saving) ? 0.5 : 1 },
+        disabled: !dirty || saving,
+        onClick: handleSave,
+      }, saving ? '保存中…' : '保存配置'),
+    ),
+  );
+});
+
+function TunnelCard({ title, desc, data, onStart, onStop, onReset, children }) {
+  const { running, configured, url, qr, state } = data ?? {};
+  const phase = state?.phase ?? 'idle';
+
+  return React.createElement('div', { style: s.card },
+    React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+      React.createElement('div', null,
+        React.createElement('div', { style: s.label }, title),
+        React.createElement('div', { style: { ...s.muted, marginTop: 2 } }, desc),
+      ),
+      React.createElement(StatusTag, { running }),
+    ),
+    children,
+    phase !== 'idle' && phase !== 'ready' && React.createElement('div', {
+      style: {
+        ...s.block, fontSize: 12,
+        color: phase === 'error' ? 'var(--dsw-alias-state-error-primary,#dc2626)' : 'var(--dsw-alias-label-secondary,#6b7280)',
+      },
+    }, state?.detail ?? phase),
+    url && React.createElement(QrBlock, { url, qr, onReset }),
+    (onStart || onStop) && React.createElement('div', {
+      style: { ...s.block, display: 'flex', gap: 8, flexWrap: 'wrap' },
+    },
+      !running && onStart && React.createElement('button', {
+        style: { ...s.btnPri, opacity: configured === false ? 0.4 : 1 },
+        onClick: onStart,
+        disabled: configured === false || phase === 'connecting' || phase === 'downloading',
+        title: configured === false ? '请先保存服务器配置' : '',
+      }, phase === 'connecting' ? '连接中…' : phase === 'downloading' ? '下载中…' : '开启'),
+      running && onStop && React.createElement('button', { style: s.btnGhost, onClick: onStop }, '关闭'),
+    ),
+  );
+}
+
+// 版本检查横幅
+function VersionBanner({ rpcCall }) {
+  const [info, setInfo] = React.useState(null);
+  const [loading, setLoading] = React.useState(false);
+
+  const check = React.useCallback(async () => {
+    setLoading(true);
     try {
-      const data = await callRpc(ctx, BRIDGE_ENDPOINTS.getStatus);
-      setStatus(data);
-      setError(null);
-    } catch (err) {
-      setError(err.message);
+      const r = await rpcCall(BRIDGE_ENDPOINTS.checkVersion, {});
+      if (r?.ok) setInfo(r.value);
     } finally {
       setLoading(false);
     }
-  };
-  
-  // Auto-refresh every 3 seconds
-  useEffect(() => {
-    loadStatus();
-    const timer = setInterval(loadStatus, 3000);
-    return () => clearInterval(timer);
-  }, []);
-  
-  // Action handler
-  const handleAction = async (endpoint, key) => {
-    setActionInProgress(prev => ({ ...prev, [key]: true }));
-    try {
-      await callRpc(ctx, endpoint);
-      await loadStatus();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setActionInProgress(prev => ({ ...prev, [key]: false }));
-    }
-  };
-  
-  if (loading) {
-    return React.createElement('div', {
-      style: {
-        padding: '40px',
-        textAlign: 'center',
-        color: '#5C635D',
-      }
-    }, 'Loading...');
+  }, [rpcCall]);
+
+  const hasUpdate = info?.latest && info?.current && info.latest !== info.current && !info.error;
+
+  if (!info) {
+    return React.createElement('div', { style: { ...s.muted, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 } },
+      React.createElement('button', {
+        style: { ...s.btnGhost, height: 22, padding: '0 8px', fontSize: 11, opacity: loading ? 0.5 : 1 },
+        onClick: check,
+        disabled: loading,
+      }, loading ? '检查中…' : '检查更新'),
+    );
   }
-  
-  return React.createElement('div', {
-    style: {
-      maxWidth: '900px',
-      margin: '0 auto',
-      padding: '40px 24px',
-    }
-  },
-    // Page header
-    React.createElement('div', {
-      style: { marginBottom: '40px' }
-    },
-      React.createElement('h1', {
-        style: {
-          margin: '0 0 8px 0',
-          fontSize: '36px',
-          fontWeight: '400',
-          color: '#1F2421',
-          fontFamily: 'Georgia, serif',
-          letterSpacing: '-0.02em',
-        }
-      }, 'DSH ', React.createElement('em', { style: { color: '#C4612F' } }, 'Bridge')),
-      
-      React.createElement('p', {
-        style: {
-          margin: '0 0 8px 0',
-          fontSize: '16px',
-          color: '#5C635D',
-          lineHeight: '1.6',
-        }
-      }, 'Multi-channel access bridge for remote tunnels and bot integrations'),
-      
-      status ? React.createElement('div', {
-        style: {
-          fontSize: '13px',
-          color: '#5C635D',
-          fontFamily: 'ui-monospace, monospace',
-        }
-      }, `v${status.version} • Proxy ${status.proxy.running ? 'running' : 'stopped'} on port ${status.proxy.port}`) : null
+
+  return React.createElement('div', { style: { marginBottom: 12 } },
+    React.createElement('div', { style: { ...s.muted, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' } },
+      React.createElement('span', null, `当前版本 v${info.current}`),
+      info.latest && !info.error && React.createElement('span', null, `· 最新 v${info.latest}`),
+      React.createElement('button', {
+        style: { ...s.btnGhost, height: 22, padding: '0 8px', fontSize: 11, opacity: loading ? 0.5 : 1 },
+        onClick: check,
+        disabled: loading,
+      }, loading ? '检查中…' : '刷新'),
     ),
-    
-    // Global error
-    error ? React.createElement('div', {
-      style: {
-        padding: '16px 20px',
-        backgroundColor: '#F2E3D6',
-        borderRadius: '8px',
-        marginBottom: '24px',
-        fontSize: '14px',
-        color: '#C4612F',
-      }
-    }, error) : null,
-    
-    // Access methods
-    React.createElement(AccessCard, {
-      ctx,
-      title: 'LAN Access',
-      description: 'Access from devices on the same Wi-Fi network',
-      status: {
-        running: status?.proxy.running,
-        configured: status?.lan.ip !== null,
-        url: status?.lan.url,
-        qr: status?.lan.qr,
-        activeConnections: status?.proxy.activeConnections,
-      },
-    }),
-    
-    React.createElement(AccessCard, {
-      ctx,
-      title: 'Cloudflare Tunnel',
-      description: 'Quick public access via Cloudflare (URL changes on restart)',
-      status: {
-        running: status?.cloudflared.running,
-        configured: true,
-        url: status?.cloudflared.url,
-        qr: status?.cloudflared.qr,
-        state: status?.cloudflared.state,
-      },
-      onStart: () => handleAction(BRIDGE_ENDPOINTS.startCloudflared, 'cloudflared'),
-      onStop: () => handleAction(BRIDGE_ENDPOINTS.stopCloudflared, 'cloudflared'),
-    }),
-    
-    React.createElement(AccessCard, {
-      ctx,
-      title: 'Custom Server',
-      description: 'Your own tunnel server with fixed domain',
-      status: {
-        running: status?.customTunnel.running,
-        configured: status?.customTunnel.configured,
-        url: status?.customTunnel.url,
-        qr: status?.customTunnel.qr,
-        state: status?.customTunnel.state,
-      },
-      onStart: () => handleAction(BRIDGE_ENDPOINTS.startCustomTunnel, 'customTunnel'),
-      onStop: () => handleAction(BRIDGE_ENDPOINTS.stopCustomTunnel, 'customTunnel'),
-    }),
-    
-    // Instructions
-    React.createElement('div', {
-      style: {
-        marginTop: '40px',
-        padding: '24px',
-        backgroundColor: '#F7F4EF',
-        borderRadius: '12px',
-        fontSize: '14px',
-        color: '#5C635D',
-        lineHeight: '1.8',
-      }
-    },
-      React.createElement('h3', {
-        style: {
-          margin: '0 0 16px 0',
-          fontSize: '18px',
-          fontWeight: '500',
-          color: '#1F2421',
-        }
-      }, 'Configuration'),
-      
-      React.createElement('p', { style: { margin: '0 0 16px 0' } },
-        'To configure custom server, add to your ',
-        React.createElement('code', {
-          style: {
-            padding: '2px 6px',
-            backgroundColor: '#FFFFFF',
-            borderRadius: '4px',
-            fontFamily: 'ui-monospace, monospace',
-            fontSize: '13px',
-          }
-        }, 'cordis.yml'),
-        ':'
-      ),
-      
-      React.createElement('pre', {
-        style: {
-          margin: '0 0 16px 0',
-          padding: '16px',
-          backgroundColor: '#FFFFFF',
-          borderRadius: '8px',
-          border: '1px solid #E7E1D7',
-          fontSize: '13px',
-          fontFamily: 'ui-monospace, monospace',
-          overflow: 'auto',
-        }
-      }, `plugins:
-  dsh-bridge:
-    customTunnel:
-      serverUrl: wss://your-server.com
-      accessToken: your-secret-token`),
-      
-      React.createElement('p', { style: { margin: '0' } },
-        'Or use environment variables: ',
-        React.createElement('code', {
-          style: {
-            padding: '2px 6px',
-            backgroundColor: '#FFFFFF',
-            borderRadius: '4px',
-            fontFamily: 'ui-monospace, monospace',
-            fontSize: '13px',
-          }
-        }, 'DSH_BRIDGE_SERVER'),
-        ' and ',
-        React.createElement('code', {
-          style: {
-            padding: '2px 6px',
-            backgroundColor: '#FFFFFF',
-            borderRadius: '4px',
-            fontFamily: 'ui-monospace, monospace',
-            fontSize: '13px',
-          }
-        }, 'DSH_BRIDGE_TOKEN')
-      )
-    )
+    hasUpdate && React.createElement('div', { style: { ...s.warn, marginTop: 6 } },
+      `🎉 发现新版本 v${info.latest}，运行以下命令升级：`,
+      React.createElement('br'),
+      React.createElement('code', { style: s.code }, 'dsh plugin --profile web update dsh-bridge --latest'),
+    ),
+    info.error && React.createElement('div', { style: { ...s.muted, marginTop: 4 } },
+      `检查失败: ${info.error}`,
+    ),
   );
 }
 
-/**
- * Plugin entry point
- */
-export function apply(ctx) {
-  const React = ctx.get('react');
-  if (!React) {
-    console.warn('dsh-bridge:client - React unavailable');
-    return;
+// ---- 主面板 ----
+
+function BridgePanel({ rpcCall }) {
+  const [status, setStatus] = React.useState(null);
+  const [err, setErr]       = React.useState(null);
+  const [saving, setSaving] = React.useState(false);
+
+  const load = React.useCallback(async (quiet = false) => {
+    try {
+      const r = await rpcCall(BRIDGE_ENDPOINTS.getStatus, {});
+      if (!r?.ok) throw new Error(r?.error?.message ?? 'RPC failed');
+      setStatus(r.value);
+      if (!quiet) setErr(null);
+    } catch (e) {
+      setErr(e.message);
+    }
+  }, [rpcCall]);
+
+  React.useEffect(() => {
+    load();
+    const t = setInterval(() => load(true), 3000);
+    return () => clearInterval(t);
+  }, [load]);
+
+  // 稳定的 act，不随 status 变化重建
+  const act = React.useCallback(async (endpoint, payload) => {
+    try {
+      const r = await rpcCall(endpoint, payload ?? {});
+      if (!r?.ok) throw new Error(r?.error?.message ?? 'RPC failed');
+      setStatus(r.value);
+      setErr(null);
+    } catch (e) {
+      setErr(e.message);
+    }
+  }, [rpcCall]);
+
+  // 稳定的回调，避免每次渲染给子组件传新函数
+  const onStartCloudflared = React.useCallback(() => act(BRIDGE_ENDPOINTS.startCloudflared), [act]);
+  const onStopCloudflared  = React.useCallback(() => act(BRIDGE_ENDPOINTS.stopCloudflared), [act]);
+  const onResetCloudflared = React.useCallback(() =>
+    act(BRIDGE_ENDPOINTS.stopCloudflared).then(() => act(BRIDGE_ENDPOINTS.startCloudflared))
+  , [act]);
+  const onStartCustom = React.useCallback(() => act(BRIDGE_ENDPOINTS.startCustomTunnel), [act]);
+  const onStopCustom  = React.useCallback(() => act(BRIDGE_ENDPOINTS.stopCustomTunnel), [act]);
+  const saveConfig    = React.useCallback(async (serverUrl, accessToken) => {
+    setSaving(true);
+    try { await act(BRIDGE_ENDPOINTS.saveCustomTunnelConfig, { serverUrl, accessToken }); }
+    finally { setSaving(false); }
+  }, [act]);
+
+  if (!status && !err) {
+    return React.createElement('div', {
+      style: { padding: 32, color: 'var(--dsw-alias-label-tertiary,#9ca3af)', fontSize: 13 },
+    }, '加载中…');
   }
-  
-  // Register in settings
-  const settings = ctx.get('settings');
-  if (settings) {
-    settings.register({
-      id: 'dsh-bridge',
-      label: 'DSH Bridge',
-      order: 100,
-      component: () => React.createElement(BridgePanel, { ctx }),
-    });
-  }
+
+  const ct = status?.customTunnel;
+
+  return React.createElement('div', { style: { maxWidth: 560 } },
+    err && React.createElement('div', {
+      style: { ...s.card, background: 'var(--dsw-alias-state-error-bg,#fef2f2)', color: 'var(--dsw-alias-state-error-primary,#dc2626)', fontSize: 13, marginBottom: 16 },
+    }, err),
+
+    React.createElement(VersionBanner, { rpcCall }),
+
+    React.createElement(TunnelCard, {
+      title: '局域网访问',
+      desc: '同一 Wi-Fi 下的设备可直接扫码访问',
+      data: { running: status?.proxy?.running, url: status?.lan?.url, qr: status?.lan?.qr },
+    }),
+
+    React.createElement(TunnelCard, {
+      title: 'Cloudflare 隧道',
+      desc: '一键获取公网地址（重启后 URL 会变化）',
+      data: {
+        running: status?.cloudflared?.running,
+        url: status?.cloudflared?.url,
+        qr: status?.cloudflared?.qr,
+        state: status?.cloudflared?.state,
+      },
+      onStart: onStartCloudflared,
+      onStop:  onStopCloudflared,
+      onReset: status?.cloudflared?.running ? onResetCloudflared : null,
+    }),
+
+    React.createElement(TunnelCard, {
+      title: '自建隧道',
+      desc: '连接自己部署的隧道服务器，获得固定域名',
+      data: {
+        configured: ct?.configured,
+        running: ct?.running,
+        url: ct?.url,
+        qr: ct?.qr,
+        state: ct?.state,
+      },
+      onStart: onStartCustom,
+      onStop:  onStopCustom,
+    },
+      React.createElement(CustomTunnelGuide),
+      React.createElement(CustomTunnelConfigForm, {
+        serverUrl: ct?.serverUrl ?? '',
+        accessToken: ct?.accessToken ?? '',
+        onSave: saveConfig,
+        saving,
+      }),
+    ),
+  );
 }
 
-export { name };
+// ---- 插件入口 ----
+
+function apply(ctx) {
+  const rpcCall = (endpoint, payload, signal) =>
+    ctx.connection.rpc.call(BRIDGE_RPC_CHANNEL, endpoint, payload, signal);
+
+  ctx.slots.inject('settings.section', () =>
+    ctx.slots.register(
+      {
+        name: 'settings.section',
+        id: 'dsh-bridge',
+        order: 10,
+        label: () => '远程访问',
+        inject: () => ({ rpcCall }),
+      },
+      BridgePanel,
+    ),
+  );
+}
+
+export { name, inject, apply };

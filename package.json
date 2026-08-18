@@ -1,55 +1,74 @@
 {
   "name": "dsh-bridge",
   "version": "1.0.0",
-  "description": "Multi-channel access bridge for DSH - remote tunnels, bot integrations, and more",
-  "main": "index.js",
+  "description": "DSH 多渠道接入桥：局域网二维码、自建隧道、机器人集成",
   "type": "module",
-  "scripts": {
-    "test": "node test/basic.mjs",
-    "prepublishOnly": "npm test"
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": "./client/client.js",
+    "./package.json": "./package.json"
   },
-  "keywords": [
-    "dsh",
-    "dsh-plugin",
-    "remote-access",
-    "tunnel",
-    "cloudflared",
-    "reverse-tunnel",
-    "bot-integration",
-    "bridge"
+  "files": [
+    "lib",
+    "client",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
   ],
-  "author": "wenbin-wb",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/wenbin-wb/dsh-bridge.git"
+  "scripts": {
+    "build:client": "node client/build.mjs",
+    "test": "node test/basic.mjs"
   },
-  "bugs": {
-    "url": "https://github.com/wenbin-wb/dsh-bridge/issues"
-  },
-  "homepage": "https://github.com/wenbin-wb/dsh-bridge#readme",
   "dependencies": {
     "qrcode": "^1.5.3",
     "ws": "^8.18.0"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "esbuild": "^0.25.9"
+  },
   "peerDependencies": {
-    "cordis": ">=3.0.0"
+    "@deepseek-ai/cordis": "^4.0.1"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22"
   },
-  "files": [
-    "index.js",
-    "client/",
-    "lib/",
-    "cordis.yml",
-    "README.md",
-    "CHANGELOG.md",
-    "LICENSE"
+  "license": "MIT",
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "remote",
+    "tunnel",
+    "qr",
+    "bot"
   ],
-  "cordis": {
-    "manifest": "cordis.yml",
-    "description": "Multi-channel access bridge - remote tunnels, LAN access, and bot integrations"
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-connection",
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-locale"
+      ],
+      "platform": "web"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wenbin-wb/dsh-bridge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/wenbin-wb/dsh-bridge/issues"
+  },
+  "homepage": "https://github.com/wenbin-wb/dsh-bridge",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   }
 }
