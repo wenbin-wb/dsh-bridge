@@ -3,7 +3,7 @@
 
 import { BRIDGE_RPC_CHANNEL, BRIDGE_ENDPOINTS } from '../lib/bridge-rpc.js';
 
-const name = 'dsh-bridge:client';
+export const name = 'dsh-bridge:client';
 
 /**
  * RPC call wrapper with error handling

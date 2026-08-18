@@ -1,15 +1,21 @@
 // DSH Bridge - Host Plugin
 // Multi-channel access bridge for remote tunnels and bot integrations
 
-import { createServer } from 'node:http';
+import { createServer, request as httpRequest } from 'node:http';
 import { networkInterfaces } from 'node:os';
 import QRCode from 'qrcode';
 import { installBridgeRpc } from './lib/bridge-rpc.js';
 import { CustomTunnelClient } from './lib/tunnel-client.mjs';
 import { CloudflaredManager } from './lib/cloudflared-manager.mjs';
 
-const name = 'dsh-bridge';
+export const name = 'dsh-bridge';
+
 const VERSION = '1.0.0';
+
+// No required dependencies - all services are optional
+export const inject = {
+  optional: ['connection'],
+};
 
 /**
  * Get best LAN IP address with intelligent scoring
@@ -130,7 +136,7 @@ class BridgeService {
     this.proxyServer = createServer((req, res) => {
       this.activeConnections++;
       
-      const proxy = require('node:http').request({
+      const proxy = httpRequest({
         host: '127.0.0.1',
         port: dshPort,
         method: req.method,
@@ -159,6 +165,55 @@ class BridgeService {
       });
       
       req.pipe(proxy);
+    });
+    
+    // Handle WebSocket upgrades
+    this.proxyServer.on('upgrade', (req, socket, head) => {
+      this.activeConnections++;
+      
+      const proxy = httpRequest({
+        host: '127.0.0.1',
+        port: dshPort,
+        method: req.method,
+        path: req.url,
+        headers: {
+          ...req.headers,
+          host: `127.0.0.1:${dshPort}`,
+        },
+      });
+      
+      proxy.on('upgrade', (proxyRes, proxySocket, proxyHead) => {
+        socket.write(`HTTP/${proxyRes.httpVersion} ${proxyRes.statusCode} ${proxyRes.statusMessage}\r\n`);
+        
+        for (const [key, value] of Object.entries(proxyRes.headers)) {
+          socket.write(`${key}: ${value}\r\n`);
+        }
+        
+        socket.write('\r\n');
+        socket.write(proxyHead);
+        
+        proxySocket.pipe(socket);
+        socket.pipe(proxySocket);
+        
+        const cleanup = () => {
+          this.activeConnections--;
+          proxySocket.destroy();
+          socket.destroy();
+        };
+        
+        proxySocket.on('error', cleanup);
+        socket.on('error', cleanup);
+        proxySocket.on('close', cleanup);
+        socket.on('close', cleanup);
+      });
+      
+      proxy.on('error', (err) => {
+        this.logger.error('WebSocket proxy failed: %s', err.message);
+        this.activeConnections--;
+        socket.destroy();
+      });
+      
+      proxy.end(head);
     });
     
     await new Promise((resolve, reject) => {
