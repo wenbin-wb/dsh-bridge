@@ -1,0 +1,27 @@
+// dsh-remote 配置文件示例
+
+export default {
+  // 插件配置
+  plugins: [
+    // Host 端插件 - 处理代理和隧道
+    {
+      name: 'dsh-remote',
+      config: {
+        // 本地代理端口 (默认 3082)
+        port: 3082,
+        
+        // 自建服务器配置
+        serverUrl: process.env.DSH_REMOTE_SERVER || '', // WebSocket URL, 如: ws://your-server.com:8080
+        accessToken: process.env.DSH_REMOTE_TOKEN || '', // 访问令牌
+        
+        // 可选: 自定义缓存目录
+        // home: '/path/to/.dsh-remote',
+      },
+    },
+    
+    // Client 端插件 - 设置页面 UI
+    {
+      name: 'dsh-remote:client',
+    },
+  ],
+};

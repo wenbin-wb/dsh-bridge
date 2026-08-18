@@ -1,0 +1,55 @@
+{
+  "name": "dsh-bridge",
+  "version": "1.0.0",
+  "description": "Multi-channel access bridge for DSH - remote tunnels, bot integrations, and more",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "node test/basic.mjs",
+    "prepublishOnly": "npm test"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "remote-access",
+    "tunnel",
+    "cloudflared",
+    "reverse-tunnel",
+    "bot-integration",
+    "bridge"
+  ],
+  "author": "wenbin-wb",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wenbin-wb/dsh-bridge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/wenbin-wb/dsh-bridge/issues"
+  },
+  "homepage": "https://github.com/wenbin-wb/dsh-bridge#readme",
+  "dependencies": {
+    "qrcode": "^1.5.3",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {},
+  "peerDependencies": {
+    "cordis": ">=3.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "index.js",
+    "client/",
+    "lib/",
+    "cordis.yml",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "cordis": {
+    "manifest": "cordis.yml",
+    "description": "Multi-channel access bridge - remote tunnels, LAN access, and bot integrations"
+  }
+}

@@ -1,0 +1,4 @@
+plugins:
+  ~dsh-bridge:
+    $level: info
+  ~dsh-bridge:client: {}
