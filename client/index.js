@@ -2,8 +2,27 @@
 
 import { BRIDGE_RPC_CHANNEL, BRIDGE_ENDPOINTS } from '../lib/bridge-rpc.js';
 
+const GITHUB_URL = 'https://github.com/wenbin-wb/dsh-bridge';
+const ISSUES_URL = 'https://github.com/wenbin-wb/dsh-bridge/issues/new';
+
 const name = 'dsh-bridge';
 const inject = ['slots', 'connection'];
+
+// semver 比较：a > b
+function semverGt(a, b) {
+  const parse = (v) => {
+    const [main = '', pre = ''] = String(v).split('-');
+    const [maj = 0, min = 0, pat = 0] = main.split('.').map(Number);
+    return { maj, min, pat, pre };
+  };
+  const av = parse(a), bv = parse(b);
+  if (av.maj !== bv.maj) return av.maj > bv.maj;
+  if (av.min !== bv.min) return av.min > bv.min;
+  if (av.pat !== bv.pat) return av.pat > bv.pat;
+  if (!av.pre && bv.pre) return true;
+  if (av.pre && !bv.pre) return false;
+  return av.pre > bv.pre;
+}
 
 const s = {
   card:     { background: 'var(--dsw-alias-bg-layer-1,#fff)', border: '1px solid var(--dsw-alias-border-l2,#e5e7eb)', borderRadius: 12, padding: '16px 20px', marginBottom: 16 },
@@ -13,6 +32,7 @@ const s = {
   code:     { fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 12, wordBreak: 'break-all', color: 'var(--dsw-alias-label-primary,inherit)' },
   btnPri:   { font: 'inherit', cursor: 'pointer', border: 'none', background: 'var(--dsw-alias-button-primary-fill,var(--dsw-alias-brand-primary,#4f6ef7))', color: '#fff', height: 32, padding: '0 14px', borderRadius: 999, fontSize: 13, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 },
   btnGhost: { font: 'inherit', cursor: 'pointer', border: '1px solid var(--dsw-alias-border-l2,#d1d5db)', background: 'var(--dsw-alias-bg-layer-1,#fff)', color: 'var(--dsw-alias-label-primary,inherit)', height: 32, padding: '0 14px', borderRadius: 999, fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 4 },
+  btnLink:  { font: 'inherit', cursor: 'pointer', border: 'none', background: 'none', color: 'var(--dsw-alias-brand-primary,#4f6ef7)', fontSize: 12, padding: 0, display: 'inline-flex', alignItems: 'center', gap: 3, textDecoration: 'none' },
   qr:       { width: 200, height: 200, borderRadius: 10, border: '1px solid var(--dsw-alias-border-l2,#e5e7eb)', margin: '8px 0', display: 'block' },
   tag:      { display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 999, fontSize: 12, fontWeight: 500 },
   input:    { width: '100%', font: 'inherit', fontSize: 13, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--dsw-alias-border-l2,#d1d5db)', background: 'var(--dsw-alias-bg-layer-1,#fff)', color: 'var(--dsw-alias-label-primary,inherit)', outline: 'none', boxSizing: 'border-box' },
@@ -34,7 +54,6 @@ function StatusTag({ running }) {
 
 function QrBlock({ url, qr, onReset }) {
   const [copied, setCopied] = React.useState(false);
-  // 默认展开
   const [showQr, setShowQr] = React.useState(true);
 
   const copy = React.useCallback(() => {
@@ -63,9 +82,7 @@ function QrBlock({ url, qr, onReset }) {
     ),
     showQr && qr && React.createElement('div', { style: { marginTop: 8 } },
       React.createElement('img', { src: qr, alt: 'QR', style: s.qr }),
-      React.createElement('div', { style: { ...s.muted, marginTop: 4 } },
-        '二维码仅用于个人快速访问，请在私密环境下使用'
-      ),
+      React.createElement('div', { style: { ...s.muted, marginTop: 4 } }, '请在私密环境下使用'),
     ),
     onReset && React.createElement('div', { style: { marginTop: 8 } },
       React.createElement('button', {
@@ -77,7 +94,6 @@ function QrBlock({ url, qr, onReset }) {
   );
 }
 
-// 自建隧道教程（独立组件，内部状态不受父组件刷新影响）
 const CustomTunnelGuide = React.memo(function CustomTunnelGuide() {
   const [open, setOpen] = React.useState(false);
   const toggle = React.useCallback(() => setOpen(v => !v), []);
@@ -104,12 +120,10 @@ const CustomTunnelGuide = React.memo(function CustomTunnelGuide() {
   );
 });
 
-// 自建隧道配置表单（独立 memo，避免父组件 3 秒刷新触发输入框重渲染）
 const CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm({ serverUrl: initUrl, accessToken: initToken, onSave, saving }) {
   const [serverUrl, setServerUrl]     = React.useState(initUrl ?? '');
   const [accessToken, setAccessToken] = React.useState(initToken ?? '');
 
-  // 仅在初始值（来自服务端）首次变化时同步，不覆盖用户正在输入的内容
   const syncedRef = React.useRef(false);
   React.useEffect(() => {
     if (!syncedRef.current && (initUrl || initToken)) {
@@ -120,8 +134,7 @@ const CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm({ serv
   }, [initUrl, initToken]);
 
   const dirty = serverUrl !== (initUrl ?? '') || accessToken !== (initToken ?? '');
-
-  const handleSave = React.useCallback(() => onSave(serverUrl, accessToken), [onSave, serverUrl, accessToken]);
+  const handleSave        = React.useCallback(() => onSave(serverUrl, accessToken), [onSave, serverUrl, accessToken]);
   const handleUrlChange   = React.useCallback((e) => setServerUrl(e.target.value), []);
   const handleTokenChange = React.useCallback((e) => setAccessToken(e.target.value), []);
 
@@ -186,7 +199,7 @@ function TunnelCard({ title, desc, data, onStart, onStop, onReset, children }) {
   );
 }
 
-// 版本检查横幅（进入页面自动检测）
+// 版本检查 + GitHub/反馈入口
 function VersionBanner({ rpcCall }) {
   const [info, setInfo] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
@@ -201,55 +214,68 @@ function VersionBanner({ rpcCall }) {
     }
   }, [rpcCall]);
 
-  // 进页面自动检测一次
   React.useEffect(() => { check(); }, [check]);
 
-  const hasUpdate = info?.latest && info?.current && info.latest !== info.current && !info.error;
+  // 只有 npm 上的版本严格大于当前版本才算有新版本
+  const hasUpdate = info?.latest && info?.current && !info.error && semverGt(info.latest, info.current);
 
-  // 有新版本：显示醒目横幅
+  // 链接按钮组：GitHub + 反馈 Bug
+  const links = React.createElement('div', { style: { display: 'flex', gap: 12, alignItems: 'center' } },
+    React.createElement('a', {
+      href: GITHUB_URL, target: '_blank', rel: 'noreferrer', style: s.btnLink,
+    }, '⭐ GitHub'),
+    React.createElement('a', {
+      href: ISSUES_URL, target: '_blank', rel: 'noreferrer', style: s.btnLink,
+    }, '🐛 反馈 Bug'),
+  );
+
+  // 有新版本：彩色横幅
   if (hasUpdate) {
-    return React.createElement('div', {
-      style: {
-        display: 'flex', alignItems: 'center', gap: 12,
-        background: 'linear-gradient(135deg, var(--dsw-alias-brand-primary,#4f6ef7) 0%, #6366f1 100%)',
-        borderRadius: 10, padding: '12px 16px', marginBottom: 16, color: '#fff',
-      },
-    },
-      React.createElement('span', { style: { fontSize: 20 } }, '🎉'),
-      React.createElement('div', { style: { flex: 1 } },
-        React.createElement('div', { style: { fontSize: 13, fontWeight: 600 } },
-          `发现新版本 v${info.latest}（当前 v${info.current}）`
-        ),
-        React.createElement('code', {
-          style: { fontSize: 11, opacity: 0.85, fontFamily: 'ui-monospace,Menlo,monospace', wordBreak: 'break-all' },
-        }, 'dsh plugin --profile web update dsh-bridge --latest'),
-      ),
-      React.createElement('button', {
+    return React.createElement('div', { style: { marginBottom: 16 } },
+      React.createElement('div', {
         style: {
-          font: 'inherit', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.4)',
-          background: 'rgba(255,255,255,0.15)', color: '#fff', height: 30, padding: '0 12px',
-          borderRadius: 999, fontSize: 12, display: 'inline-flex', alignItems: 'center',
-          opacity: loading ? 0.5 : 1, flexShrink: 0,
+          display: 'flex', alignItems: 'center', gap: 12,
+          background: 'linear-gradient(135deg, var(--dsw-alias-brand-primary,#4f6ef7) 0%, #6366f1 100%)',
+          borderRadius: 10, padding: '12px 16px', marginBottom: 8, color: '#fff',
         },
-        onClick: check, disabled: loading,
-      }, loading ? '…' : '刷新'),
+      },
+        React.createElement('span', { style: { fontSize: 20 } }, '🎉'),
+        React.createElement('div', { style: { flex: 1 } },
+          React.createElement('div', { style: { fontSize: 13, fontWeight: 600 } },
+            `发现新版本 v${info.latest}（当前 v${info.current}）`
+          ),
+          React.createElement('code', {
+            style: { fontSize: 11, opacity: 0.85, fontFamily: 'ui-monospace,Menlo,monospace', wordBreak: 'break-all' },
+          }, 'dsh plugin --profile web update dsh-bridge --latest'),
+        ),
+        React.createElement('button', {
+          style: {
+            font: 'inherit', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.4)',
+            background: 'rgba(255,255,255,0.15)', color: '#fff', height: 30, padding: '0 12px',
+            borderRadius: 999, fontSize: 12, display: 'inline-flex', alignItems: 'center',
+            opacity: loading ? 0.5 : 1, flexShrink: 0,
+          },
+          onClick: check, disabled: loading,
+        }, loading ? '…' : '刷新'),
+      ),
+      links,
     );
   }
 
-  // 无新版本或检查中：紧凑一行
-  return React.createElement('div', {
-    style: { ...s.muted, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  },
-    loading && !info && React.createElement('span', null, '检查更新中…'),
-    info && !info.error && React.createElement('span', null,
-      `v${info.current}` + (info.latest ? ` · 已是最新` : ''),
+  // 正常状态：版本信息一行 + 链接
+  return React.createElement('div', { style: { marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 } },
+    React.createElement('div', { style: { ...s.muted, display: 'flex', alignItems: 'center', gap: 8 } },
+      loading && !info
+        ? React.createElement('span', null, '检查更新中…')
+        : info
+          ? React.createElement('span', null, `v${info.current}${info.latest && !info.error ? ' · 已是最新' : info.error ? ' · 检查失败' : ''}`)
+          : null,
+      info && React.createElement('button', {
+        style: { ...s.btnGhost, height: 22, padding: '0 8px', fontSize: 11, opacity: loading ? 0.5 : 1 },
+        onClick: check, disabled: loading,
+      }, loading ? '…' : '重新检查'),
     ),
-    info?.error && React.createElement('span', null, `v${info.current} · 检查失败`),
-    // 加载完成后才显示刷新按钮，避免布局跳动
-    info && React.createElement('button', {
-      style: { ...s.btnGhost, height: 22, padding: '0 8px', fontSize: 11, opacity: loading ? 0.5 : 1 },
-      onClick: check, disabled: loading,
-    }, loading ? '…' : '重新检查'),
+    links,
   );
 }
 
@@ -277,7 +303,6 @@ function BridgePanel({ rpcCall }) {
     return () => clearInterval(t);
   }, [load]);
 
-  // 稳定的 act，不随 status 变化重建
   const act = React.useCallback(async (endpoint, payload) => {
     try {
       const r = await rpcCall(endpoint, payload ?? {});
@@ -289,7 +314,6 @@ function BridgePanel({ rpcCall }) {
     }
   }, [rpcCall]);
 
-  // 稳定的回调，避免每次渲染给子组件传新函数
   const onStartCloudflared = React.useCallback(() => act(BRIDGE_ENDPOINTS.startCloudflared), [act]);
   const onStopCloudflared  = React.useCallback(() => act(BRIDGE_ENDPOINTS.stopCloudflared), [act]);
   const onResetCloudflared = React.useCallback(() =>

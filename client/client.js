@@ -45,8 +45,24 @@ var BRIDGE_ENDPOINTS = {
 };
 
 // client/index.js
+var GITHUB_URL = "https://github.com/wenbin-wb/dsh-bridge";
+var ISSUES_URL = "https://github.com/wenbin-wb/dsh-bridge/issues/new";
 var name = "dsh-bridge";
 var inject = ["slots", "connection"];
+function semverGt(a, b) {
+  const parse = (v) => {
+    const [main = "", pre = ""] = String(v).split("-");
+    const [maj = 0, min = 0, pat = 0] = main.split(".").map(Number);
+    return { maj, min, pat, pre };
+  };
+  const av = parse(a), bv = parse(b);
+  if (av.maj !== bv.maj) return av.maj > bv.maj;
+  if (av.min !== bv.min) return av.min > bv.min;
+  if (av.pat !== bv.pat) return av.pat > bv.pat;
+  if (!av.pre && bv.pre) return true;
+  if (av.pre && !bv.pre) return false;
+  return av.pre > bv.pre;
+}
 var s = {
   card: { background: "var(--dsw-alias-bg-layer-1,#fff)", border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", borderRadius: 12, padding: "16px 20px", marginBottom: 16 },
   block: { borderTop: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", marginTop: 12, paddingTop: 12 },
@@ -55,6 +71,7 @@ var s = {
   code: { fontFamily: "ui-monospace,Menlo,monospace", fontSize: 12, wordBreak: "break-all", color: "var(--dsw-alias-label-primary,inherit)" },
   btnPri: { font: "inherit", cursor: "pointer", border: "none", background: "var(--dsw-alias-button-primary-fill,var(--dsw-alias-brand-primary,#4f6ef7))", color: "#fff", height: 32, padding: "0 14px", borderRadius: 999, fontSize: 13, fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 4 },
   btnGhost: { font: "inherit", cursor: "pointer", border: "1px solid var(--dsw-alias-border-l2,#d1d5db)", background: "var(--dsw-alias-bg-layer-1,#fff)", color: "var(--dsw-alias-label-primary,inherit)", height: 32, padding: "0 14px", borderRadius: 999, fontSize: 13, display: "inline-flex", alignItems: "center", gap: 4 },
+  btnLink: { font: "inherit", cursor: "pointer", border: "none", background: "none", color: "var(--dsw-alias-brand-primary,#4f6ef7)", fontSize: 12, padding: 0, display: "inline-flex", alignItems: "center", gap: 3, textDecoration: "none" },
   qr: { width: 200, height: 200, borderRadius: 10, border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", margin: "8px 0", display: "block" },
   tag: { display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: 999, fontSize: 12, fontWeight: 500 },
   input: { width: "100%", font: "inherit", fontSize: 13, padding: "7px 10px", borderRadius: 8, border: "1px solid var(--dsw-alias-border-l2,#d1d5db)", background: "var(--dsw-alias-bg-layer-1,#fff)", color: "var(--dsw-alias-label-primary,inherit)", outline: "none", boxSizing: "border-box" },
@@ -106,11 +123,7 @@ function QrBlock({ url, qr, onReset }) {
       "div",
       { style: { marginTop: 8 } },
       React.createElement("img", { src: qr, alt: "QR", style: s.qr }),
-      React.createElement(
-        "div",
-        { style: { ...s.muted, marginTop: 4 } },
-        "\u4E8C\u7EF4\u7801\u4EC5\u7528\u4E8E\u4E2A\u4EBA\u5FEB\u901F\u8BBF\u95EE\uFF0C\u8BF7\u5728\u79C1\u5BC6\u73AF\u5883\u4E0B\u4F7F\u7528"
-      )
+      React.createElement("div", { style: { ...s.muted, marginTop: 4 } }, "\u8BF7\u5728\u79C1\u5BC6\u73AF\u5883\u4E0B\u4F7F\u7528")
     ),
     onReset && React.createElement(
       "div",
@@ -259,74 +272,91 @@ function VersionBanner({ rpcCall }) {
   React.useEffect(() => {
     check();
   }, [check]);
-  const hasUpdate = info?.latest && info?.current && info.latest !== info.current && !info.error;
+  const hasUpdate = info?.latest && info?.current && !info.error && semverGt(info.latest, info.current);
+  const links = React.createElement(
+    "div",
+    { style: { display: "flex", gap: 12, alignItems: "center" } },
+    React.createElement("a", {
+      href: GITHUB_URL,
+      target: "_blank",
+      rel: "noreferrer",
+      style: s.btnLink
+    }, "\u2B50 GitHub"),
+    React.createElement("a", {
+      href: ISSUES_URL,
+      target: "_blank",
+      rel: "noreferrer",
+      style: s.btnLink
+    }, "\u{1F41B} \u53CD\u9988 Bug")
+  );
   if (hasUpdate) {
     return React.createElement(
       "div",
-      {
-        style: {
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          background: "linear-gradient(135deg, var(--dsw-alias-brand-primary,#4f6ef7) 0%, #6366f1 100%)",
-          borderRadius: 10,
-          padding: "12px 16px",
-          marginBottom: 16,
-          color: "#fff"
-        }
-      },
-      React.createElement("span", { style: { fontSize: 20 } }, "\u{1F389}"),
+      { style: { marginBottom: 16 } },
       React.createElement(
         "div",
-        { style: { flex: 1 } },
+        {
+          style: {
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            background: "linear-gradient(135deg, var(--dsw-alias-brand-primary,#4f6ef7) 0%, #6366f1 100%)",
+            borderRadius: 10,
+            padding: "12px 16px",
+            marginBottom: 8,
+            color: "#fff"
+          }
+        },
+        React.createElement("span", { style: { fontSize: 20 } }, "\u{1F389}"),
         React.createElement(
           "div",
-          { style: { fontSize: 13, fontWeight: 600 } },
-          `\u53D1\u73B0\u65B0\u7248\u672C v${info.latest}\uFF08\u5F53\u524D v${info.current}\uFF09`
+          { style: { flex: 1 } },
+          React.createElement(
+            "div",
+            { style: { fontSize: 13, fontWeight: 600 } },
+            `\u53D1\u73B0\u65B0\u7248\u672C v${info.latest}\uFF08\u5F53\u524D v${info.current}\uFF09`
+          ),
+          React.createElement("code", {
+            style: { fontSize: 11, opacity: 0.85, fontFamily: "ui-monospace,Menlo,monospace", wordBreak: "break-all" }
+          }, "dsh plugin --profile web update dsh-bridge --latest")
         ),
-        React.createElement("code", {
-          style: { fontSize: 11, opacity: 0.85, fontFamily: "ui-monospace,Menlo,monospace", wordBreak: "break-all" }
-        }, "dsh plugin --profile web update dsh-bridge --latest")
+        React.createElement("button", {
+          style: {
+            font: "inherit",
+            cursor: "pointer",
+            border: "1px solid rgba(255,255,255,0.4)",
+            background: "rgba(255,255,255,0.15)",
+            color: "#fff",
+            height: 30,
+            padding: "0 12px",
+            borderRadius: 999,
+            fontSize: 12,
+            display: "inline-flex",
+            alignItems: "center",
+            opacity: loading ? 0.5 : 1,
+            flexShrink: 0
+          },
+          onClick: check,
+          disabled: loading
+        }, loading ? "\u2026" : "\u5237\u65B0")
       ),
-      React.createElement("button", {
-        style: {
-          font: "inherit",
-          cursor: "pointer",
-          border: "1px solid rgba(255,255,255,0.4)",
-          background: "rgba(255,255,255,0.15)",
-          color: "#fff",
-          height: 30,
-          padding: "0 12px",
-          borderRadius: 999,
-          fontSize: 12,
-          display: "inline-flex",
-          alignItems: "center",
-          opacity: loading ? 0.5 : 1,
-          flexShrink: 0
-        },
-        onClick: check,
-        disabled: loading
-      }, loading ? "\u2026" : "\u5237\u65B0")
+      links
     );
   }
   return React.createElement(
     "div",
-    {
-      style: { ...s.muted, marginBottom: 12, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }
-    },
-    loading && !info && React.createElement("span", null, "\u68C0\u67E5\u66F4\u65B0\u4E2D\u2026"),
-    info && !info.error && React.createElement(
-      "span",
-      null,
-      `v${info.current}` + (info.latest ? ` \xB7 \u5DF2\u662F\u6700\u65B0` : "")
+    { style: { marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 } },
+    React.createElement(
+      "div",
+      { style: { ...s.muted, display: "flex", alignItems: "center", gap: 8 } },
+      loading && !info ? React.createElement("span", null, "\u68C0\u67E5\u66F4\u65B0\u4E2D\u2026") : info ? React.createElement("span", null, `v${info.current}${info.latest && !info.error ? " \xB7 \u5DF2\u662F\u6700\u65B0" : info.error ? " \xB7 \u68C0\u67E5\u5931\u8D25" : ""}`) : null,
+      info && React.createElement("button", {
+        style: { ...s.btnGhost, height: 22, padding: "0 8px", fontSize: 11, opacity: loading ? 0.5 : 1 },
+        onClick: check,
+        disabled: loading
+      }, loading ? "\u2026" : "\u91CD\u65B0\u68C0\u67E5")
     ),
-    info?.error && React.createElement("span", null, `v${info.current} \xB7 \u68C0\u67E5\u5931\u8D25`),
-    // 加载完成后才显示刷新按钮，避免布局跳动
-    info && React.createElement("button", {
-      style: { ...s.btnGhost, height: 22, padding: "0 8px", fontSize: 11, opacity: loading ? 0.5 : 1 },
-      onClick: check,
-      disabled: loading
-    }, loading ? "\u2026" : "\u91CD\u65B0\u68C0\u67E5")
+    links
   );
 }
 function BridgePanel({ rpcCall }) {
