@@ -1,5 +1,7 @@
 # dsh-bridge
 
+![dsh-bridge banner](docs/banner.jpg)
+
 > 🚀 DeepSeek Harness 多通道远程访问插件 —— 让 AI 无处不达
 
 把你本地的 DeepSeek Harness 无缝延伸到**手机、平板、公网、甚至 IM 聊天软件**。无论你在哪，都能通过扫码、网页或未来的微信/QQ/飞书，随时调用你的 AI 助手。
