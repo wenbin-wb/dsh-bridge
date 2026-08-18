@@ -120,9 +120,10 @@ const CustomTunnelGuide = React.memo(function CustomTunnelGuide() {
   );
 });
 
-const CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm({ serverUrl: initUrl, accessToken: initToken, onSave, saving }) {
+const CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm({ serverUrl: initUrl, accessToken: initToken, onSave }) {
   const [serverUrl, setServerUrl]     = React.useState(initUrl ?? '');
   const [accessToken, setAccessToken] = React.useState(initToken ?? '');
+  const [saving, setSaving]           = React.useState(false);
 
   const syncedRef = React.useRef(false);
   React.useEffect(() => {
@@ -134,7 +135,11 @@ const CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm({ serv
   }, [initUrl, initToken]);
 
   const dirty = serverUrl !== (initUrl ?? '') || accessToken !== (initToken ?? '');
-  const handleSave        = React.useCallback(() => onSave(serverUrl, accessToken), [onSave, serverUrl, accessToken]);
+  const handleSave = React.useCallback(async () => {
+    setSaving(true);
+    try { await onSave(serverUrl, accessToken); }
+    finally { setSaving(false); }
+  }, [onSave, serverUrl, accessToken]);
   const handleUrlChange   = React.useCallback((e) => setServerUrl(e.target.value), []);
   const handleTokenChange = React.useCallback((e) => setAccessToken(e.target.value), []);
 
@@ -165,7 +170,7 @@ const CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm({ serv
   );
 });
 
-function TunnelCard({ title, desc, data, onStart, onStop, onReset, children }) {
+const TunnelCard = React.memo(function TunnelCard({ title, desc, data, onStart, onStop, onReset, children }) {
   const { running, configured, url, qr, state } = data ?? {};
   const phase = state?.phase ?? 'idle';
 
@@ -197,7 +202,7 @@ function TunnelCard({ title, desc, data, onStart, onStop, onReset, children }) {
       running && onStop && React.createElement('button', { style: s.btnGhost, onClick: onStop }, '关闭'),
     ),
   );
-}
+});
 
 // 版本检查 + GitHub/反馈入口
 function VersionBanner({ rpcCall }) {
@@ -284,7 +289,6 @@ function VersionBanner({ rpcCall }) {
 function BridgePanel({ rpcCall }) {
   const [status, setStatus] = React.useState(null);
   const [err, setErr]       = React.useState(null);
-  const [saving, setSaving] = React.useState(false);
 
   const load = React.useCallback(async (quiet = false) => {
     try {
@@ -321,11 +325,9 @@ function BridgePanel({ rpcCall }) {
   , [act]);
   const onStartCustom = React.useCallback(() => act(BRIDGE_ENDPOINTS.startCustomTunnel), [act]);
   const onStopCustom  = React.useCallback(() => act(BRIDGE_ENDPOINTS.stopCustomTunnel), [act]);
-  const saveConfig    = React.useCallback(async (serverUrl, accessToken) => {
-    setSaving(true);
-    try { await act(BRIDGE_ENDPOINTS.saveCustomTunnelConfig, { serverUrl, accessToken }); }
-    finally { setSaving(false); }
-  }, [act]);
+  const saveConfig = React.useCallback((serverUrl, accessToken) =>
+    act(BRIDGE_ENDPOINTS.saveCustomTunnelConfig, { serverUrl, accessToken })
+  , [act]);
 
   if (!status && !err) {
     return React.createElement('div', {
@@ -380,7 +382,6 @@ function BridgePanel({ rpcCall }) {
         serverUrl: ct?.serverUrl ?? '',
         accessToken: ct?.accessToken ?? '',
         onSave: saveConfig,
-        saving,
       }),
     ),
   );

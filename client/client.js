@@ -171,9 +171,10 @@ var CustomTunnelGuide = React.memo(function CustomTunnelGuide2() {
     )
   );
 });
-var CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm2({ serverUrl: initUrl, accessToken: initToken, onSave, saving }) {
+var CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm2({ serverUrl: initUrl, accessToken: initToken, onSave }) {
   const [serverUrl, setServerUrl] = React.useState(initUrl ?? "");
   const [accessToken, setAccessToken] = React.useState(initToken ?? "");
+  const [saving, setSaving] = React.useState(false);
   const syncedRef = React.useRef(false);
   React.useEffect(() => {
     if (!syncedRef.current && (initUrl || initToken)) {
@@ -183,7 +184,14 @@ var CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm2({ serve
     }
   }, [initUrl, initToken]);
   const dirty = serverUrl !== (initUrl ?? "") || accessToken !== (initToken ?? "");
-  const handleSave = React.useCallback(() => onSave(serverUrl, accessToken), [onSave, serverUrl, accessToken]);
+  const handleSave = React.useCallback(async () => {
+    setSaving(true);
+    try {
+      await onSave(serverUrl, accessToken);
+    } finally {
+      setSaving(false);
+    }
+  }, [onSave, serverUrl, accessToken]);
   const handleUrlChange = React.useCallback((e) => setServerUrl(e.target.value), []);
   const handleTokenChange = React.useCallback((e) => setAccessToken(e.target.value), []);
   return React.createElement(
@@ -216,7 +224,7 @@ var CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm2({ serve
     )
   );
 });
-function TunnelCard({ title, desc, data, onStart, onStop, onReset, children }) {
+var TunnelCard = React.memo(function TunnelCard2({ title, desc, data, onStart, onStop, onReset, children }) {
   const { running, configured, url, qr, state } = data ?? {};
   const phase = state?.phase ?? "idle";
   return React.createElement(
@@ -256,7 +264,7 @@ function TunnelCard({ title, desc, data, onStart, onStop, onReset, children }) {
       running && onStop && React.createElement("button", { style: s.btnGhost, onClick: onStop }, "\u5173\u95ED")
     )
   );
-}
+});
 function VersionBanner({ rpcCall }) {
   const [info, setInfo] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
@@ -362,7 +370,6 @@ function VersionBanner({ rpcCall }) {
 function BridgePanel({ rpcCall }) {
   const [status, setStatus] = React.useState(null);
   const [err, setErr] = React.useState(null);
-  const [saving, setSaving] = React.useState(false);
   const load = React.useCallback(async (quiet = false) => {
     try {
       const r = await rpcCall(BRIDGE_ENDPOINTS.getStatus, {});
@@ -396,14 +403,10 @@ function BridgePanel({ rpcCall }) {
   );
   const onStartCustom = React.useCallback(() => act(BRIDGE_ENDPOINTS.startCustomTunnel), [act]);
   const onStopCustom = React.useCallback(() => act(BRIDGE_ENDPOINTS.stopCustomTunnel), [act]);
-  const saveConfig = React.useCallback(async (serverUrl, accessToken) => {
-    setSaving(true);
-    try {
-      await act(BRIDGE_ENDPOINTS.saveCustomTunnelConfig, { serverUrl, accessToken });
-    } finally {
-      setSaving(false);
-    }
-  }, [act]);
+  const saveConfig = React.useCallback(
+    (serverUrl, accessToken) => act(BRIDGE_ENDPOINTS.saveCustomTunnelConfig, { serverUrl, accessToken }),
+    [act]
+  );
   if (!status && !err) {
     return React.createElement("div", {
       style: { padding: 32, color: "var(--dsw-alias-label-tertiary,#9ca3af)", fontSize: 13 }
@@ -454,8 +457,7 @@ function BridgePanel({ rpcCall }) {
       React.createElement(CustomTunnelConfigForm, {
         serverUrl: ct?.serverUrl ?? "",
         accessToken: ct?.accessToken ?? "",
-        onSave: saveConfig,
-        saving
+        onSave: saveConfig
       })
     )
   );
