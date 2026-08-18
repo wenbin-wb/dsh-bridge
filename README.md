@@ -4,8 +4,10 @@
 
 在 DSH 设置页新增「远程访问」面板，支持局域网二维码、Cloudflare 隧道、自建 WebSocket 隧道三种方式从任意设备访问你的 DSH 实例。
 
+![npm](https://img.shields.io/npm/v/@wenbin_wb/dsh-bridge?label=npm)
+![npm downloads](https://img.shields.io/npm/dt/@wenbin_wb/dsh-bridge?label=downloads)
+![npm license](https://img.shields.io/npm/l/@wenbin_wb/dsh-bridge?label=license)
 ![DSH Plugin](https://img.shields.io/badge/dsh--plugin-0.1.0--rc.6-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
 ![Node](https://img.shields.io/badge/node-%3E%3D22-brightgreen)
 
 ## 功能
@@ -18,8 +20,9 @@
 
 ## 兼容性
 
-> 本插件基于 **DeepSeek Harness v0.1.0-rc.6** 开发测试。  
-> DSH 是开发者预览版，插件契约可能随版本变化，请关注 [CHANGELOG](./CHANGELOG.md)。
+> - **插件版本**：当前发布 `@wenbin_wb/dsh-bridge@1.0.3`（见顶部 npm 徽章，最新版本会自动同步）
+> - **基于 DeepSeek Harness v0.1.0-rc.6** 开发测试。
+> - DSH 是开发者预览版，插件契约可能随版本变化，请关注 [CHANGELOG](./CHANGELOG.md)。
 
 ## 环境要求
 
