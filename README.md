@@ -301,26 +301,26 @@ npm test
 
 ## 路线图
 
-### v1.1.0 - 机器人集成（2025 Q2）
+### 机器人集成
 - 微信机器人集成（通过 Clawbot）
 - QQ 机器人集成
 - Telegram 机器人集成
 - 飞书机器人集成
 
-### v1.2.0 - 高级功能（2025 Q3）
+### 高级功能
 - Webhook 端点
 - 跨设备会话共享
 - 移动端优化界面
 - 自定义域名支持
 - 流量限速和整形
 
-### v1.3.0 - 企业功能（2025 Q4）
+### 企业功能
 - 多用户支持
 - 分析仪表盘
 - 流量日志和审计
 - Slack/Discord 集成
 
-### v2.0.0 - 平台扩展（2026 Q1）
+### 平台扩展
 - 原生移动应用
 - 桌面托盘应用
 - 浏览器扩展
@@ -402,11 +402,14 @@ plugins:
 3. Navigate to **Settings → DSH Bridge**
 4. Choose your access method
 
-For detailed documentation, see:
-- [Quick Start Guide](./docs/QUICKSTART.md)
-- [Deployment Guide](./docs/DEPLOY.md)
-- [Usage Manual](./docs/USAGE.md)
-- [Architecture](./docs/STRUCTURE.md)
+## 文档
+
+- [快速开始](./docs/QUICKSTART.md)
+- [部署指南](./docs/DEPLOY.md)
+- [使用手册](./docs/USAGE.md)
+- [架构说明](./docs/STRUCTURE.md)
+- [项目总结](./docs/项目总结.md)
+- [配置示例](./examples/config.md)
 
 ## License
 
