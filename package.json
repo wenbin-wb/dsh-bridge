@@ -16,7 +16,11 @@
     "client",
     "cordis.patch.yml",
     "README.md",
-    "LICENSE"
+    "README.zh-CN.md",
+    "LICENSE",
+    "docs/banner.jpg",
+    "docs/custom-tunnel.md",
+    "docs/wechat-usage.md"
   ],
   "scripts": {
     "build:client": "node client/build.mjs"
