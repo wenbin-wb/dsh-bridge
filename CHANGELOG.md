@@ -1,5 +1,39 @@
 # Changelog
 
+## 1.2.0（未发布）
+
+- **微信 Bot v0.3（体验与工作区）**
+  - **会话持久化修复**：全新会话改用 DSH 原生 `session-<uuid>` ID，重启 DSH 后会话不丢失、发消息自动恢复并续聊
+  - **工作区支持**：`/workspaces` 列出工作区，`/new <提示词> @N`（或 `@路径`）在指定项目目录新建会话；基于官方 `workspaceRegistry` API
+  - **会话列表升级**：`/sessions` 按**工作区**分组、显示**会话标题**（优先读取 `session/title` 事件），改为 Markdown 排版，微信内更清晰可读
+  - **官方 API 化**：会话列表/工作区全部改走官方 `ctx.sessions` + `sessionPersistence` + `workspaceRegistry`，移除文件系统扫描兜底
+  - **跨平台**：适配 mac/linux（`path.sep`、`DSH_HOME`）
+  - **UI 快捷入口**：设置页微信卡片新增「📖 使用说明」链接与「微信命令」速查折叠
+  - **文档**：新增 [微信 Bot 使用说明](docs/wechat-usage.md)，同步更新中/英 README
+
+## 1.1.0（未发布）
+
+- **微信 Bot（ClawBot / iLink）v0.1**：设置页「远程访问」新增「微信 Bot」卡片
+  - 基于腾讯官方微信 ClawBot 插件功能（iLink Bot API），接入域名 `ilinkai.weixin.qq.com`
+  - 扫码登录微信个人号，纯拉取式长轮询，无需公网/隧道
+  - 在微信里直接对话、控制 DSH agent：`/sessions` `/use` `/new` `/stop` `/status` `/help`
+  - 权限审批：DSH 审批请求渲染为微信文本问询，`/yes` `/no`（或 `1`/`2`）作答，超时自动拒绝
+  - 扫码后首个向 Bot 发消息的微信用户自动加入白名单（一步到位），其余发件人一律忽略、绝不喂给模型
+  - 登录二维码实时渲染在设置页，凭证经 DSH 凭证服务持久化
+  - 内置 iLink 独占锁 403 检测、会话过期暂停、限流熔断、typing 指示、出站分块限流
+  - 新增目录：`lib/wechat/`（gateway 协议层 + node 会话桥 + media 媒体处理）；详见 [方案](docs/wechat-bot-plan.md)
+  - **修复**：`createSession` 补充 `cwd`、`agentPreset`、`model` 默认值，避免 routing-suite preset 模板变量 `{{cwd}}`/`{{model}}` 装配失败（"prompt variable has no value"）
+- **微信 Bot v0.2（媒体支持）**：图片/文件双向传输
+  - 媒体入站：接收微信图片/文件，AES-128-ECB 解密后保存到工作目录 `.wechat-media/`，路径附加到消息文本通知 agent
+  - 媒体加解密：`lib/wechat/media.js` 实现 AES-128-ECB + PKCS#7、CDN 上传下载、SSRF 防护
+  - 网关扩展：`gateway.js` 新增 `getUploadUrl` 和 `sendMedia` 方法支持媒体消息收发
+  - 语音：`extractText` 支持提取 `voice_item.text`（iLink 自动转文字）
+  - 媒体出站：API 已就绪（`getUploadUrl` + `sendMedia`），agent 自动发送文件功能待后续版本实现
+  - **修复**：接入方正确的 `image_item.media` / `file_item.media` / `video_item.media` 对象结构，从 `media.encrypt_query_param` 提取 CDN 参数
+  - **修复**：AES key 归一化（`normalizeAesKey`）兼容图片 `image_item.aeskey`（裸 hex）等多种编码
+  - **优化**：去掉回合开始时的 `[OK] 收到，开始处理…` 刷屏消息，改用微信"正在输入…"指示 + 心跳进度
+  - **优化**：活动会话持久化（`activeSessionId`），重启 DSH 后自动恢复上次会话、无需重新 `/new`
+
 ## 1.0.6
 
 - **自建隧道：WebSocket 代理支持**（修复会话历史/实时事件通道）

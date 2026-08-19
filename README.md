@@ -8,7 +8,7 @@
 
 Keep using your DeepSeek Harness on the go. Scan a QR code with your phone and keep working from your sofa, another room, or across the world — no need to sit at your desk, no need to be on the same network, and no need to set up your own public server.
 
-Seamlessly extend your local DeepSeek Harness to mobile phones, tablets, public networks, and even IM chat apps. Access your AI assistant anytime, anywhere via QR code scanning, web browsers, or future integrations with WeChat/QQ/Feishu.
+Seamlessly extend your local DeepSeek Harness to mobile phones, tablets, public networks, and even WeChat. Access your AI assistant anytime, anywhere via QR code scanning, web browsers, or the WeChat Bot.
 
 ---
 
@@ -17,7 +17,8 @@ Seamlessly extend your local DeepSeek Harness to mobile phones, tablets, public 
 - **LAN Access**: Scan QR code with your smartphone/tablet, direct access on the same Wi-Fi — keep the conversation going from your phone
 - **Cloudflare Tunnel**: One-click public internet exposure, connect from anywhere without a public server of your own — keep working even when you're away from home
 - **Custom Tunnel**: Connect to your own tunnel server with a fixed domain ([Setup Guide](docs/custom-tunnel.md))
-- **IM Integration (Planned)**: WeChat / QQ / Feishu / OpenClaw direct chat integration
+- **WeChat Bot (ClawBot / iLink)**: Scan a QR code to log in a WeChat personal account, then chat with, control, and approve your DeepSeek Harness agents right inside WeChat. **Multi-workspace selection, restart-persistent sessions, grouped session listing with titles, media (image/file/voice) transfer, and permission approvals** — over Tencent's official iLink Bot API, no public server or tunnel required ([Usage Guide](docs/wechat-usage.md))
+- **IM Integration (More Planned)**: WeChat / QQ / Feishu / OpenClaw direct chat integration
 - **Security Alerts**: URLs and QR codes with access warnings to prevent accidental sharing
 - **Auto Version Check**: Automatic update detection when entering the panel
 
@@ -32,7 +33,7 @@ Seamlessly extend your local DeepSeek Harness to mobile phones, tablets, public 
 
 | Target | Description | Status |
 |--------|-------------|--------|
-| **WeChat** | Chat with your Agent directly in WeChat | Planned |
+| **WeChat** | Chat with your Agent directly in WeChat | Supported (workspaces / persisted sessions / media / approvals) |
 | **QQ Bot** | QQ bot integration for group/private chat | Planned |
 | **Feishu** | Feishu message/bot integration for workplace scenarios | Planned |
 | **OpenClaw** | Integration with OpenClaw ecosystem | Planned |
@@ -109,6 +110,51 @@ Requires a server with public IP. See [Custom Tunnel Guide](docs/custom-tunnel.m
 3. Click "Save Config" then "Enable"
 
 Config is auto-persisted to `~/.dsh/dsh-bridge/config.json`, no need to re-enter after restart.
+
+### WeChat Bot (ClawBot / iLink)
+
+Built on Tencent's official WeChat ClawBot feature (iLink Bot API). Scan a QR code to log in a WeChat personal account, then chat with, control, and approve your DeepSeek Harness agents directly in WeChat — all through Tencent's official servers, no public server or tunnel required.
+
+**Highlights**
+
+- 🗂️ **Multi-workspace**: `/workspaces` to list workspaces; `@N` or `@path` to create sessions in a specific project directory
+- 💾 **Persistent sessions**: sessions survive DSH restarts — just keep chatting
+- 🏷️ **Session titles**: `/sessions` shows sessions grouped by workspace, each with an auto-generated title
+- 🖼️ **Media**: send/receive images, files, and voice (auto-transcribed)
+- 📝 **Approvals**: sensitive operations approved in WeChat, auto-denied on timeout
+- 🔔 **Live status**: heartbeat progress + "typing" indicator, long replies auto-chunked
+
+**Usage**
+
+1. Open Settings → "Remote Access" → "IM Bots" tab → select "WeChat"
+2. Click "Scan Login" and scan the QR code with WeChat, then confirm
+3. After login, **send the bot your first message to auto-complete allowlist authorization** (one step)
+4. Start issuing commands in WeChat
+
+**Commands in WeChat** (full details in [WeChat Bot Guide](docs/wechat-usage.md))
+
+| Command | What it does |
+|---------|--------------|
+| *(plain text)* | Routes to the active agent |
+| `/sessions` | List sessions (grouped by workspace, with titles) |
+| `/use N` | Switch to session N |
+| `/workspaces` | List available workspaces |
+| `/new <prompt>` | Create a fresh session and start (current workspace) |
+| `/new <prompt> @N` (or `@path`) | Create a session in a specific workspace |
+| `/stop` | Cancel the active turn |
+| `/status` | Agent status + session summary |
+| `/yes` `/no` (or `1`/`2`) | Answer a permission request |
+| `/start` | Auto-start a session after first scan |
+| `/help` | Command list |
+
+**Security**
+
+- Hard allowlist: only allowlisted WeChat users can drive the agent; everyone else is ignored and never fed to the model
+- Approvals default to deny: a permission request not answered with `/yes` within the timeout (default 10 min) is auto-rejected
+- Credentials are stored via the DSH credential service, never in plain config
+- iLink allows exactly **one poller per account** (exclusive lock); coexisting with hermes-agent / OpenClaw causes HTTP 403 drops. **Use a dedicated WeChat account** for the bot
+
+> Disclaimer: iLink is Tencent's official open channel but still subject to the WeChat ClawBot Terms of Use, including content filtering and rate limits. Not recommended for mission-critical use.
 
 ---
 

@@ -1,6 +1,6 @@
 // dsh-bridge 客户端插件：设置页「远程访问」面板
 
-import { BRIDGE_RPC_CHANNEL, BRIDGE_ENDPOINTS } from '../lib/bridge-rpc.js';
+import { BRIDGE_RPC_CHANNEL, BRIDGE_ENDPOINTS } from '../lib/bridge-rpc-constants.js';
 
 const GITHUB_URL = 'https://github.com/wenbin-wb/dsh-bridge';
 const ISSUES_URL = 'https://github.com/wenbin-wb/dsh-bridge/issues/new';
@@ -190,9 +190,293 @@ const TunnelCard = React.memo(function TunnelCard({ title, desc, data, onStart, 
   );
 });
 
+// ---- 微信 Bot 卡片 ----
+
+function WechatCard({ rpcCall, onStatusChange }) {
+  const [wx, setWx] = React.useState(null);
+  const [err, setErr] = React.useState(null);
+  const [busy, setBusy] = React.useState(false);
+  const [showAdvanced, setShowAdvanced] = React.useState(false);
+  const [showHelp, setShowHelp] = React.useState(false);
+
+  // 高级设置本地草稿
+  const [cfgDraft, setCfgDraft] = React.useState(null);
+  React.useEffect(() => {
+    if (wx?.config && !cfgDraft) {
+      setCfgDraft({
+        digestIntervalSec:  String(wx.config.digestIntervalSec  ?? 300),
+        approvalTimeoutSec: String(wx.config.approvalTimeoutSec ?? 600),
+        maxMessageChars:    String(wx.config.maxMessageChars    ?? 2000),
+        sendChunkDelayMs:   String(wx.config.sendChunkDelayMs   ?? 1500),
+      });
+    }
+  }, [wx?.config]);
+
+  // 向上传递连接状态（供平台列表卡片绿点使用）
+  React.useEffect(() => {
+    const connected = wx?.status === 'connected' || wx?.status === 'starting' || wx?.status === 'reconnecting';
+    onStatusChange?.(connected);
+  }, [wx?.status, onStatusChange]);
+
+  const load = React.useCallback(async (quiet = false) => {
+    try {
+      const r = await rpcCall(BRIDGE_ENDPOINTS.wechatGetStatus, {});
+      if (!r?.ok) throw new Error(r?.error?.message ?? 'RPC failed');
+      setWx(r.value);
+      if (!quiet) setErr(null);
+    } catch (e) {
+      if (!quiet) setErr(e.message);
+    }
+  }, [rpcCall]);
+
+  // 轮询：登录中（qr/scaned）快速刷新，其余放慢
+  React.useEffect(() => {
+    load();
+    const activeLogin = wx?.login && (wx.login.phase === 'qr' || wx.login.phase === 'scaned');
+    const interval = activeLogin ? 1500 : 3000;
+    const t = setInterval(() => load(true), interval);
+    return () => clearInterval(t);
+  }, [load, wx?.login?.phase]);
+
+  const act = React.useCallback(async (endpoint, payload) => {
+    setBusy(true);
+    try {
+      const r = await rpcCall(endpoint, payload ?? {});
+      if (!r?.ok) throw new Error(r?.error?.message ?? 'RPC failed');
+      setWx(r.value);
+      setErr(null);
+      await load(true);
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }, [rpcCall, load]);
+
+  const onLogin = React.useCallback(() => act(BRIDGE_ENDPOINTS.wechatLogin, {}), [act]);
+  const onStop  = React.useCallback(() => act(BRIDGE_ENDPOINTS.wechatStop, {}), [act]);
+
+  // 白名单管理
+  const [newId, setNewId] = React.useState('');
+  const addAllow = React.useCallback(async () => {
+    const id = newId.trim();
+    if (!id) return;
+    const list = [...(wx?.allowFrom ?? []), id];
+    await act(BRIDGE_ENDPOINTS.wechatSetAllowFrom, { allowFrom: list });
+    setNewId('');
+  }, [act, newId, wx?.allowFrom]);
+  const removeAllow = React.useCallback(async (id) => {
+    const list = (wx?.allowFrom ?? []).filter((x) => x !== id);
+    await act(BRIDGE_ENDPOINTS.wechatSetAllowFrom, { allowFrom: list });
+  }, [act, wx?.allowFrom]);
+  const handleNewId = React.useCallback((e) => setNewId(e.target.value), []);
+
+  // 高级设置保存
+  const saveConfig = React.useCallback(async () => {
+    if (!cfgDraft) return;
+    await act(BRIDGE_ENDPOINTS.wechatSetConfig, {
+      digestIntervalSec:  Number(cfgDraft.digestIntervalSec),
+      approvalTimeoutSec: Number(cfgDraft.approvalTimeoutSec),
+      maxMessageChars:    Number(cfgDraft.maxMessageChars),
+      sendChunkDelayMs:   Number(cfgDraft.sendChunkDelayMs),
+    });
+  }, [act, cfgDraft]);
+  const cfgDirty = cfgDraft && wx?.config && (
+    Number(cfgDraft.digestIntervalSec)  !== wx.config.digestIntervalSec  ||
+    Number(cfgDraft.approvalTimeoutSec) !== wx.config.approvalTimeoutSec ||
+    Number(cfgDraft.maxMessageChars)    !== wx.config.maxMessageChars    ||
+    Number(cfgDraft.sendChunkDelayMs)   !== wx.config.sendChunkDelayMs
+  );
+
+  if (!wx && !err) {
+    return React.createElement('div', { style: s.card },
+      React.createElement('div', { style: s.label }, '微信 Bot'),
+      React.createElement('div', { style: { ...s.muted, marginTop: 6 } }, '加载中…'),
+    );
+  }
+
+  const connected = wx?.status === 'connected' || wx?.status === 'starting';
+  const login = wx?.login ?? {};
+  const showQr = login.phase === 'qr' || login.phase === 'scaned';
+  const statusLabel = wx?.status === 'connected' ? '已连接'
+    : wx?.status === 'starting' ? '连接中…'
+    : wx?.status === 'reconnecting' ? '重连中…'
+    : wx?.status === 'paused' ? '暂停（会话过期）'
+    : wx?.status === 'error' ? '错误'
+    : '未连接';
+
+  return React.createElement('div', { style: s.card },
+    React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+      React.createElement('div', null,
+        React.createElement('div', { style: s.label }, '微信 Bot'),
+        React.createElement('div', { style: { ...s.muted, marginTop: 2 } },
+          '通过微信扫 ClawBot 二维码，在微信里远程对话和控制 DSH agent'
+        ),
+      ),
+      React.createElement(StatusTag, { running: connected }),
+    ),
+
+    // 快捷入口：使用说明 / 命令
+    React.createElement('div', { style: { display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' } },
+      React.createElement('a', {
+        href: 'https://github.com/wenbin-wb/dsh-bridge/blob/main/docs/wechat-usage.md',
+        target: '_blank', rel: 'noopener noreferrer',
+        style: s.btnGhost,
+      }, '📖 使用说明'),
+      React.createElement('button', {
+        style: s.btnGhost,
+        onClick: () => setShowHelp(v => !v),
+      }, showHelp ? '收起命令' : '微信命令'),
+    ),
+
+    // 命令速查
+    showHelp && React.createElement('div', { style: { ...s.block, fontSize: 12, lineHeight: 1.8, fontFamily: 'monospace' } },
+      React.createElement('div', null, '/new <提示词> — 新建会话（当前工作区）'),
+      React.createElement('div', null, '/new <提示词> @N — 在指定工作区新建'),
+      React.createElement('div', null, '/sessions — 按工作区分组列会话'),
+      React.createElement('div', null, '/use N — 切换到会话 N'),
+      React.createElement('div', null, '/workspaces — 列出工作区'),
+      React.createElement('div', null, '/stop — 停止任务'),
+      React.createElement('div', null, '/status — 查看状态'),
+      React.createElement('div', null, '/yes 或 /no — 回应审批'),
+      React.createElement('div', null, '/help — 全部命令'),
+    ),
+
+    err && React.createElement('div', { style: { ...s.warn, marginTop: 10 } }, err),
+
+    // 已配置：状态详情 + 白名单
+    wx?.configured && React.createElement('div', { style: s.block },
+      React.createElement('div', { style: { fontSize: 12, lineHeight: 1.7 } },
+        React.createElement('div', null, `状态: ${statusLabel}`),
+        wx.accountId && React.createElement('div', null, `账号: ${wx.accountId}`),
+        wx.sessionId && React.createElement('div', null, `当前会话: ${wx.sessionId}`),
+      ),
+      React.createElement('div', { style: { ...s.muted, fontSize: 12, marginTop: 8, lineHeight: 1.6 } },
+        '白名单（仅这些微信用户可驱动 agent）:'
+      ),
+      React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 } },
+        (wx.allowFrom?.length
+          ? wx.allowFrom.map((id) =>
+              React.createElement('span', { key: id, style: { ...s.tag, background: 'var(--dsw-alias-bg-layer-2,#f3f4f6)', color: 'var(--dsw-alias-label-primary,currentColor)', gap: 6 } },
+                React.createElement('span', { style: { fontSize: 12, wordBreak: 'break-all' } }, id),
+                React.createElement('button', {
+                  style: { cursor: 'pointer', border: 'none', background: 'none', color: 'var(--dsw-alias-state-error-primary,#dc2626)', fontSize: 12, padding: 0 },
+                  onClick: () => removeAllow(id), title: '移出白名单',
+                }, '×'),
+              )
+            )
+          : React.createElement('div', { style: { ...s.muted, fontSize: 12 } }, '(空 — 扫码后首个发消息的微信用户将自动加入)')),
+      ),
+      React.createElement('div', { style: { display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' } },
+        React.createElement('input', {
+          style: { ...s.input, flex: 1 },
+          placeholder: '添加允许的微信 ID（如 xxx@im.wechat）',
+          value: newId,
+          onChange: handleNewId,
+        }),
+        React.createElement('button', {
+          style: { ...s.btnGhost, whiteSpace: 'nowrap', opacity: (newId.trim() && !busy) ? 1 : 0.5 },
+          onClick: addAllow, disabled: busy || !newId.trim(),
+        }, '添加'),
+      ),
+      React.createElement('div', { style: { display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' } },
+        wx.status !== 'connected' && wx.status !== 'starting' &&
+          React.createElement('button', { style: s.btnPri, onClick: onLogin, disabled: busy }, '重新扫码'),
+        (wx.status === 'connected' || wx.status === 'starting') &&
+          React.createElement('button', { style: s.btnGhost, onClick: onStop, disabled: busy }, '断开'),
+        React.createElement('button', {
+          style: { ...s.btnGhost, color: 'var(--dsw-alias-state-error-primary,#dc2626)', borderColor: 'var(--dsw-alias-state-error-primary,#dc2626)', opacity: busy ? 0.5 : 1 },
+          disabled: busy,
+          onClick: () => { if (window.confirm('确认解绑？这将清除登录凭证，下次需重新扫码登录。')) act(BRIDGE_ENDPOINTS.wechatUnbind, {}); },
+          title: '清除登录凭证，下次需重新扫码',
+        }, '解绑账号'),
+      ),
+    ),
+
+    // 未配置 / 登录中：二维码
+    (!wx?.configured || showQr) && React.createElement('div', { style: s.block },
+      showQr && login.qr
+        ? React.createElement('div', null,
+            React.createElement('img', { src: login.qr, alt: 'wechat QR', style: s.qr }),
+            React.createElement('div', { style: { ...s.muted, marginTop: 4 } },
+              login.phase === 'scaned' ? '已扫码，请在手机上确认…' : '请使用微信扫码登录（ClawBot）'
+            ),
+            login.error && React.createElement('div', { style: { ...s.muted, marginTop: 4, color: 'var(--dsw-alias-state-warn-primary,#92400e)' } }, login.error),
+          )
+        : React.createElement('div', { style: { display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap', alignItems: 'center' } },
+            React.createElement('button', {
+              style: { ...s.btnPri, opacity: busy ? 0.5 : 1 },
+              onClick: onLogin, disabled: busy,
+            }, busy ? '处理中…' : '扫码登录'),
+            login.phase === 'error' && React.createElement('div', { style: { ...s.muted, fontSize: 12 } }, login.error ?? '登录失败'),
+          ),
+    ),
+
+    // 高级设置（可折叠）
+    cfgDraft && React.createElement('div', { style: s.block },
+      React.createElement('button', {
+        style: { ...s.btnLink, fontSize: 12, marginBottom: showAdvanced ? 10 : 0 },
+        onClick: () => setShowAdvanced(v => !v),
+      }, showAdvanced ? '▾ 高级设置' : '▸ 高级设置'),
+      showAdvanced && React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10 } },
+        // 心跳间隔
+        React.createElement('div', null,
+          React.createElement('div', { style: { ...s.muted, marginBottom: 4 } }, '心跳间隔（秒）— 长任务处理中每隔多久发一次进度提示'),
+          React.createElement('input', {
+            style: { ...s.input, width: 120 },
+            type: 'number', min: 30, max: 3600,
+            value: cfgDraft.digestIntervalSec,
+            onChange: (e) => setCfgDraft(d => ({ ...d, digestIntervalSec: e.target.value })),
+          }),
+        ),
+        // 审批超时
+        React.createElement('div', null,
+          React.createElement('div', { style: { ...s.muted, marginBottom: 4 } }, '审批超时（秒）— 工具调用审批无响应后自动拒绝'),
+          React.createElement('input', {
+            style: { ...s.input, width: 120 },
+            type: 'number', min: 30, max: 86400,
+            value: cfgDraft.approvalTimeoutSec,
+            onChange: (e) => setCfgDraft(d => ({ ...d, approvalTimeoutSec: e.target.value })),
+          }),
+        ),
+        // 每气泡字数
+        React.createElement('div', null,
+          React.createElement('div', { style: { ...s.muted, marginBottom: 4 } }, '每条消息最大字数 — 超出时自动分多条发送'),
+          React.createElement('input', {
+            style: { ...s.input, width: 120 },
+            type: 'number', min: 100, max: 10000,
+            value: cfgDraft.maxMessageChars,
+            onChange: (e) => setCfgDraft(d => ({ ...d, maxMessageChars: e.target.value })),
+          }),
+        ),
+        // 分块延迟
+        React.createElement('div', null,
+          React.createElement('div', { style: { ...s.muted, marginBottom: 4 } }, '分块发送延迟（毫秒）— 多条消息之间的间隔'),
+          React.createElement('input', {
+            style: { ...s.input, width: 120 },
+            type: 'number', min: 0, max: 10000,
+            value: cfgDraft.sendChunkDelayMs,
+            onChange: (e) => setCfgDraft(d => ({ ...d, sendChunkDelayMs: e.target.value })),
+          }),
+        ),
+        React.createElement('button', {
+          style: { ...s.btnPri, alignSelf: 'flex-start', opacity: (cfgDirty && !busy) ? 1 : 0.5 },
+          disabled: !cfgDirty || busy,
+          onClick: saveConfig,
+        }, busy ? '保存中…' : '保存设置'),
+      ),
+    ),
+
+    React.createElement('div', { style: s.block },
+      React.createElement('div', { style: { ...s.tip, fontSize: 12 } },
+        '说明: 扫码成功后，向该微信 Bot 发送第一条消息即自动完成白名单授权。仅白名单内的微信用户能驱动 agent，其他人消息会被忽略。使用专用微信号，避免影响主号。'
+      ),
+    ),
+  );
+}
+
 // 版本检查 + GitHub/反馈入口
-function VersionBanner({ rpcCall }) {
-  const [info, setInfo] = React.useState(null);
+function VersionBanner({ rpcCall }) {  const [info, setInfo] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
 
   const check = React.useCallback(async () => {
@@ -270,11 +554,63 @@ function VersionBanner({ rpcCall }) {
   );
 }
 
+// ---- Tab Bar ----
+
+const TABS = [
+  { id: 'lan',    label: '局域网' },
+  { id: 'tunnel', label: '公网隧道' },
+  { id: 'im',     label: 'IM 机器人' },
+];
+
+function TabBar({ active, onChange, dots }) {
+  return React.createElement('div', {
+    style: {
+      display: 'flex', gap: 0, marginBottom: 20,
+      borderBottom: '1px solid var(--dsw-alias-border-l2,#e5e7eb)',
+    },
+  },
+    TABS.map(({ id, label }) => {
+      const isActive = active === id;
+      const hasDot   = dots?.[id];
+      return React.createElement('button', {
+        key: id,
+        onClick: () => onChange(id),
+        style: {
+          font: 'inherit', cursor: 'pointer', border: 'none', background: 'none',
+          padding: '8px 16px', fontSize: 13, fontWeight: isActive ? 600 : 400,
+          color: isActive
+            ? 'var(--dsw-alias-brand-primary,#4f6ef7)'
+            : 'var(--dsw-alias-label-secondary,#6b7280)',
+          borderBottom: isActive
+            ? '2px solid var(--dsw-alias-brand-primary,#4f6ef7)'
+            : '2px solid transparent',
+          marginBottom: -1,
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          transition: 'color .15s, border-color .15s',
+          whiteSpace: 'nowrap',
+        },
+      },
+        label,
+        hasDot && React.createElement('span', {
+          style: {
+            width: 6, height: 6, borderRadius: '50%',
+            background: 'var(--dsw-alias-state-success-primary,#10b981)',
+            flexShrink: 0,
+          },
+        }),
+      );
+    }),
+  );
+}
+
 // ---- 主面板 ----
 
 function BridgePanel({ rpcCall }) {
-  const [status, setStatus] = React.useState(null);
-  const [err, setErr]       = React.useState(null);
+  const [status, setStatus]       = React.useState(null);
+  const [err, setErr]             = React.useState(null);
+  const [activeTab, setActiveTab] = React.useState('lan');
+  // 微信连接状态：独立轮询，不依赖 WechatCard 是否挂载
+  const [wechatConnected, setWechatConnected] = React.useState(false);
 
   const load = React.useCallback(async (quiet = false) => {
     try {
@@ -285,6 +621,23 @@ function BridgePanel({ rpcCall }) {
     } catch (e) {
       setErr(e.message);
     }
+  }, [rpcCall]);
+
+  // 独立轮询微信连接状态（与 getStatus 解耦，Tab 未选中时也能更新绿点）
+  React.useEffect(() => {
+    let alive = true;
+    const poll = async () => {
+      try {
+        const r = await rpcCall(BRIDGE_ENDPOINTS.wechatGetStatus, {});
+        if (alive && r?.ok) {
+          const s = r.value?.status;
+          setWechatConnected(s === 'connected' || s === 'starting' || s === 'reconnecting');
+        }
+      } catch { /* 忽略，不影响主面板 */ }
+    };
+    poll();
+    const t = setInterval(poll, 4000);
+    return () => { alive = false; clearInterval(t); };
   }, [rpcCall]);
 
   React.useEffect(() => {
@@ -323,6 +676,104 @@ function BridgePanel({ rpcCall }) {
 
   const ct = status?.customTunnel;
 
+  // Tab 状态点：im 用 WechatCard 上报的准确状态，其余从 getStatus 读
+  const dots = {
+    lan:    !!(status?.proxy?.running),
+    tunnel: !!(status?.cloudflared?.running || ct?.running),
+    im:     wechatConnected,
+  };
+
+  // Tab 内容
+  let tabContent;
+  if (activeTab === 'lan') {
+    tabContent = React.createElement(TunnelCard, {
+      title: '局域网访问',
+      desc: '同一 Wi-Fi 下的设备可直接扫码访问',
+      data: { running: status?.proxy?.running, url: status?.lan?.url, qr: status?.lan?.qr },
+    });
+  } else if (activeTab === 'tunnel') {
+    tabContent = React.createElement(React.Fragment, null,
+      React.createElement(TunnelCard, {
+        title: 'Cloudflare 隧道',
+        desc: '一键获取公网地址（重启后 URL 会变化）',
+        data: {
+          running: status?.cloudflared?.running,
+          url: status?.cloudflared?.url,
+          qr: status?.cloudflared?.qr,
+          state: status?.cloudflared?.state,
+        },
+        onStart: onStartCloudflared,
+        onStop:  onStopCloudflared,
+        onReset: status?.cloudflared?.running ? onResetCloudflared : null,
+      }),
+      React.createElement(TunnelCard, {
+        title: '自建隧道',
+        desc: '连接自己部署的隧道服务器，获得固定域名',
+        data: {
+          configured: ct?.configured,
+          running: ct?.running,
+          url: ct?.url,
+          qr: ct?.qr,
+          state: ct?.state,
+        },
+        onStart: onStartCustom,
+        onStop:  onStopCustom,
+      },
+        React.createElement(CustomTunnelGuide),
+        React.createElement(CustomTunnelConfigForm, {
+          serverUrl: ct?.serverUrl ?? '',
+          accessToken: ct?.accessToken ?? '',
+          onSave: saveConfig,
+        }),
+      ),
+    );
+  } else if (activeTab === 'im') {
+    // 平台列表：已接入的可点击，未接入的置灰
+    // wechatConnected 来自 WechatCard 的 onStatusChange 回调，状态准确
+    const IM_PLATFORMS = [
+      { id: 'wechat', label: '微信', desc: 'iLink Bot API（ClawBot）', available: true,  active: wechatConnected },
+      { id: 'qq',     label: 'QQ',   desc: 'NapCat / Mirai',          available: false, active: false },
+      { id: 'feishu', label: '飞书', desc: '官方事件回调 API',          available: false, active: false },
+    ];
+    tabContent = React.createElement('div', null,
+      // 平台选择器
+      React.createElement('div', {
+        style: { display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' },
+      },
+        IM_PLATFORMS.map(({ id, label, desc, available, active }) =>
+          React.createElement('div', {
+            key: id,
+            style: {
+              flex: '1 1 140px',
+              border: `1px solid ${active ? 'var(--dsw-alias-state-success-primary,#10b981)' : 'var(--dsw-alias-border-l2,#e5e7eb)'}`,
+              borderRadius: 10,
+              padding: '12px 14px',
+              opacity: available ? 1 : 0.45,
+              cursor: available ? 'default' : 'not-allowed',
+              background: active ? 'var(--dsw-alias-state-success-bg,#ecfdf5)' : available ? 'var(--dsw-alias-bg-layer-1,transparent)' : 'var(--dsw-alias-bg-layer-2,#f9fafb)',
+            },
+          },
+            React.createElement('div', { style: { ...s.label, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 } },
+              label,
+              active && React.createElement('span', {
+                style: { width: 6, height: 6, borderRadius: '50%', background: 'var(--dsw-alias-state-success-primary,#10b981)', flexShrink: 0 },
+              }),
+              !active && available && React.createElement('span', {
+                style: { fontSize: 11, color: 'var(--dsw-alias-label-tertiary,#6b7280)', fontWeight: 400 },
+              }, '未连接'),
+              !available && React.createElement('span', {
+                style: { fontSize: 11, color: 'var(--dsw-alias-label-tertiary,#9ca3af)', fontWeight: 400 },
+              }, '即将支持'),
+            ),
+            React.createElement('div', { style: { ...s.muted, marginTop: 3, fontSize: 11 } }, desc),
+          )
+        ),
+      ),
+      // 微信卡片（onStatusChange 向上报连接状态）
+      React.createElement(WechatCard, { rpcCall, onStatusChange: setWechatConnected }),
+    );
+  }
+
   return React.createElement('div', { style: { maxWidth: 560 } },
     err && React.createElement('div', {
       style: { ...s.card, background: 'var(--dsw-alias-state-error-bg,#fef2f2)', color: 'var(--dsw-alias-state-error-primary,#dc2626)', fontSize: 13, marginBottom: 16 },
@@ -330,46 +781,9 @@ function BridgePanel({ rpcCall }) {
 
     React.createElement(VersionBanner, { rpcCall }),
 
-    React.createElement(TunnelCard, {
-      title: '局域网访问',
-      desc: '同一 Wi-Fi 下的设备可直接扫码访问',
-      data: { running: status?.proxy?.running, url: status?.lan?.url, qr: status?.lan?.qr },
-    }),
+    React.createElement(TabBar, { active: activeTab, onChange: setActiveTab, dots }),
 
-    React.createElement(TunnelCard, {
-      title: 'Cloudflare 隧道',
-      desc: '一键获取公网地址（重启后 URL 会变化）',
-      data: {
-        running: status?.cloudflared?.running,
-        url: status?.cloudflared?.url,
-        qr: status?.cloudflared?.qr,
-        state: status?.cloudflared?.state,
-      },
-      onStart: onStartCloudflared,
-      onStop:  onStopCloudflared,
-      onReset: status?.cloudflared?.running ? onResetCloudflared : null,
-    }),
-
-    React.createElement(TunnelCard, {
-      title: '自建隧道',
-      desc: '连接自己部署的隧道服务器，获得固定域名',
-      data: {
-        configured: ct?.configured,
-        running: ct?.running,
-        url: ct?.url,
-        qr: ct?.qr,
-        state: ct?.state,
-      },
-      onStart: onStartCustom,
-      onStop:  onStopCustom,
-    },
-      React.createElement(CustomTunnelGuide),
-      React.createElement(CustomTunnelConfigForm, {
-        serverUrl: ct?.serverUrl ?? '',
-        accessToken: ct?.accessToken ?? '',
-        onSave: saveConfig,
-      }),
-    ),
+    tabContent,
   );
 }
 
