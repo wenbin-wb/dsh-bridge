@@ -6,14 +6,16 @@
 
 > Multi-channel remote access plugin for DeepSeek Harness
 
+Keep using your DeepSeek Harness on the go. Scan a QR code with your phone and keep working from your sofa, another room, or across the world — no need to sit at your desk, no need to be on the same network, and no need to set up your own public server.
+
 Seamlessly extend your local DeepSeek Harness to mobile phones, tablets, public networks, and even IM chat apps. Access your AI assistant anytime, anywhere via QR code scanning, web browsers, or future integrations with WeChat/QQ/Feishu.
 
 ---
 
 ## Features
 
-- **LAN Access**: Scan QR code with your smartphone/tablet, direct access on the same Wi-Fi
-- **Cloudflare Tunnel**: One-click public internet exposure, connect from anywhere
+- **LAN Access**: Scan QR code with your smartphone/tablet, direct access on the same Wi-Fi — keep the conversation going from your phone
+- **Cloudflare Tunnel**: One-click public internet exposure, connect from anywhere without a public server of your own — keep working even when you're away from home
 - **Custom Tunnel**: Connect to your own tunnel server with a fixed domain ([Setup Guide](docs/custom-tunnel.md))
 - **IM Integration (Planned)**: WeChat / QQ / Feishu / OpenClaw direct chat integration
 - **Security Alerts**: URLs and QR codes with access warnings to prevent accidental sharing

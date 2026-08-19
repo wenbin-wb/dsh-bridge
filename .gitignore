@@ -56,6 +56,9 @@ bin/cloudflared*
 # Debug
 debug.log
 
+# Credentials (never commit)
+.credentials
+
 # Temporary project files (not for public repo)
 PROJECT_SUMMARY.md
 DELIVERY_*.md
