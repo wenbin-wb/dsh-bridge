@@ -57,7 +57,11 @@ function makeMockCtx() {
       sendTyping: async () => {},
     },
     sessions: { list: () => [], get: () => undefined },
-    agents: { create: async ({ sessionId }) => ({ agent: { session: { id: sessionId }, followup: () => {}, status: 'idle', cancel: () => {} } }), get: () => undefined },
+    agents: {
+      create: async ({ sessionId }) => ({ agent: { session: { id: sessionId }, followup: () => {}, status: 'idle', cancel: () => {} } }),
+      resume: async ({ resumeSessionId }) => ({ agent: { session: { id: resumeSessionId }, followup: () => {}, status: 'idle', cancel: () => {} } }),
+      get: () => undefined,
+    },
   }
   return { ctx, events }
 }

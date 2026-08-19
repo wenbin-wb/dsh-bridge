@@ -1,6 +1,16 @@
 # Changelog
 
-## 1.2.0（未发布）
+## 1.2.2（最新）
+
+- **修复**：恢复持久化会话改用官方 `agents.resume` API（从持久化加载历史恢复 agent），替代之前错误的 `agents.create`（空 seed 与已持久化事件冲突，导致 "is already persisted with N event(s) that do not match this live session"）
+- **修复**：`/sessions` 屏蔽已归档（archived）会话（读 `workspaceRegistry.archivedSessionIds`）
+- **优化**：恢复会话失败时向用户显示具体错误原因（原先是笼统的"没有活动会话"）
+
+## 1.2.1
+
+- **修复**：`/use N` 切换到其他工作区的会话后发消息报 "already persisted at a different cwd" —— re-attach 时读取会话持久化的 cwd 作为 fallback
+
+## 1.2.0
 
 - **微信 Bot v0.3（体验与工作区）**
   - **会话持久化修复**：全新会话改用 DSH 原生 `session-<uuid>` ID，重启 DSH 后会话不丢失、发消息自动恢复并续聊
@@ -11,7 +21,7 @@
   - **UI 快捷入口**：设置页微信卡片新增「📖 使用说明」链接与「微信命令」速查折叠
   - **文档**：新增 [微信 Bot 使用说明](docs/wechat-usage.md)，同步更新中/英 README
 
-## 1.1.0（未发布）
+## 1.1.0
 
 - **微信 Bot（ClawBot / iLink）v0.1**：设置页「远程访问」新增「微信 Bot」卡片
   - 基于腾讯官方微信 ClawBot 插件功能（iLink Bot API），接入域名 `ilinkai.weixin.qq.com`
