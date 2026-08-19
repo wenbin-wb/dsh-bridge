@@ -58,10 +58,33 @@ function QrBlock({ url, qr, onReset }) {
   const [showQr, setShowQr] = React.useState(true);
 
   const copy = React.useCallback(() => {
-    navigator.clipboard?.writeText(url).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }).catch(() => {});
+    // 优先使用现代 Clipboard API
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(url)
+        .then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        })
+        .catch(() => fallbackCopy());
+    } else {
+      fallbackCopy();
+    }
+    
+    // 降级方案：使用 document.execCommand (HTTP 环境下 Clipboard API 不可用)
+    function fallbackCopy() {
+      const textarea = document.createElement('textarea');
+      textarea.value = url;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      const success = document.execCommand('copy');
+      document.body.removeChild(textarea);
+      if (success) {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
+    }
   }, [url]);
 
   const toggleQr = React.useCallback(() => setShowQr(v => !v), []);

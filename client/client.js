@@ -99,11 +99,28 @@ function QrBlock({ url, qr, onReset }) {
   const [copied, setCopied] = React.useState(false);
   const [showQr, setShowQr] = React.useState(true);
   const copy = React.useCallback(() => {
-    navigator.clipboard?.writeText(url).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2e3);
-    }).catch(() => {
-    });
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(url).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2e3);
+      }).catch(() => fallbackCopy());
+    } else {
+      fallbackCopy();
+    }
+    function fallbackCopy() {
+      const textarea = document.createElement("textarea");
+      textarea.value = url;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      const success = document.execCommand("copy");
+      document.body.removeChild(textarea);
+      if (success) {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2e3);
+      }
+    }
   }, [url]);
   const toggleQr = React.useCallback(() => setShowQr((v) => !v), []);
   return React.createElement(

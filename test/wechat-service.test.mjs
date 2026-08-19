@@ -25,13 +25,17 @@ function makeMockCordisCtx() {
 test('WechatGateway is a Service and registers as ctx.wechat', () => {
   const ctx = makeMockCordisCtx()
   const gw = new WechatGateway({ ctx, logger: ctx.logger, config: {} })
-  assert.equal(gw.name, 'wechat')
-  assert.equal(gw.status, 'idle')
-  assert.equal(gw.configured, false)
-  assert.ok(ctx.__provided__wechat === gw, 'gateway registered as ctx.wechat')
+  try {
+    assert.equal(gw.name, 'wechat')
+    assert.equal(gw.status, 'idle')
+    assert.equal(gw.configured, false)
+    assert.ok(ctx.__provided__wechat === gw, 'gateway registered as ctx.wechat')
+  } finally {
+    gw.dispose()
+  }
 })
 
-test('WechatService constructs gateway + node and wires allowlist', () => {
+test('WechatService constructs gateway + node and wires allowlist', async () => {
   const ctx = makeMockCordisCtx()
   const persisted = {}
   const svc = new WechatService({
@@ -44,7 +48,7 @@ test('WechatService constructs gateway + node and wires allowlist', () => {
   assert.deepEqual(svc.node.config.allowFrom, ['u1@im.wechat'])
   // not configured → no polling started
   assert.equal(svc.gateway.status, 'idle')
-  svc.destroy()
+  await svc.destroy()
 })
 
 test('WechatService setAllowFrom persists and updates node', async () => {
@@ -59,15 +63,15 @@ test('WechatService setAllowFrom persists and updates node', async () => {
   await svc.setAllowFrom(['a', ' a ', 'b', '', 'a'])
   assert.deepEqual(svc.node.config.allowFrom, ['a', 'b'])
   assert.deepEqual(persisted.allowFrom, ['a', 'b'])
-  svc.destroy()
+  await svc.destroy()
 })
 
-test('WechatService getStatus includes login state', () => {
+test('WechatService getStatus includes login state', async () => {
   const ctx = makeMockCordisCtx()
   const svc = new WechatService({ ctx, logger: ctx.logger, config: {}, onPersist: async () => {} })
   const s = svc.getStatus()
   assert.equal(typeof s.status, 'string')
   assert.ok('login' in s)
   assert.ok(Array.isArray(s.allowFrom))
-  svc.destroy()
+  await svc.destroy()
 })
