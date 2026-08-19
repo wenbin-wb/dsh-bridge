@@ -77,7 +77,7 @@ var s = {
   muted: { color: "var(--dsw-alias-label-tertiary,#8b93a1)", fontSize: 12, lineHeight: 1.5 },
   label: { color: "var(--dsw-alias-label-primary,currentColor)", fontSize: 13, fontWeight: 500 },
   code: { fontFamily: "ui-monospace,Menlo,monospace", fontSize: 12, wordBreak: "break-all", color: "var(--dsw-alias-label-primary,currentColor)" },
-  btnPri: { font: "inherit", cursor: "pointer", border: "none", background: "var(--dsw-alias-button-primary-fill,var(--dsw-alias-brand-primary,#4f6ef7))", color: "#fff", height: 32, padding: "0 14px", borderRadius: 999, fontSize: 13, fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 4 },
+  btnPri: { font: "inherit", cursor: "pointer", border: "none", background: "var(--dsw-alias-button-primary-fill,var(--dsw-alias-brand-primary,#4f6ef7))", color: "var(--dsw-alias-button-primary-label,#fff)", height: 32, padding: "0 14px", borderRadius: 999, fontSize: 13, fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 4 },
   btnGhost: { font: "inherit", cursor: "pointer", border: "1px solid var(--dsw-alias-border-l2,#d1d5db)", background: "var(--dsw-alias-bg-layer-1,transparent)", color: "var(--dsw-alias-label-primary,currentColor)", height: 32, padding: "0 14px", borderRadius: 999, fontSize: 13, display: "inline-flex", alignItems: "center", gap: 4, textDecoration: "none" },
   btnLink: { font: "inherit", cursor: "pointer", border: "none", background: "none", color: "var(--dsw-alias-brand-primary,#4f6ef7)", fontSize: 12, padding: 0, display: "inline-flex", alignItems: "center", gap: 3, textDecoration: "none" },
   qr: { width: 200, height: 200, borderRadius: 10, border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", margin: "8px 0", display: "block" },
@@ -616,48 +616,50 @@ function VersionBanner({ rpcCall }) {
         "div",
         {
           style: {
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            background: "linear-gradient(135deg, var(--dsw-alias-brand-primary,#4f6ef7) 0%, #6366f1 100%)",
-            borderRadius: 10,
+            ...s.card,
+            background: "var(--dsw-alias-state-info-bg,#eff6ff)",
+            border: "1px solid var(--dsw-alias-state-info-border,#bfdbfe)",
             padding: "12px 16px",
-            marginBottom: 8,
-            color: "#fff"
+            marginBottom: 8
           }
         },
-        React.createElement("span", { style: { fontSize: 20 } }, "\u{1F389}"),
         React.createElement(
           "div",
-          { style: { flex: 1 } },
+          { style: { display: "flex", alignItems: "center", gap: 12 } },
+          React.createElement("span", { style: { fontSize: 20 } }, "\u{1F389}"),
           React.createElement(
             "div",
-            { style: { fontSize: 13, fontWeight: 600 } },
-            `\u53D1\u73B0\u65B0\u7248\u672C v${info.latest}\uFF08\u5F53\u524D v${info.current}\uFF09`
+            { style: { flex: 1 } },
+            React.createElement("div", {
+              style: {
+                fontSize: 13,
+                fontWeight: 600,
+                color: "var(--dsw-alias-state-info-primary,#1e40af)",
+                marginBottom: 4
+              }
+            }, `\u53D1\u73B0\u65B0\u7248\u672C v${info.latest}\uFF08\u5F53\u524D v${info.current}\uFF09`),
+            React.createElement("code", {
+              style: {
+                ...s.code,
+                fontSize: 11,
+                color: "var(--dsw-alias-label-secondary,#6b7280)",
+                display: "block"
+              }
+            }, "dsh plugin --profile web update @wenbin_wb/dsh-bridge --latest")
           ),
-          React.createElement("code", {
-            style: { fontSize: 11, opacity: 0.85, fontFamily: "ui-monospace,Menlo,monospace", wordBreak: "break-all" }
-          }, "dsh plugin --profile web update @wenbin_wb/dsh-bridge --latest")
-        ),
-        React.createElement("button", {
-          style: {
-            font: "inherit",
-            cursor: "pointer",
-            border: "1px solid rgba(255,255,255,0.4)",
-            background: "rgba(255,255,255,0.15)",
-            color: "#fff",
-            height: 30,
-            padding: "0 12px",
-            borderRadius: 999,
-            fontSize: 12,
-            display: "inline-flex",
-            alignItems: "center",
-            opacity: loading ? 0.5 : 1,
-            flexShrink: 0
-          },
-          onClick: check,
-          disabled: loading
-        }, loading ? "\u2026" : "\u5237\u65B0")
+          React.createElement("button", {
+            style: {
+              ...s.btnGhost,
+              height: 30,
+              padding: "0 12px",
+              fontSize: 12,
+              opacity: loading ? 0.5 : 1,
+              flexShrink: 0
+            },
+            onClick: check,
+            disabled: loading
+          }, loading ? "\u2026" : "\u5237\u65B0")
+        )
       ),
       links
     );
