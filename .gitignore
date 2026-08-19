@@ -64,6 +64,7 @@ PROJECT_SUMMARY.md
 DELIVERY_*.md
 PUSH_READY.md
 push-to-github.ps1
+market-submission.md
 
 # Note: CODE_STANDARDS.md, CODE_REVIEW.md, and other docs are kept in repo
 # They are part of the project documentation
