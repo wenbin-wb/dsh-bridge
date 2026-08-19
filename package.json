@@ -40,9 +40,19 @@
     "dsh",
     "dsh-plugin",
     "remote",
+    "remote-access",
     "tunnel",
-    "qr",
-    "bot"
+    "cloudflare",
+    "mobile",
+    "smartphone",
+    "tablet",
+    "qr-code",
+    "qrcode",
+    "websocket",
+    "bot",
+    "wechat",
+    "qq",
+    "feishu"
   ],
   "dsh": {
     "bundle": {
