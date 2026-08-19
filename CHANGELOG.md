@@ -1,6 +1,10 @@
 # Changelog
 
-## 1.2.2（最新）
+## 1.2.3（最新）
+
+- **修复**：`/sessions` 显示的编号与 `/use N` 切换的会话不对应 —— 统一两者顺序（按工作区字母序分组、组内时间倒序），新增 `sessionsInDisplayOrder` 公共函数 + 2 个回归测试
+
+## 1.2.2
 
 - **修复**：恢复持久化会话改用官方 `agents.resume` API（从持久化加载历史恢复 agent），替代之前错误的 `agents.create`（空 seed 与已持久化事件冲突，导致 "is already persisted with N event(s) that do not match this live session"）
 - **修复**：`/sessions` 屏蔽已归档（archived）会话（读 `workspaceRegistry.archivedSessionIds`）
