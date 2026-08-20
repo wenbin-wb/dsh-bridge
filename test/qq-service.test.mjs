@@ -259,6 +259,21 @@ test('splitIntoChunks splits at boundaries and splits single block in two', () =
   assert.equal(chunks.join(''), long)
 })
 
+test('splitIntoIncremental produces ascending prefixes ending with full content', () => {
+  const { splitIntoIncremental, splitIntoChunks } = qqNodeHelpers
+  const long = Array.from({ length: 50 }, (_, i) => `第${i}行内容`).join('\n')
+  const slices = splitIntoIncremental(long, 400)
+  // 每片长度递增，且以上一片开头
+  for (let i = 1; i < slices.length; i++) {
+    assert.ok(slices[i].length > slices[i - 1].length, `slice ${i} longer than ${i - 1}`)
+    assert.ok(slices[i].startsWith(slices[i - 1]), `slice ${i} starts with previous`)
+  }
+  // 最后一片是完整内容
+  assert.equal(slices[slices.length - 1], long)
+  // 与 splitIntoChunks 的段数一致
+  assert.equal(slices.length, splitIntoChunks(long, 400).length)
+})
+
 test('QqGateway sendStream passes content_type markdown through', () => {
   const ctx = makeMockCordisCtx()
   const gw = new QqGateway({ ctx, logger: ctx.logger, config: {} })
@@ -266,12 +281,16 @@ test('QqGateway sendStream passes content_type markdown through', () => {
     let captured = null
     gw.api = async (path, opts) => { captured = opts.body; return { id: 's_1' } }
     void gw.sendStream('u_123', '**粗体**', {
-      scope: 'c2c', contentType: 'markdown', inputState: 10, index: 0, inputMode: 'append',
+      scope: 'c2c', contentType: 'markdown', inputState: 10, index: 0, inputMode: 'replace', msgId: 'm1', msgSeq: 7,
     })
     assert.equal(captured.content_type, 'markdown')
     assert.equal(captured.content_raw, '**粗体**')
     assert.equal(captured.input_state, 10)
-    assert.equal(captured.input_mode, 'append')
+    assert.equal(captured.input_mode, 'replace')
+    assert.equal(captured.msg_id, 'm1')
+    assert.equal(captured.msg_seq, 7)
+    // 未提供的可选字段不应出现在 body 中（避免 undefined 污染）
+    assert.ok(!('event_id' in captured))
   } finally {
     gw.dispose()
   }
