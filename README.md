@@ -33,9 +33,9 @@ Seamlessly extend your local DeepSeek Harness to mobile phones, tablets, public 
 
 | Target | Description | Status |
 |--------|-------------|--------|
-| **Platform Abstraction** | Platform-agnostic core (sessions / approvals / commands / digest) shared across IM channels | **In progress** (v2.0.0, `lib/platform/`) |
-| **WeChat** | Chat with your Agent directly in WeChat | Supported (workspaces / persisted sessions / media / approvals) |
-| **QQ Bot** | QQ bot integration for group/private chat | Planned (next platform adapter) |
+| **Platform Abstraction** | Platform-agnostic core (sessions / approvals / commands / digest) shared across IM channels | ✅ **Completed** (v2.0.0) |
+| **WeChat** | Chat with your Agent directly in WeChat | ✅ Supported (workspaces / persisted sessions / media / approvals) |
+| **QQ Bot** | QQ bot integration for group/private chat | 🚧 Next (platform adapter implementation) |
 | **Feishu** | Feishu message/bot integration for workplace scenarios | Planned |
 | **OpenClaw** | Integration with OpenClaw ecosystem | Planned |
 | **Telegram** | Self-hosted IM channel | Planned |

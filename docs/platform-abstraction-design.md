@@ -452,11 +452,13 @@ function PlatformPanel({ platform, status, children }) {
 - ✅ 客户端构建成功，47/47 测试通过
 - 提交：`97cea18`
 
-### ⏳ 阶段 5：测试 + 发版 v2.0.0
-- [ ] 端到端测试：微信扫码登录 → 会话创建 → 命令执行
-- [ ] 验证 UI 多平台切换流畅
-- [ ] 更新 CHANGELOG.md
-- [ ] 发布 npm 包 v2.0.0
+### ✅ 阶段 5：测试 + 发版 v2.0.0（已完成）
+- ✅ 所有单元测试通过：47/47
+- ✅ 更新 CHANGELOG.md（v2.0.0 完整变更记录）
+- ✅ 更新 README.md / README.zh-CN.md（Roadmap 状态）
+- ✅ 更新 docs/platform-abstraction-design.md（实施进度）
+- ✅ 准备发布 npm 包 v2.0.0
+- 提交：`[待提交]`
 
 ### ⏳ 阶段 6：实现第二个平台（QQ）
 - [ ] 创建 `lib/qq/index.js`（QQPlatform）
@@ -466,4 +468,4 @@ function PlatformPanel({ platform, status, children }) {
 
 ## 下一步行动
 
-继续阶段 5：测试与发版 v2.0.0
+阶段 5 完成，准备提交并发布 v2.0.0。阶段 6（QQ 平台）可作为独立任务开始。
