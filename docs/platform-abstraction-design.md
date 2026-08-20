@@ -446,18 +446,20 @@ function PlatformPanel({ platform, status, children }) {
 ### ✅ 阶段 4：重构 UI（已完成）
 - ✅ 创建 `PlatformCard` 通用组件（替代 `WechatCard`）
 - ✅ 支持动态平台选择（wechat / qq / feishu）
+- ✅ 平台选择器从 `listPlatforms` RPC 动态读取状态（available / connected / starting）
 - ✅ 平台选择器显示连接状态绿点，可点击切换
 - ✅ 通过 `platformId` / `platformName` / `platformDesc` 参数化组件
 - ✅ 保留微信使用说明链接（`platformId === 'wechat'` 时）
 - ✅ 客户端构建成功，47/47 测试通过
-- 提交：`97cea18`
+- 提交：`8b98ef5`
 
-### ✅ 阶段 5：测试 + 发版 v2.0.0（已完成）
+### ✅ 阶段 5：测试 + 发版 v2.0.0（进行中）
 - ✅ 所有单元测试通过：47/47
-- ✅ 更新 CHANGELOG.md（v2.0.0 完整变更记录）
-- ✅ 更新 README.md / README.zh-CN.md（Roadmap 状态）
-- ✅ 更新 docs/platform-abstraction-design.md（实施进度）
-- ✅ 准备发布 npm 包 v2.0.0
+- ✅ 客户端构建成功
+- ✅ 架构完整性验证：Platform 抽象层 / ConversationBridge / PlatformManager / 统一 RPC / 多平台 UI
+- ✅ 向后兼容性验证：v1.x `wechat*` 端点保留，配置结构不变
+- 🔄 更新文档（CHANGELOG / README / 设计文档）
+- ⏳ 准备发布 npm 包 v2.0.0
 - 提交：`[待提交]`
 
 ### ⏳ 阶段 6：实现第二个平台（QQ）
