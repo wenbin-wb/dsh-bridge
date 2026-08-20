@@ -4,7 +4,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { QqService } from '../lib/qq/index.js'
-import { QqGateway, QQ_INTENTS } from '../lib/qq/gateway.js'
+import { QqGateway, QQ_INTENTS, gatewayConstants } from '../lib/qq/gateway.js'
 import { PlatformManager } from '../lib/platform/manager.js'
 
 function makeMockCordisCtx() {
@@ -125,4 +125,96 @@ test('QqService login without credentials returns error', async () => {
   assert.equal(result.ok, false)
   assert.ok(result.error.includes('AppID'))
   await svc.destroy()
+})
+
+test('QqGateway API_BASE uses unified api.bot.qq.com domain', () => {
+  const ctx = makeMockCordisCtx()
+  const gw = new QqGateway({ ctx, logger: ctx.logger, config: {} })
+  try {
+    // 官方 2026-08-10 变更：所有接口域名统一为 api.bot.qq.com
+    assert.equal(gatewayConstants.API_BASE, 'https://api.bot.qq.com')
+    assert.equal(gatewayConstants.DEFAULT_GATEWAY, 'wss://api.sgroup.qq.com/websocket/')
+  } finally {
+    gw.dispose()
+  }
+})
+
+test('QqGateway stream message endpoint uses underscore stream_messages', () => {
+  const ctx = makeMockCordisCtx()
+  const gw = new QqGateway({ ctx, logger: ctx.logger, config: {} })
+  try {
+    // 官方流式消息路径：/v2/users/{user_openid}/stream_messages（下划线）
+    const ep = gw.endpoint('u_123', 'c2c', 'stream_messages')
+    assert.equal(ep, '/v2/users/u_123/stream_messages')
+    const epGroup = gw.endpoint('g_456', 'group', 'stream_messages')
+    assert.equal(epGroup, '/v2/groups/g_456/stream_messages')
+  } finally {
+    gw.dispose()
+  }
+})
+
+test('QqGateway panel & menu endpoints resolve under /v2', () => {
+  const ctx = makeMockCordisCtx()
+  const gw = new QqGateway({ ctx, logger: ctx.logger, config: {} })
+  try {
+    // 自定义菜单：/v2/menu
+    // 指令面板：/v2/panels[/{panel_id}][/target]
+    // 通过检查 api() 实现路径拼装（mock fetch）来验证
+    const calls = []
+    gw.api = async (path, opts) => { calls.push([path, opts]); return {} }
+    void gw.getMenu()
+    void gw.setMenu([])
+    void gw.listPanels('c2c')
+    void gw.createPanel({ scope: 'group' })
+    void gw.getPanel('p_1')
+    void gw.updatePanel('p_1', {})
+    void gw.deletePanel('p_1')
+    void gw.updatePanelTarget('p_1', {})
+    assert.equal(calls.length, 8)
+    assert.deepEqual(calls[0][0], '/v2/menu')
+    assert.deepEqual(calls[1][0], '/v2/menu')
+    assert.deepEqual(calls[2][0], '/v2/panels?scope=c2c')
+    assert.deepEqual(calls[3][0], '/v2/panels')
+    assert.deepEqual(calls[4][0], '/v2/panels/p_1')
+    assert.deepEqual(calls[5][0], '/v2/panels/p_1')
+    assert.deepEqual(calls[6][0], '/v2/panels/p_1')
+    assert.deepEqual(calls[7][0], '/v2/panels/p_1/target')
+  } finally {
+    gw.dispose()
+  }
+})
+
+test('QqGateway sendKeyboard uses msg_type=0 with content+keyboard', () => {
+  const ctx = makeMockCordisCtx()
+  const gw = new QqGateway({ ctx, logger: ctx.logger, config: {} })
+  try {
+    let captured = null
+    gw.api = async (path, opts) => { captured = opts.body; return { id: 'msg_1' } }
+    const keyboard = { rows: [{ buttons: [{ id: 'b1' }] }] }
+    void gw.sendKeyboard('u_123', '提示文本', keyboard, { scope: 'c2c', msgId: 'u_msg' })
+    assert.equal(captured.msg_type, 0)
+    assert.equal(captured.content, '提示文本')
+    assert.equal(captured.keyboard, keyboard)
+    assert.equal(captured.msg_id, 'u_msg')
+  } finally {
+    gw.dispose()
+  }
+})
+
+test('QqGateway sendTyping uses msg_type=6 with input_notify', () => {
+  const ctx = makeMockCordisCtx()
+  const gw = new QqGateway({ ctx, logger: ctx.logger, config: {} })
+  try {
+    let captured = null
+    gw.api = async (path, opts) => { captured = opts.body; return {} }
+    void gw.sendTyping('u_123', { scope: 'c2c', durationSeconds: 8 })
+    assert.equal(captured.msg_type, 6)
+    assert.equal(captured.input_notify.input_type, 1)
+    assert.equal(captured.input_notify.input_second, 8)
+    // 上限 60 秒
+    void gw.sendTyping('u_123', { scope: 'c2c', durationSeconds: 999 })
+    assert.equal(captured.input_notify.input_second, 60)
+  } finally {
+    gw.dispose()
+  }
 })

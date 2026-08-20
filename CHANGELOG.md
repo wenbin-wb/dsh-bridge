@@ -1,8 +1,45 @@
 # Changelog
 
-## 2.1.2（最新）
+## 2.2.0（最新）
+
+### 🔧 QQ Bot API 全面校准 + 指令面板 / 自定义菜单
+
+**修复 v2.1.2 的流式消息接口故障（QQ API 404），并全面校准所有 QQ OpenAPI v2 调用，新增指令面板与自定义菜单支持**
+
+> ⚠️ 请升级到 2.2.0：v2.1.2 的流式消息接口用了错误的域名和路径，会导致 QQ 收不到消息、服务报错。
+
+#### 🐛 关键修复
+
+- **API 域名统一**：`api.sgroup.qq.com` → `api.bot.qq.com`（官方 2026-08-10 变更）
+- **流式消息路径**：`stream-messages` → `stream_messages`（下划线，官方实际路径）
+- **流式消息参数**：对齐官方 `content_type` / `content_raw` / `input_mode` / `input_state`（1=生成中，10=生成结束）/ `index` / `stream_msg_id`
+- **流式模式**：改用 `append`（追加）模式——原来 `replace` 模式要求每片是全量内容，分段发送必然失败
+- **输入状态**：改用官方 `msg_type: 6` + `input_notify`（原来错误地复用流式接口）
+- **键盘消息**：`msg_type: 0` + `content` + `keyboard`（原来 `msg_type: 2` 但缺 markdown 字段）
+- **被动回复 msg_id**：改用用户消息的事件 ID（`d.id`），原来是机器人自身消息 ID，不符合官方要求
+- **peer/scope 传递 bug**：修复群聊场景下 `scope: peer.scope` 为 undefined 导致错发到单聊的问题
+
+#### ✨ 新增能力
+
+- **指令面板**（单聊/群聊常驻命令面板）：
+  - 新增全套 API：`listPanels` / `createPanel` / `getPanel` / `updatePanel` / `deletePanel` / `updatePanelTarget`
+  - 连接成功后自动创建 `c2c` + `group` 全局面板（`/new` `/list` `/resume` `/sessions` `/help`），幂等创建
+- **自定义菜单**（单聊底部菜单）：
+  - 新增 `getMenu` / `setMenu`
+  - 自动配置"新建 / 列表 / 帮助"菜单项，点击自动填入命令
+- 单元测试从 56 → 61（新增域名、流式路径、面板/菜单端点、键盘消息、输入状态 5 组）
+
+#### 文档
+
+- 更新 `docs/qq-usage.md`：新增指令面板与自定义菜单说明、输入状态实现方式、流式消息正确用法
+
+---
+
+## 2.1.2（已知缺陷，请升级 2.2.0）
 
 ### 🎯 QQ Bot 输入状态支持
+
+> ⚠️ 本版本流式消息接口存在缺陷（域名/路径错误导致 QQ API 404），请勿使用，升级到 2.2.0。
 
 **实现 QQ 平台的"正在输入"状态指示**
 

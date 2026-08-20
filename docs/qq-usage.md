@@ -97,23 +97,53 @@ dsh web
 
 #### 流式输出
 
-当 AI 回复较长内容时，dsh-bridge 会自动分段流式推送：
+当 AI 回复较长内容时，dsh-bridge 会自动分段流式推送（同一条消息不断追加）：
 
-- **分段大小**：200 字符/段
+- **分段大小**：500 字符/段
 - **推送间隔**：100ms
-- **消息关联**：所有段落通过 `msg_id` 关联
-- **用户体验**：实时看到输出，无需等待完整响应
+- **实现**：使用官方 `/stream_messages`（下划线）接口 + `append` 追加模式
+- **消息关联**：首片由服务端返回 `stream_msg_id`，后续片携带该 ID 关联到同一条消息
+- **用户体验**：实时看到输出不断增长，无需等待完整响应
 
 #### 输入状态指示
 
-流式输出过程中，QQ 会显示机器人的"正在输入"状态：
+AI 生成过程中，QQ 会显示机器人的"正在输入"状态：
 
-- **实现方式**：通过 `/stream-messages` API 的 `input_state` 参数
-- **状态控制**：
-  - `input_state: 1` - 显示"正在输入"
-  - `input_state: 0` - 结束输入状态
-- **自动管理**：发送中间段时显示输入中，最后一段自动结束状态
-- **API 文档**：[流式发送消息](https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_users_user_openid_stream_messages.post.html)
+- **实现方式**：普通消息接口 `msg_type: 6` + `input_notify`
+- **参数**：`input_notify: { input_type: 1, input_second: 8 }`（最长 60 秒）
+- **自动管理**：收到用户消息后、发送回复前自动显示"正在输入"
+- **API 文档**：[发送单聊消息](https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_users_user_openid_messages.post.html)
+
+### 6. 指令面板与自定义菜单（v2.2.0）
+
+连接成功后，dsh-bridge 会自动为你的机器人配置：
+
+#### 指令面板（单聊 + 群聊常驻）
+
+在单聊窗口和群聊中常驻显示命令面板，点击即可填入命令：
+
+| 面板项 | 说明 |
+|--------|------|
+| `/new` | 新建对话 |
+| `/list` | 查看会话列表 |
+| `/resume` | 恢复会话 |
+| `/sessions` | 切换会话 |
+| `/help` | 命令帮助 |
+
+面板按 `c2c`（单聊）和 `group`（群聊）两个场景各创建一个全局面板，幂等创建（不会重复）。
+
+#### 自定义菜单（单聊底部）
+
+单聊窗口底部常驻菜单，点击自动填入命令：
+
+- **新建** → 自动填入 `/new`
+- **列表** → 自动填入 `/list`
+- **帮助** → 自动填入 `/help`
+
+> 相关 API 文档：
+> - [自定义菜单与指令面板](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/menu-panel/)
+> - [创建指令面板](https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_panels.post.html)
+> - [修改全局自定义菜单](https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_menu.put.html)
 
 ## 功能特性
 
@@ -305,13 +335,21 @@ Gateway 实现指数退避重连策略：
 
 ## 版本历史
 
+### v2.2.0
+- 🔧 API 域名统一为 `api.bot.qq.com`（官方 2026-08-10 变更）
+- 🔧 修复流式消息：路径 `stream_messages`（下划线）、参数对齐官方、改用 `append` 追加模式
+- 🔧 输入状态改用 `msg_type: 6` + `input_notify`
+- 🔧 键盘消息改用 `msg_type: 0` + `content` + `keyboard`
+- 🔧 修复被动回复 msg_id（用用户消息事件 ID）
+- 🔧 修复群聊 scope 传递 bug
+- ✨ 新增指令面板全套 API，连接后自动创建单聊/群聊命令面板
+- ✨ 新增自定义菜单 API，自动配置单聊底部菜单
+
 ### v2.1.1
-- ✨ 流式消息输出：长文本自动分段推送（200字符/段）
+- ✨ 流式消息输出：长文本自动分段推送
 - ✨ 消息引用：检测 `message_reference`，用户回复消息时自动创建会话
 - ✨ 按钮交互：无活动会话时发送快捷按钮（新建会话/列表/帮助）
 - ✨ 事件增强：启用 `INTERACTION_CREATE` intent，支持按钮点击映射到命令
-- 🐛 修复 `sendKeyboard` 参数顺序
-- 🐛 保存最后消息 ID，优化用户回复体验
 
 ### v2.1.0
 - 🎉 初始版本：QQ Bot OpenAPI v2 完整实现
