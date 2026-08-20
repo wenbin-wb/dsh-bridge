@@ -1,8 +1,22 @@
 # Changelog
 
-## 2.2.2（最新）
+## 2.2.3（最新）
 
-### 🐛 高级设置实际生效 + 流式消息去重错误修复
+### 🐛 流式消息去重错误修复（补充发布）
+
+**修复 QQ 流式消息降级时的去重错误，v2.2.2 已在 npm 发布，此版本为 GitHub 补充发布**
+
+#### 🔧 修复
+
+- **QQ 流式消息降级错误 40054005**：流式第二片失败时，降级到普通 Markdown 触发"消息被去重，请检查请求msgseq"错误
+  - 记录用户消息的 `msg_seq`，降级时传递 `msg_seq+1` 避免去重
+  - 清理所有发送方法（`sendText`/`sendMarkdown`/`sendKeyboard`/`sendTyping`/`sendStream`），只在有值时添加可选字段（避免 `undefined` 污染 body）
+
+---
+
+## 2.2.2
+
+### 🐛 高级设置实际生效修复
 
 **修复 QQ 平台高级配置被忽略的问题（v2.2.1 及之前版本），现在 4 个高级设置全部真实生效**
 
@@ -11,9 +25,6 @@
 - **maxMessageChars**（每条最大字数）：QQ 之前用硬编码 `200` 字符分片，现在尊重用户配置（默认 2000）
 - **sendChunkDelayMs**（分块延迟）：QQ 之前用硬编码 `120ms`，现在尊重用户配置（默认 1500ms）
 - **digestIntervalSec** 和 **approvalTimeoutSec**：微信/QQ 都继承父类逻辑，一直生效 ✅
-- **QQ 流式消息降级错误 40054005**：流式第二片失败时，降级到普通 Markdown 触发"消息被去重，请检查请求msgseq"错误
-  - 记录用户消息的 `msg_seq`，降级时传递 `msg_seq+1` 避免去重
-  - 清理所有发送方法（`sendText`/`sendMarkdown`/`sendKeyboard`/`sendTyping`/`sendStream`），只在有值时添加可选字段（避免 `undefined` 污染 body）
 
 #### 📚 文档
 
