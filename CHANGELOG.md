@@ -1,6 +1,34 @@
 # Changelog
 
-## 2.1.1（最新）
+## 2.1.2（最新）
+
+### 🎯 QQ Bot 输入状态支持
+
+**实现 QQ 平台的"正在输入"状态指示**
+
+#### 新增特性
+
+- **输入状态指示器**：
+  - 流式消息发送时显示"正在输入"状态
+  - 使用 `/stream-messages` API 的 `input_state` 参数（`1`=输入中，`0`=结束）
+  - 中间段自动显示输入状态，最后一段自动结束状态
+  - 提升用户体验，让等待过程更直观
+
+#### 技术改进
+
+- `QqGateway.sendStream()` 支持 `input_state` 参数
+- `QqGateway.sendTyping()` 改用流式消息 API 实现输入状态
+- `QqConversationNode` 流式发送逻辑自动管理输入状态
+- 参考官方文档：[流式发送消息](https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_users_user_openid_stream_messages.post.html)
+
+#### 文档更新
+
+- 更新 `docs/qq-usage.md`，新增"输入状态指示"章节
+- 完善流式输出与输入状态的技术说明
+
+---
+
+## 2.1.1
 
 ### 🚀 QQ Bot 体验增强
 

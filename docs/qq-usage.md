@@ -93,7 +93,9 @@ dsh web
    - 回复机器人的消息继续对话
    - @机器人 发送新消息
 
-### 5. 流式输出体验
+### 5. 流式输出与输入状态
+
+#### 流式输出
 
 当 AI 回复较长内容时，dsh-bridge 会自动分段流式推送：
 
@@ -101,6 +103,17 @@ dsh web
 - **推送间隔**：100ms
 - **消息关联**：所有段落通过 `msg_id` 关联
 - **用户体验**：实时看到输出，无需等待完整响应
+
+#### 输入状态指示
+
+流式输出过程中，QQ 会显示机器人的"正在输入"状态：
+
+- **实现方式**：通过 `/stream-messages` API 的 `input_state` 参数
+- **状态控制**：
+  - `input_state: 1` - 显示"正在输入"
+  - `input_state: 0` - 结束输入状态
+- **自动管理**：发送中间段时显示输入中，最后一段自动结束状态
+- **API 文档**：[流式发送消息](https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_users_user_openid_stream_messages.post.html)
 
 ## 功能特性
 
