@@ -657,9 +657,8 @@ function BridgePanel({ rpcCall }) {
   const [status, setStatus]       = React.useState(null);
   const [err, setErr]             = React.useState(null);
   const [activeTab, setActiveTab] = React.useState('lan');
-  // 微信连接状态：独立轮询，不依赖 WechatCard 是否挂载
-  const [wechatConnected, setWechatConnected] = React.useState(false);
-  // IM 平台选择：默认选中微信
+  // 平台列表和连接状态
+  const [platforms, setPlatforms] = React.useState(null);
   const [selectedPlatform, setSelectedPlatform] = React.useState('wechat');
 
   const load = React.useCallback(async (quiet = false) => {
@@ -673,15 +672,14 @@ function BridgePanel({ rpcCall }) {
     }
   }, [rpcCall]);
 
-  // 独立轮询微信连接状态（与 getStatus 解耦，Tab 未选中时也能更新绿点）
+  // 独立轮询所有平台状态（Tab 未选中时也能更新）
   React.useEffect(() => {
     let alive = true;
     const poll = async () => {
       try {
-        const r = await rpcCall(BRIDGE_ENDPOINTS.wechatGetStatus, {});
+        const r = await rpcCall(BRIDGE_ENDPOINTS.listPlatforms, {});
         if (alive && r?.ok) {
-          const s = r.value?.status;
-          setWechatConnected(s === 'connected' || s === 'starting' || s === 'reconnecting');
+          setPlatforms(r.value ?? {});
         }
       } catch { /* 忽略，不影响主面板 */ }
     };
@@ -726,11 +724,14 @@ function BridgePanel({ rpcCall }) {
 
   const ct = status?.customTunnel;
 
-  // Tab 状态点：im 用 WechatCard 上报的准确状态，其余从 getStatus 读
+  // Tab 状态点：从各自数据源计算
+  const imConnected = platforms && Object.values(platforms).some(p => 
+    p.status === 'connected' || p.status === 'starting' || p.status === 'reconnecting'
+  );
   const dots = {
     lan:    !!(status?.proxy?.running),
     tunnel: !!(status?.cloudflared?.running || ct?.running),
-    im:     wechatConnected,
+    im:     !!imConnected,
   };
 
   // Tab 内容
@@ -778,19 +779,24 @@ function BridgePanel({ rpcCall }) {
       ),
     );
   } else if (activeTab === 'im') {
-    // 平台列表：已接入的可点击，未接入的置灰
+    // 从 listPlatforms 动态生成平台列表
     const IM_PLATFORMS = [
-      { id: 'wechat', label: '微信', desc: 'iLink Bot API（ClawBot）', available: true,  active: wechatConnected },
-      { id: 'qq',     label: 'QQ',   desc: 'NapCat / Mirai',          available: false, active: false },
-      { id: 'feishu', label: '飞书', desc: '官方事件回调 API',          available: false, active: false },
+      { id: 'wechat', label: '微信', desc: 'iLink Bot API（ClawBot）' },
+      { id: 'qq',     label: 'QQ',   desc: 'NapCat / Mirai' },
+      { id: 'feishu', label: '飞书', desc: '官方事件回调 API' },
     ];
+    
     tabContent = React.createElement('div', null,
       // 平台选择器（可点击切换）
       React.createElement('div', {
         style: { display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' },
       },
-        IM_PLATFORMS.map(({ id, label, desc, available, active }) =>
-          React.createElement('div', {
+        IM_PLATFORMS.map(({ id, label, desc }) => {
+          const platformData = platforms?.[id];
+          const available = !!platformData;
+          const active = platformData?.status === 'connected' || platformData?.status === 'starting' || platformData?.status === 'reconnecting';
+          
+          return React.createElement('div', {
             key: id,
             style: {
               flex: '1 1 140px',
@@ -817,16 +823,16 @@ function BridgePanel({ rpcCall }) {
               }, '即将支持'),
             ),
             React.createElement('div', { style: { ...s.muted, marginTop: 3, fontSize: 11 } }, desc),
-          )
-        ),
+          );
+        }),
       ),
       // 显示选中的平台卡片
-      selectedPlatform && React.createElement(PlatformCard, {
+      selectedPlatform && platforms?.[selectedPlatform] && React.createElement(PlatformCard, {
         platformId: selectedPlatform,
         platformName: IM_PLATFORMS.find(p => p.id === selectedPlatform)?.label ?? selectedPlatform,
         platformDesc: IM_PLATFORMS.find(p => p.id === selectedPlatform)?.desc ?? '',
         rpcCall,
-        onStatusChange: setWechatConnected, // 暂时复用这个状态，未来需要改为通用 platformStatuses
+        onStatusChange: () => {}, // 状态变化已由 listPlatforms 轮询处理，不需要回调
       }),
     );
   }

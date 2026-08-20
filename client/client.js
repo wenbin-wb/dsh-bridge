@@ -750,7 +750,7 @@ function BridgePanel({ rpcCall }) {
   const [status, setStatus] = React.useState(null);
   const [err, setErr] = React.useState(null);
   const [activeTab, setActiveTab] = React.useState("lan");
-  const [wechatConnected, setWechatConnected] = React.useState(false);
+  const [platforms, setPlatforms] = React.useState(null);
   const [selectedPlatform, setSelectedPlatform] = React.useState("wechat");
   const load = React.useCallback(async (quiet = false) => {
     try {
@@ -766,10 +766,9 @@ function BridgePanel({ rpcCall }) {
     let alive = true;
     const poll = async () => {
       try {
-        const r = await rpcCall(BRIDGE_ENDPOINTS.wechatGetStatus, {});
+        const r = await rpcCall(BRIDGE_ENDPOINTS.listPlatforms, {});
         if (alive && r?.ok) {
-          const s2 = r.value?.status;
-          setWechatConnected(s2 === "connected" || s2 === "starting" || s2 === "reconnecting");
+          setPlatforms(r.value ?? {});
         }
       } catch {
       }
@@ -814,10 +813,13 @@ function BridgePanel({ rpcCall }) {
     }, "\u52A0\u8F7D\u4E2D\u2026");
   }
   const ct = status?.customTunnel;
+  const imConnected = platforms && Object.values(platforms).some(
+    (p) => p.status === "connected" || p.status === "starting" || p.status === "reconnecting"
+  );
   const dots = {
     lan: !!status?.proxy?.running,
     tunnel: !!(status?.cloudflared?.running || ct?.running),
-    im: wechatConnected
+    im: !!imConnected
   };
   let tabContent;
   if (activeTab === "lan") {
@@ -868,9 +870,9 @@ function BridgePanel({ rpcCall }) {
     );
   } else if (activeTab === "im") {
     const IM_PLATFORMS = [
-      { id: "wechat", label: "\u5FAE\u4FE1", desc: "iLink Bot API\uFF08ClawBot\uFF09", available: true, active: wechatConnected },
-      { id: "qq", label: "QQ", desc: "NapCat / Mirai", available: false, active: false },
-      { id: "feishu", label: "\u98DE\u4E66", desc: "\u5B98\u65B9\u4E8B\u4EF6\u56DE\u8C03 API", available: false, active: false }
+      { id: "wechat", label: "\u5FAE\u4FE1", desc: "iLink Bot API\uFF08ClawBot\uFF09" },
+      { id: "qq", label: "QQ", desc: "NapCat / Mirai" },
+      { id: "feishu", label: "\u98DE\u4E66", desc: "\u5B98\u65B9\u4E8B\u4EF6\u56DE\u8C03 API" }
     ];
     tabContent = React.createElement(
       "div",
@@ -881,8 +883,11 @@ function BridgePanel({ rpcCall }) {
         {
           style: { display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }
         },
-        IM_PLATFORMS.map(
-          ({ id, label, desc, available, active }) => React.createElement(
+        IM_PLATFORMS.map(({ id, label, desc }) => {
+          const platformData = platforms?.[id];
+          const available = !!platformData;
+          const active = platformData?.status === "connected" || platformData?.status === "starting" || platformData?.status === "reconnecting";
+          return React.createElement(
             "div",
             {
               key: id,
@@ -913,17 +918,18 @@ function BridgePanel({ rpcCall }) {
               }, "\u5373\u5C06\u652F\u6301")
             ),
             React.createElement("div", { style: { ...s.muted, marginTop: 3, fontSize: 11 } }, desc)
-          )
-        )
+          );
+        })
       ),
       // 显示选中的平台卡片
-      selectedPlatform && React.createElement(PlatformCard, {
+      selectedPlatform && platforms?.[selectedPlatform] && React.createElement(PlatformCard, {
         platformId: selectedPlatform,
         platformName: IM_PLATFORMS.find((p) => p.id === selectedPlatform)?.label ?? selectedPlatform,
         platformDesc: IM_PLATFORMS.find((p) => p.id === selectedPlatform)?.desc ?? "",
         rpcCall,
-        onStatusChange: setWechatConnected
-        // 暂时复用这个状态，未来需要改为通用 platformStatuses
+        onStatusChange: () => {
+        }
+        // 状态变化已由 listPlatforms 轮询处理，不需要回调
       })
     );
   }

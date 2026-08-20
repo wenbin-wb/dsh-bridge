@@ -21,11 +21,12 @@
   - 所有端点接受 `platformId` 参数，动态路由到对应平台
   - **向后兼容**：保留 `wechat*` 端点作为 deprecated 别名（v1.x 客户端仍可用）
 
-- **UI 重构为多平台选项卡**：
+- **UI 重构为多平台选项卡**（阶段 4 ✅）：
   - 创建通用 `PlatformCard` 组件（替代 `WechatCard`）
   - 支持动态平台选择（wechat / qq / feishu），平台选择器显示连接状态绿点
+  - 从 `listPlatforms` RPC 动态读取平台状态（available / connected / starting）
   - 通过 `platformId` / `platformName` / `platformDesc` 参数化组件
-  - 未来接入新平台无需修改 UI，只需在 `IM_PLATFORMS` 列表添加配置
+  - 未来接入新平台无需修改 UI 逻辑，只需在后端注册并在 `IM_PLATFORMS` 列表添加显示配置
 
 #### 技术细节
 
