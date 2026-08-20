@@ -55,6 +55,10 @@
 
 - **阶段 6**：实现第二个平台（QQ Bot）验证架构完整性
 
+## 2.0.1
+
+- **文档**：README / README.zh-CN 新增「升级到最新版」指引 —— 使用 `dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest`（无需知道版本号），解决 `update --latest` 因依赖版本约束无法升级到最新版的问题
+
 ## 1.2.5
 
 - **UI**：修复主要按钮（「开启」等）文字颜色在部分主题下显示为黑色的问题，改用 DSH 官方 `--dsw-alias-label-primary-foreground` 变量，确保与其他插件按钮样式统一

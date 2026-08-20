@@ -87,6 +87,16 @@ dsh plugin --profile web add ./dsh-bridge
 
 安装完成后重启 DSH，在设置页找到「远程访问」即可使用。
 
+### 升级到最新版
+
+```bash
+dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
+```
+
+> **注意**：`update --latest` 可能因已安装依赖的版本约束而无法升级到最新版。用上面的 `add @latest` 命令即可强制安装最新版（无需知道具体版本号）。
+
+升级完成后重启 DSH，并在浏览器**硬刷新**（Windows: `Ctrl+Shift+R`，macOS: `Cmd+Shift+R`）清除缓存，然后确认设置页显示最新版本号。
+
 ---
 
 ## 使用
