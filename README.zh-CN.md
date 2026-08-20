@@ -95,6 +95,16 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 
 > **注意**：`update --latest` 可能因已安装依赖的版本约束而无法升级到最新版。用上面的 `add @latest` 命令即可强制安装最新版（无需知道具体版本号）。
 
+#### 升级后仍是旧版本？（pnpm 11 新版本过滤）
+
+如果你刚发布后立即升级，`add @latest` 可能仍然装到旧版本。这是 **pnpm 11 的供应链安全机制 `minimumReleaseAge`**（默认过滤发布不足 24 小时的新版本）导致的，不是插件问题。
+
+**解决方法**（任选其一）：
+
+1. **在 profile 的 `pnpm-workspace.yaml` 添加 `minimumReleaseAge: 0`**，然后重新 `pnpm install`（推荐，一劳永逸）
+2. **显式指定版本号**：`dsh plugin --profile web add @wenbin_wb/dsh-bridge@2.0.2`（立即生效，无需等待）
+3. **等待 24 小时**：发布满 1 天后保护自动解除
+
 升级完成后重启 DSH，并在浏览器**硬刷新**（Windows: `Ctrl+Shift+R`，macOS: `Cmd+Shift+R`）清除缓存，然后确认设置页显示最新版本号。
 
 ---

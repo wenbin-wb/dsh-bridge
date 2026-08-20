@@ -95,6 +95,16 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 
 > **Note**: `update --latest` may fail to reach the newest major version due to version constraints from already-installed dependencies. Use the `add @latest` command above to force-install the latest version (no need to know the exact version number).
 
+#### Still on an old version after upgrading? (pnpm 11 new-version filtering)
+
+If you upgrade right after a release, `add @latest` may still install an older version. This is caused by **pnpm 11's supply-chain safety mechanism `minimumReleaseAge`** (default: filters versions published less than 24 hours ago) — not a plugin issue.
+
+**Solutions** (pick one):
+
+1. **Add `minimumReleaseAge: 0` to your profile's `pnpm-workspace.yaml`**, then run `pnpm install` (recommended, permanent)
+2. **Specify the exact version**: `dsh plugin --profile web add @wenbin_wb/dsh-bridge@2.0.2` (works immediately, no waiting)
+3. **Wait 24 hours**: the protection lifts automatically after 1 day
+
 After upgrading, restart DSH and **hard-refresh** the browser (Windows: `Ctrl+Shift+R`, macOS: `Cmd+Shift+R`) to clear the cache, then confirm the latest version is shown in settings.
 
 ---
