@@ -1,6 +1,20 @@
 # Changelog
 
-## 1.2.5（最新）
+## 2.0.0（最新）
+
+- **架构重构：平台抽象层**（为 QQ / 飞书 / Telegram 等多平台接入做准备）
+  - 新增 `lib/platform/` 目录：
+    - `base.js` — `Platform` 基类：统一的平台生命周期（start/stop/dispose）、消息抽象（sendText/sendTyping/sendMedia）、登录状态、能力声明（capabilities）、状态聚合
+    - `conversation-bridge.js` — `ConversationBridge`：从 `wechat/node.js` 抽取全部平台无关逻辑（白名单/首条自动授权、会话生命周期、审批问答、digest 摘要、命令路由、会话列表/工作区渲染）
+    - `manager.js` — `PlatformManager`：多平台注册、查找、状态聚合、统一 dispose
+    - `index.js` — 统一导出
+  - 重构 `lib/wechat/node.js` 继承 `ConversationBridge`，仅保留微信协议特定部分（消息解析 `extractText`/`isGroupMessage`、媒体下载解密 `_processMediaItems`/`_downloadMediaItem`）
+  - **零功能退化**：微信 Bot 全部功能与命令行为保持不变
+  - 新增 `test/platform-bridge.test.mjs`（13 个测试），验证 Platform/ConversationBridge/PlatformManager 可独立于微信工作
+  - 新增设计文档 `docs/platform-abstraction-design.md`
+  - **测试**：45/45 通过（原 32 + 新 13）
+
+## 1.2.5
 
 - **UI**：修复主要按钮（「开启」等）文字颜色在部分主题下显示为黑色的问题，改用 DSH 官方 `--dsw-alias-label-primary-foreground` 变量，确保与其他插件按钮样式统一
 
