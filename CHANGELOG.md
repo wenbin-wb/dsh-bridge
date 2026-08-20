@@ -2,9 +2,9 @@
 
 ## 2.0.0（最新）
 
-### 架构重构：平台抽象层（阶段 1 + 2）
+### 架构重构：平台抽象层（阶段 1 + 2 + 3）
 
-**为 QQ / 飞书 / Telegram 等多平台接入做准备，主插件已用 PlatformManager 管理微信平台**
+**为 QQ / 飞书 / Telegram 等多平台接入做准备，RPC 层已统一 `platformId` 参数**
 
 - **阶段 1：平台抽象层基础（已完成）**
   - 新增 `lib/platform/` 目录：
@@ -23,13 +23,17 @@
   - 新增 RPC 端点 `listPlatforms`（`lib/bridge-rpc-constants.js` + `lib/bridge-rpc.js`），返回所有平台状态聚合（包含二维码渲染）
   - 新增 3 个测试：验证 `WechatService` 作为 `Platform` 实例的 id/name/capabilities，以及能注册到 `PlatformManager` 并聚合状态
 
+- **阶段 3：RPC 层统一 platformId 参数（已完成）**
+  - `lib/bridge-rpc-constants.js`：新增统一平台操作端点（`platformLogin`/`platformSetAllowFrom`/`platformSetConfig`/`platformStop`/`platformStart`/`platformUnbind`），保留 `wechat*` 端点作为 deprecated 别名
+  - `lib/bridge-rpc.js`：实现统一端点（接受 `platformId` 参数，通过 `platformManager.get(platformId)` 动态查找平台），保留 `wechat*` 端点向后兼容
+  - **向后兼容**：v1.x 客户端仍可使用 `wechat*` 端点，v2.x 客户端可使用 `platform*` 端点操作任意平台
+
 - **零功能退化**：微信 Bot 全部功能与命令行为保持不变
-- **测试**：47/47 通过（原 32 + 阶段 1 新增 13 + 阶段 2 新增 2，修正为总计 47）
+- **测试**：47/47 通过（原 32 + 阶段 1 新增 13 + 阶段 2 新增 2）
 
 ---
 
 **待完成阶段（v2.0.0 后续迭代）**：
-- 阶段 3：RPC 层统一 `platformId` 参数（当前 RPC 仍直接调用 `wechat` 对象，向后兼容）
 - 阶段 4：UI 重构为多平台选项卡（client/index.js 目前仅渲染微信单平台）
 - 阶段 5：测试 + 正式发布 v2.0.0
 - 阶段 6：实现第二个平台（QQ）验证接口完整性

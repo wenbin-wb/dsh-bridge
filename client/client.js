@@ -42,9 +42,15 @@ var BRIDGE_ENDPOINTS = {
   resetCloudflared: "resetCloudflared",
   saveCustomTunnelConfig: "saveCustomTunnelConfig",
   checkVersion: "checkVersion",
-  // 平台管理器（多 IM 平台）
+  // 平台管理器（多 IM 平台统一接口）
   listPlatforms: "listPlatforms",
-  // 微信 Bot（保持 v1.x 兼容）
+  platformLogin: "platformLogin",
+  platformSetAllowFrom: "platformSetAllowFrom",
+  platformSetConfig: "platformSetConfig",
+  platformStop: "platformStop",
+  platformStart: "platformStart",
+  platformUnbind: "platformUnbind",
+  // 微信 Bot（v1.x 向后兼容别名，deprecated）
   wechatGetStatus: "wechatGetStatus",
   wechatLogin: "wechatLogin",
   wechatSetAllowFrom: "wechatSetAllowFrom",
