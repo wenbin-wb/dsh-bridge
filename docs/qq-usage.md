@@ -1,6 +1,13 @@
 # QQ Bot 使用指南
 
-本文档介绍如何接入 QQ Bot OpenAPI v2，实现私聊、群聊、Markdown、按钮交互和富媒体消息。
+本文档介绍如何接入 QQ Bot OpenAPI v2，实现私聊、群聊、流式输出、按钮交互、消息引用和富媒体消息。
+
+## ✨ v2.1.1 新特性
+
+- **🚀 流式消息输出**：长文本自动分段推送（200字符/段），实时看到 AI 输出
+- **💬 消息引用交互**：直接回复机器人消息即可继续对话，无需输入命令
+- **🔘 按钮快捷操作**：无活动会话时自动显示快捷按钮（新建会话/列表/帮助）
+- **⚡ 互动事件支持**：按钮点击自动映射到对应命令
 
 ## 前置准备
 
@@ -21,9 +28,9 @@ QQ Bot 使用 WebSocket 接收事件，需要配置 Intents（事件订阅）：
 
 - **C2C_MESSAGE_CREATE**（私聊消息）：`1 << 25`
 - **GROUP_AT_MESSAGE_CREATE**（群聊 @提及）：`1 << 30`
-- **AT_MESSAGE_CREATE**（频道 @提及）：`1 << 30`
+- **INTERACTION_CREATE**（互动事件）：`1 << 26`
 
-> dsh-bridge 默认已开启 C2C 和 GROUP_AT_MESSAGE_CREATE，无需额外配置。
+> dsh-bridge 默认已开启以上三个 intents，支持私聊、群聊和按钮交互，无需额外配置。
 
 ## 快速开始
 
@@ -66,23 +73,91 @@ dsh web
 
 ### 4. 开始对话
 
-白名单用户/群组向机器人发送消息后：
+#### 私聊场景
 
-- **私聊**：直接发送消息即可
-- **群聊**：需要 @机器人 才会触发（`GROUP_AT_MESSAGE_CREATE` 事件）
+1. 在 QQ 中搜索并添加你的机器人为好友
+2. 发送任意消息，机器人会回复带按钮的欢迎提示：
+   - 🆕 **新建会话**：创建新的 AI 对话
+   - 📋 **会话列表**：查看所有可用会话
+   - ❓ **帮助**：显示命令帮助
+3. 点击「新建会话」按钮开始对话
+4. 或者直接回复机器人的任何消息，自动创建新会话并继续对话
 
-机器人会自动创建会话，转发消息到 DSH Agent 并回复。
+#### 群聊场景
+
+1. 将机器人拉入 QQ 群
+2. 在群内 @机器人 并发送消息（例如：`@机器人 你好`）
+3. 机器人会响应并提供快捷按钮
+4. 后续可以：
+   - 点击按钮快捷操作
+   - 回复机器人的消息继续对话
+   - @机器人 发送新消息
+
+### 5. 流式输出体验
+
+当 AI 回复较长内容时，dsh-bridge 会自动分段流式推送：
+
+- **分段大小**：200 字符/段
+- **推送间隔**：100ms
+- **消息关联**：所有段落通过 `msg_id` 关联
+- **用户体验**：实时看到输出，无需等待完整响应
 
 ## 功能特性
+
+### 交互方式
+
+#### 1. 快捷按钮（推荐）
+
+当没有活动会话时，机器人会自动发送带按钮的提示：
+
+- **🆕 新建会话**：点击后立即创建新的 AI 对话
+- **📋 会话列表**：查看所有可用会话及其编号
+- **❓ 帮助**：显示所有可用命令
+
+按钮点击会触发 `INTERACTION_CREATE` 事件，自动映射到对应命令。
+
+#### 2. 消息引用（最便捷）
+
+直接回复机器人的任何消息，自动关联到对应会话：
+
+1. 机器人发送回复
+2. 你使用 QQ 的"引用回复"功能回复该消息
+3. 如果没有活动会话，自动创建新会话
+4. 你的消息会发送到 AI，无需输入 `/new` 等命令
+
+> **提示**：这是最自然的交互方式，就像正常聊天一样。
+
+#### 3. 文本命令（兼容性）
+
+所有操作都支持传统文本命令：
+
+- `/new` - 新建会话
+- `/list` - 列出所有会话
+- `/resume <number>` - 恢复指定会话
+- `/forget` - 清空当前会话历史
+- `/help` - 显示帮助
 
 ### 支持的消息类型
 
 | 类型 | 方法 | 说明 |
 |------|------|------|
 | 文本消息 | `sendText(scope, text)` | 纯文本消息 |
+| 流式消息 | `sendStream(scope, text, opts)` | 长文本自动分段推送（200字符/段） |
 | Markdown | `sendMarkdown(scope, markdown, keyboard)` | 支持 Markdown 格式 + 可选按钮 |
 | 按钮键盘 | `sendKeyboard(scope, text, keyboard)` | 文本 + 按钮组（行内按钮） |
 | 富媒体 | `sendMedia(scope, type, buffer, filename)` | 图片/视频/音频/文件上传 |
+
+### 流式消息示例
+
+```javascript
+// 发送长文本，自动分段推送
+await gateway.sendStream(
+  'u_11112222333344445555AAAAAAAAAAAA',  // user_openid
+  '这是一段很长的 AI 回复内容...',
+  { msgId: 'parent_msg_id' }  // 可选：关联到某条消息
+)
+// 自动分段为 200 字符/段，每段间隔 100ms
+```
 
 ### Markdown 示例
 
@@ -109,12 +184,14 @@ await gateway.sendMarkdown(
 
 按钮类型（`action.type`）：
 - `0` — 跳转按钮（`action.data` 为 URL）
-- `1` — 回调按钮（触发 `INTERACTION_CREATE` 事件，需额外订阅）
+- `1` — 回调按钮（触发 `INTERACTION_CREATE` 事件）
 - `2` — 指令按钮（用户点击后自动发送 `action.data` 作为消息）
 
 按钮样式（`render_data.style`）：
 - `0` — 灰色（次要操作）
 - `1` — 蓝色（主要操作）
+
+> **v2.1.1 改进**：dsh-bridge 已启用 `INTERACTION_CREATE` intent，按钮点击会自动映射到对应命令（如 `/new`、`/list`、`/help`），无需用户手动输入。
 
 ### 富媒体上传
 
@@ -143,8 +220,9 @@ await gateway.sendMedia(
 
 - **摘要间隔**（`digestIntervalSec`，默认 300s）：多久向 Agent 发送一次历史消息摘要
 - **审批超时**（`approvalTimeoutSec`，默认 600s）：等待用户审批的最长时间
-- **单条消息字符数**（`maxMessageChars`，默认 2000）：超长消息会自动分段
-- **分段延迟**（`sendChunkDelayMs`，默认 1500ms）：分段消息之间的延迟
+- **单条消息字符数**（`maxMessageChars`，默认 4096）：QQ API 单条消息限制
+- **流式分段大小**（固定 200 字符）：长文本自动分段推送的每段大小
+- **分段延迟**（固定 100ms）：流式消息每段之间的延迟
 
 ### Token 自动刷新
 
@@ -207,9 +285,26 @@ Gateway 实现指数退避重连策略：
 - [获取访问凭证](https://bot.q.qq.com/wiki/develop/api-v2/dev-prepare/access-token.html)
 - [WebSocket 事件](https://bot.q.qq.com/wiki/develop/api-v2/dev-prepare/event-emit/websocket.html)
 - [消息收发](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/overview.html)
+- [流式消息](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/send-receive/passive.html#%E6%B6%88%E6%81%AF%E6%B5%81%E5%BC%8F%E6%8E%A8%E9%80%81)
 - [Markdown 消息](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/type/markdown.html)
 - [消息按钮](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/trans/msg-btn.html)
 - [富媒体消息](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/send-receive/rich-media.html)
+
+## 版本历史
+
+### v2.1.1 (2024-01-XX)
+- ✨ 流式消息输出：长文本自动分段推送（200字符/段）
+- ✨ 消息引用：检测 `message_reference`，用户回复消息时自动创建会话
+- ✨ 按钮交互：无活动会话时发送快捷按钮（新建会话/列表/帮助）
+- ✨ 事件增强：启用 `INTERACTION_CREATE` intent，支持按钮点击映射到命令
+- 🐛 修复 `sendKeyboard` 参数顺序
+- 🐛 保存最后消息 ID，优化用户回复体验
+
+### v2.1.0 (2024-01-XX)
+- 🎉 初始版本：QQ Bot OpenAPI v2 完整实现
+- ✨ 私聊、群聊、Markdown、按钮、富媒体
+- ✨ 平台抽象层集成
+- ✨ Web UI 自动适配
 
 ## 示例项目
 
