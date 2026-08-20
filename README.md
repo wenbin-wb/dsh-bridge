@@ -18,6 +18,7 @@ Seamlessly extend your local DeepSeek Harness to mobile phones, tablets, public 
 - **Cloudflare Tunnel**: One-click public internet exposure, connect from anywhere without a public server of your own — keep working even when you're away from home
 - **Custom Tunnel**: Connect to your own tunnel server with a fixed domain ([Setup Guide](docs/custom-tunnel.md))
 - **WeChat Bot (ClawBot / iLink)**: Scan a QR code to log in a WeChat personal account, then chat with, control, and approve your DeepSeek Harness agents right inside WeChat. **Multi-workspace selection, restart-persistent sessions, grouped session listing with titles, media (image/file/voice) transfer, and permission approvals** — over Tencent's official iLink Bot API, no public server or tunnel required ([Usage Guide](docs/wechat-usage.md))
+- **QQ Bot (OpenAPI v2)**: Connect your QQ Bot to receive private/group messages, send Markdown, button keyboards, and rich media. **Full event coverage (C2C / GROUP_AT_MESSAGE_CREATE), auto token refresh, reconnection with backoff, message deduplication** — over Tencent's official QQ Bot OpenAPI v2 ([Usage Guide](docs/qq-usage.md))
 - **IM Integration (More Planned)**: WeChat / QQ / Feishu / OpenClaw direct chat integration
 - **Security Alerts**: URLs and QR codes with access warnings to prevent accidental sharing
 - **Auto Version Check**: Automatic update detection when entering the panel
@@ -35,7 +36,7 @@ Seamlessly extend your local DeepSeek Harness to mobile phones, tablets, public 
 |--------|-------------|--------|
 | **Platform Abstraction** | Platform-agnostic core (sessions / approvals / commands / digest) shared across IM channels | ✅ **Completed** (v2.0.0) |
 | **WeChat** | Chat with your Agent directly in WeChat | ✅ Supported (workspaces / persisted sessions / media / approvals) |
-| **QQ Bot** | QQ bot integration for group/private chat | 🚧 Next (platform adapter implementation) |
+| **QQ Bot** | QQ bot integration for group/private chat | ✅ **Completed** (v2.1.0) — Markdown / buttons / rich media |
 | **Feishu** | Feishu message/bot integration for workplace scenarios | Planned |
 | **OpenClaw** | Integration with OpenClaw ecosystem | Planned |
 | **Telegram** | Self-hosted IM channel | Planned |
