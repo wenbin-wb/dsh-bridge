@@ -65,7 +65,13 @@ var GITHUB_URL = "https://github.com/wenbin-wb/dsh-bridge";
 var RELEASES_URL = "https://github.com/wenbin-wb/dsh-bridge/releases";
 var ISSUES_URL = "https://github.com/wenbin-wb/dsh-bridge/issues/new";
 var TUNNEL_DOCS_URL = "https://github.com/wenbin-wb/dsh-bridge/blob/main/docs/custom-tunnel.md";
-var UPGRADE_COMMAND = "dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest";
+function upgradeCommands(latest) {
+  const spec = `@wenbin_wb/dsh-bridge@${latest}`;
+  return [
+    { id: "dsh", cmd: `dsh plugin --profile web add ${spec}` },
+    { id: "npx", cmd: `npx --yes @deepseek-ai/dsh plugin --profile web add ${spec}` }
+  ];
+}
 var name = "dsh-bridge";
 var inject = ["slots", "connection"];
 function semverGt(a, b) {
@@ -614,10 +620,31 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
     )
   );
 }
+function UpgradeCommandRow({ cmd }) {
+  const [copied, copy] = useCopy();
+  return React.createElement(
+    "div",
+    { style: { display: "flex", alignItems: "center", gap: 8 } },
+    React.createElement("code", {
+      style: {
+        ...s.code,
+        fontSize: 11,
+        color: "var(--dsw-alias-label-secondary,#6b7280)",
+        flex: 1,
+        minWidth: 0,
+        wordBreak: "break-all"
+      }
+    }, cmd),
+    React.createElement("button", {
+      style: { ...s.btnGhost, height: 26, padding: "0 10px", fontSize: 12, flexShrink: 0 },
+      onClick: () => copy(cmd),
+      title: "\u590D\u5236\u5347\u7EA7\u547D\u4EE4"
+    }, copied ? "\u2713 \u5DF2\u590D\u5236" : "\u590D\u5236")
+  );
+}
 function VersionBanner({ rpcCall }) {
   const [info, setInfo] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
-  const [copied, copy] = useCopy();
   const check = React.useCallback(async () => {
     setLoading(true);
     try {
@@ -654,6 +681,7 @@ function VersionBanner({ rpcCall }) {
     }, "\u{1F41B} \u53CD\u9988 Bug")
   );
   if (hasUpdate) {
+    const cmds = upgradeCommands(info.latest);
     return React.createElement(
       "div",
       { style: { marginBottom: 16 } },
@@ -680,29 +708,14 @@ function VersionBanner({ rpcCall }) {
                 fontSize: 13,
                 fontWeight: 600,
                 color: "var(--dsw-alias-state-info-primary,#1e40af)",
-                marginBottom: 6
+                marginBottom: 8
               }
             }, `\u53D1\u73B0\u65B0\u7248\u672C v${info.latest}\uFF08\u5F53\u524D v${info.current}\uFF09`),
+            // 升级命令：dsh plugin 与 npx 两种，均带复制按钮
             React.createElement(
               "div",
-              {
-                style: { display: "flex", alignItems: "center", gap: 8 }
-              },
-              React.createElement("code", {
-                style: {
-                  ...s.code,
-                  fontSize: 11,
-                  color: "var(--dsw-alias-label-secondary,#6b7280)",
-                  flex: 1,
-                  minWidth: 0,
-                  wordBreak: "break-all"
-                }
-              }, UPGRADE_COMMAND),
-              React.createElement("button", {
-                style: { ...s.btnGhost, height: 26, padding: "0 10px", fontSize: 12, flexShrink: 0 },
-                onClick: () => copy(UPGRADE_COMMAND),
-                title: "\u590D\u5236\u5347\u7EA7\u547D\u4EE4"
-              }, copied ? "\u2713 \u5DF2\u590D\u5236" : "\u590D\u5236")
+              { style: { display: "flex", flexDirection: "column", gap: 6 } },
+              cmds.map(({ id, cmd }) => React.createElement(UpgradeCommandRow, { key: id, cmd }))
             )
           ),
           React.createElement("button", {

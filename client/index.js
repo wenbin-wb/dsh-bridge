@@ -7,8 +7,14 @@ const RELEASES_URL = 'https://github.com/wenbin-wb/dsh-bridge/releases';
 const ISSUES_URL = 'https://github.com/wenbin-wb/dsh-bridge/issues/new';
 const TUNNEL_DOCS_URL = 'https://github.com/wenbin-wb/dsh-bridge/blob/main/docs/custom-tunnel.md';
 
-// 升级命令：用 add @latest 强制安装最新版（update --latest 受已安装依赖版本约束可能无法升级到最新版）
-const UPGRADE_COMMAND = 'dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest';
+// 生成升级命令（拼接具体版本号；用 add 而非 update，update --latest 受已安装依赖版本约束可能无法升级到最新版）
+function upgradeCommands(latest) {
+  const spec = `@wenbin_wb/dsh-bridge@${latest}`;
+  return [
+    { id: 'dsh',    cmd: `dsh plugin --profile web add ${spec}` },
+    { id: 'npx',    cmd: `npx --yes @deepseek-ai/dsh plugin --profile web add ${spec}` },
+  ];
+}
 
 const name = 'dsh-bridge';
 const inject = ['slots', 'connection'];
@@ -539,11 +545,32 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
   );
 }
 
+// 单条升级命令行：命令文本 + 复制按钮
+function UpgradeCommandRow({ cmd }) {
+  const [copied, copy] = useCopy();
+  return React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
+    React.createElement('code', {
+      style: {
+        ...s.code,
+        fontSize: 11,
+        color: 'var(--dsw-alias-label-secondary,#6b7280)',
+        flex: 1,
+        minWidth: 0,
+        wordBreak: 'break-all',
+      },
+    }, cmd),
+    React.createElement('button', {
+      style: { ...s.btnGhost, height: 26, padding: '0 10px', fontSize: 12, flexShrink: 0 },
+      onClick: () => copy(cmd),
+      title: '复制升级命令',
+    }, copied ? '✓ 已复制' : '复制'),
+  );
+}
+
 // 版本检查 + GitHub/反馈入口
 function VersionBanner({ rpcCall }) {
   const [info, setInfo] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
-  const [copied, copy] = useCopy();
 
   const check = React.useCallback(async () => {
     setLoading(true);
@@ -575,6 +602,7 @@ function VersionBanner({ rpcCall }) {
 
   // 有新版本：信息卡片
   if (hasUpdate) {
+    const cmds = upgradeCommands(info.latest);
     return React.createElement('div', { style: { marginBottom: 16 } },
       React.createElement('div', {
         style: {
@@ -593,27 +621,12 @@ function VersionBanner({ rpcCall }) {
                 fontSize: 13,
                 fontWeight: 600,
                 color: 'var(--dsw-alias-state-info-primary,#1e40af)',
-                marginBottom: 6,
+                marginBottom: 8,
               },
             }, `发现新版本 v${info.latest}（当前 v${info.current}）`),
-            React.createElement('div', {
-              style: { display: 'flex', alignItems: 'center', gap: 8 },
-            },
-              React.createElement('code', {
-                style: {
-                  ...s.code,
-                  fontSize: 11,
-                  color: 'var(--dsw-alias-label-secondary,#6b7280)',
-                  flex: 1,
-                  minWidth: 0,
-                  wordBreak: 'break-all',
-                },
-              }, UPGRADE_COMMAND),
-              React.createElement('button', {
-                style: { ...s.btnGhost, height: 26, padding: '0 10px', fontSize: 12, flexShrink: 0 },
-                onClick: () => copy(UPGRADE_COMMAND),
-                title: '复制升级命令',
-              }, copied ? '✓ 已复制' : '复制'),
+            // 升级命令：dsh plugin 与 npx 两种，均带复制按钮
+            React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 6 } },
+              cmds.map(({ id, cmd }) => React.createElement(UpgradeCommandRow, { key: id, cmd })),
             ),
           ),
           React.createElement('button', {
