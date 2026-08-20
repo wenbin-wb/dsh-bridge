@@ -270,6 +270,9 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
         approvalTimeoutSec: String(platform.config.approvalTimeoutSec ?? 600),
         maxMessageChars:    String(platform.config.maxMessageChars    ?? 2000),
         sendChunkDelayMs:   String(platform.config.sendChunkDelayMs   ?? 1500),
+        appId: platform.config.appId ?? '',
+        // Secret 不由后端回传；空值表示沿用已保存密钥
+        clientSecret: '',
       });
     }
   }, [platform?.config]);
@@ -338,18 +341,28 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
   // 高级设置保存
   const saveConfig = React.useCallback(async () => {
     if (!cfgDraft) return;
-    await act(BRIDGE_ENDPOINTS.platformSetConfig, {
+    const payload = {
       digestIntervalSec:  Number(cfgDraft.digestIntervalSec),
       approvalTimeoutSec: Number(cfgDraft.approvalTimeoutSec),
       maxMessageChars:    Number(cfgDraft.maxMessageChars),
       sendChunkDelayMs:   Number(cfgDraft.sendChunkDelayMs),
-    });
-  }, [act, cfgDraft]);
+    };
+    // QQ 平台额外携带凭证
+    if (platformId === 'qq') {
+      payload.appId = cfgDraft.appId.trim();
+      payload.clientSecret = cfgDraft.clientSecret.trim();
+    }
+    await act(BRIDGE_ENDPOINTS.platformSetConfig, payload);
+  }, [act, cfgDraft, platformId]);
   const cfgDirty = cfgDraft && platform?.config && (
     Number(cfgDraft.digestIntervalSec)  !== platform.config.digestIntervalSec  ||
     Number(cfgDraft.approvalTimeoutSec) !== platform.config.approvalTimeoutSec ||
     Number(cfgDraft.maxMessageChars)    !== platform.config.maxMessageChars    ||
-    Number(cfgDraft.sendChunkDelayMs)   !== platform.config.sendChunkDelayMs
+    Number(cfgDraft.sendChunkDelayMs)   !== platform.config.sendChunkDelayMs   ||
+    (platformId === 'qq' && (
+      cfgDraft.appId !== (platform.config.appId ?? '') ||
+      cfgDraft.clientSecret !== (platform.config.clientSecret ?? '')
+    ))
   );
 
   if (!platform && !err) {
@@ -459,7 +472,7 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
       ),
     ),
 
-    // 未配置 / 登录中：二维码
+    // 未配置 / 登录中：二维码（QQ 无二维码，显示凭证表单）
     (!platform?.configured || showQr) && React.createElement('div', { style: s.block },
       showQr && login.qr
         ? React.createElement('div', null,
@@ -471,13 +484,48 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
             ),
             login.error && React.createElement('div', { style: { ...s.muted, marginTop: 4, color: 'var(--dsw-alias-state-warn-primary,#92400e)' } }, login.error),
           )
-        : React.createElement('div', { style: { display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap', alignItems: 'center' } },
-            React.createElement('button', {
-              style: { ...s.btnPri, opacity: busy ? 0.5 : 1 },
-              onClick: onLogin, disabled: busy,
-            }, busy ? '处理中…' : '扫码登录'),
-            login.phase === 'error' && React.createElement('div', { style: { ...s.muted, fontSize: 12 } }, login.error ?? '登录失败'),
-          ),
+        : platformId === 'qq'
+          ? React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 } },
+              React.createElement('div', null,
+                React.createElement('div', { style: { ...s.muted, marginBottom: 4 } }, 'AppID — QQ 开放平台机器人应用 ID'),
+                React.createElement('input', {
+                  style: { ...s.input, width: '100%' },
+                  placeholder: '请输入 AppID',
+                  value: cfgDraft?.appId ?? '',
+                  onChange: (e) => setCfgDraft(d => ({ ...d, appId: e.target.value })),
+                }),
+              ),
+              React.createElement('div', null,
+                React.createElement('div', { style: { ...s.muted, marginBottom: 4 } }, 'ClientSecret — QQ 开放平台机器人密钥'),
+                React.createElement('input', {
+                  style: { ...s.input, width: '100%' },
+                  placeholder: '请输入 ClientSecret',
+                  value: cfgDraft?.clientSecret ?? '',
+                  onChange: (e) => setCfgDraft(d => ({ ...d, clientSecret: e.target.value })),
+                }),
+              ),
+              React.createElement('div', null,
+                React.createElement('a', {
+                  href: 'https://bot.q.qq.com/wiki/develop/api-v2/',
+                  target: '_blank', rel: 'noopener noreferrer',
+                  style: s.btnLink,
+                }, '📖 前往 QQ 开放平台申请机器人'),
+              ),
+              React.createElement('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' } },
+                React.createElement('button', {
+                  style: { ...s.btnPri, opacity: busy ? 0.5 : 1 },
+                  onClick: saveConfig, disabled: busy || !cfgDraft?.appId?.trim() || !cfgDraft?.clientSecret?.trim(),
+                }, busy ? '保存中…' : '保存并连接'),
+                login.phase === 'error' && React.createElement('div', { style: { ...s.muted, fontSize: 12 } }, login.error ?? '连接失败'),
+              ),
+            )
+          : React.createElement('div', { style: { display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap', alignItems: 'center' } },
+              React.createElement('button', {
+                style: { ...s.btnPri, opacity: busy ? 0.5 : 1 },
+                onClick: onLogin, disabled: busy,
+              }, busy ? '处理中…' : '扫码登录'),
+              login.phase === 'error' && React.createElement('div', { style: { ...s.muted, fontSize: 12 } }, login.error ?? '登录失败'),
+            ),
     ),
 
     // 高级设置（可折叠）
@@ -527,6 +575,27 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
             onChange: (e) => setCfgDraft(d => ({ ...d, sendChunkDelayMs: e.target.value })),
           }),
         ),
+        // QQ 平台凭证
+        platformId === 'qq' && React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10 } },
+          React.createElement('div', null,
+            React.createElement('div', { style: { ...s.muted, marginBottom: 4 } }, 'AppID — QQ 开放平台机器人应用 ID'),
+            React.createElement('input', {
+              style: { ...s.input, width: 220 },
+              placeholder: '请输入 AppID',
+              value: cfgDraft.appId,
+              onChange: (e) => setCfgDraft(d => ({ ...d, appId: e.target.value })),
+            }),
+          ),
+          React.createElement('div', null,
+            React.createElement('div', { style: { ...s.muted, marginBottom: 4 } }, 'ClientSecret — QQ 开放平台机器人密钥'),
+            React.createElement('input', {
+              style: { ...s.input, width: 220 },
+              placeholder: '请输入 ClientSecret',
+              value: cfgDraft.clientSecret,
+              onChange: (e) => setCfgDraft(d => ({ ...d, clientSecret: e.target.value })),
+            }),
+          ),
+        ),
         React.createElement('button', {
           style: { ...s.btnPri, alignSelf: 'flex-start', opacity: (cfgDirty && !busy) ? 1 : 0.5 },
           disabled: !cfgDirty || busy,
@@ -539,7 +608,9 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
       React.createElement('div', { style: { ...s.tip, fontSize: 12 } },
         platformId === 'wechat'
           ? '说明: 扫码成功后，向该微信 Bot 发送第一条消息即自动完成白名单授权。仅白名单内的微信用户能驱动 agent，其他人消息会被忽略。使用专用微信号，避免影响主号。'
-          : '说明: 登录成功后，发送第一条消息即自动完成白名单授权。仅白名单内的用户能驱动 agent，其他人消息会被忽略。'
+          : platformId === 'qq'
+            ? '说明: 填入 QQ 开放平台机器人的 AppID 与 ClientSecret 后保存即自动连接。用户向 Bot 发送第一条消息即自动完成白名单授权。仅白名单内的 QQ 用户能驱动 agent，其他人消息会被忽略。'
+            : '说明: 登录成功后，发送第一条消息即自动完成白名单授权。仅白名单内的用户能驱动 agent，其他人消息会被忽略。'
       ),
     ),
   );
@@ -844,7 +915,7 @@ function BridgePanel({ rpcCall }) {
     // 从 listPlatforms 动态生成平台列表
     const IM_PLATFORMS = [
       { id: 'wechat', label: '微信', desc: 'iLink Bot API（ClawBot）' },
-      { id: 'qq',     label: 'QQ',   desc: 'NapCat / Mirai' },
+      { id: 'qq',     label: 'QQ',   desc: 'QQ Bot OpenAPI v2（私聊/群聊/按钮）' },
       { id: 'feishu', label: '飞书', desc: '官方事件回调 API' },
     ];
     

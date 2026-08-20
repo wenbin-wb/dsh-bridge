@@ -323,7 +323,10 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
         digestIntervalSec: String(platform.config.digestIntervalSec ?? 300),
         approvalTimeoutSec: String(platform.config.approvalTimeoutSec ?? 600),
         maxMessageChars: String(platform.config.maxMessageChars ?? 2e3),
-        sendChunkDelayMs: String(platform.config.sendChunkDelayMs ?? 1500)
+        sendChunkDelayMs: String(platform.config.sendChunkDelayMs ?? 1500),
+        appId: platform.config.appId ?? "",
+        // Secret 不由后端回传；空值表示沿用已保存密钥
+        clientSecret: ""
       });
     }
   }, [platform?.config]);
@@ -380,14 +383,19 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
   const handleNewId = React.useCallback((e) => setNewId(e.target.value), []);
   const saveConfig = React.useCallback(async () => {
     if (!cfgDraft) return;
-    await act(BRIDGE_ENDPOINTS.platformSetConfig, {
+    const payload = {
       digestIntervalSec: Number(cfgDraft.digestIntervalSec),
       approvalTimeoutSec: Number(cfgDraft.approvalTimeoutSec),
       maxMessageChars: Number(cfgDraft.maxMessageChars),
       sendChunkDelayMs: Number(cfgDraft.sendChunkDelayMs)
-    });
-  }, [act, cfgDraft]);
-  const cfgDirty = cfgDraft && platform?.config && (Number(cfgDraft.digestIntervalSec) !== platform.config.digestIntervalSec || Number(cfgDraft.approvalTimeoutSec) !== platform.config.approvalTimeoutSec || Number(cfgDraft.maxMessageChars) !== platform.config.maxMessageChars || Number(cfgDraft.sendChunkDelayMs) !== platform.config.sendChunkDelayMs);
+    };
+    if (platformId === "qq") {
+      payload.appId = cfgDraft.appId.trim();
+      payload.clientSecret = cfgDraft.clientSecret.trim();
+    }
+    await act(BRIDGE_ENDPOINTS.platformSetConfig, payload);
+  }, [act, cfgDraft, platformId]);
+  const cfgDirty = cfgDraft && platform?.config && (Number(cfgDraft.digestIntervalSec) !== platform.config.digestIntervalSec || Number(cfgDraft.approvalTimeoutSec) !== platform.config.approvalTimeoutSec || Number(cfgDraft.maxMessageChars) !== platform.config.maxMessageChars || Number(cfgDraft.sendChunkDelayMs) !== platform.config.sendChunkDelayMs || platformId === "qq" && (cfgDraft.appId !== (platform.config.appId ?? "") || cfgDraft.clientSecret !== (platform.config.clientSecret ?? "")));
   if (!platform && !err) {
     return React.createElement(
       "div",
@@ -510,7 +518,7 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
         }, "\u89E3\u7ED1\u8D26\u53F7")
       )
     ),
-    // 未配置 / 登录中：二维码
+    // 未配置 / 登录中：二维码（QQ 无二维码，显示凭证表单）
     (!platform?.configured || showQr) && React.createElement(
       "div",
       { style: s.block },
@@ -524,6 +532,51 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
           login.phase === "scaned" ? "\u5DF2\u626B\u7801\uFF0C\u8BF7\u5728\u624B\u673A\u4E0A\u786E\u8BA4\u2026" : platformId === "wechat" ? "\u8BF7\u4F7F\u7528\u5FAE\u4FE1\u626B\u7801\u767B\u5F55\uFF08ClawBot\uFF09" : "\u8BF7\u626B\u7801\u767B\u5F55"
         ),
         login.error && React.createElement("div", { style: { ...s.muted, marginTop: 4, color: "var(--dsw-alias-state-warn-primary,#92400e)" } }, login.error)
+      ) : platformId === "qq" ? React.createElement(
+        "div",
+        { style: { display: "flex", flexDirection: "column", gap: 10, marginTop: 4 } },
+        React.createElement(
+          "div",
+          null,
+          React.createElement("div", { style: { ...s.muted, marginBottom: 4 } }, "AppID \u2014 QQ \u5F00\u653E\u5E73\u53F0\u673A\u5668\u4EBA\u5E94\u7528 ID"),
+          React.createElement("input", {
+            style: { ...s.input, width: "100%" },
+            placeholder: "\u8BF7\u8F93\u5165 AppID",
+            value: cfgDraft?.appId ?? "",
+            onChange: (e) => setCfgDraft((d) => ({ ...d, appId: e.target.value }))
+          })
+        ),
+        React.createElement(
+          "div",
+          null,
+          React.createElement("div", { style: { ...s.muted, marginBottom: 4 } }, "ClientSecret \u2014 QQ \u5F00\u653E\u5E73\u53F0\u673A\u5668\u4EBA\u5BC6\u94A5"),
+          React.createElement("input", {
+            style: { ...s.input, width: "100%" },
+            placeholder: "\u8BF7\u8F93\u5165 ClientSecret",
+            value: cfgDraft?.clientSecret ?? "",
+            onChange: (e) => setCfgDraft((d) => ({ ...d, clientSecret: e.target.value }))
+          })
+        ),
+        React.createElement(
+          "div",
+          null,
+          React.createElement("a", {
+            href: "https://bot.q.qq.com/wiki/develop/api-v2/",
+            target: "_blank",
+            rel: "noopener noreferrer",
+            style: s.btnLink
+          }, "\u{1F4D6} \u524D\u5F80 QQ \u5F00\u653E\u5E73\u53F0\u7533\u8BF7\u673A\u5668\u4EBA")
+        ),
+        React.createElement(
+          "div",
+          { style: { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" } },
+          React.createElement("button", {
+            style: { ...s.btnPri, opacity: busy ? 0.5 : 1 },
+            onClick: saveConfig,
+            disabled: busy || !cfgDraft?.appId?.trim() || !cfgDraft?.clientSecret?.trim()
+          }, busy ? "\u4FDD\u5B58\u4E2D\u2026" : "\u4FDD\u5B58\u5E76\u8FDE\u63A5"),
+          login.phase === "error" && React.createElement("div", { style: { ...s.muted, fontSize: 12 } }, login.error ?? "\u8FDE\u63A5\u5931\u8D25")
+        )
       ) : React.createElement(
         "div",
         { style: { display: "flex", gap: 8, marginTop: 4, flexWrap: "wrap", alignItems: "center" } },
@@ -602,6 +655,33 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
             onChange: (e) => setCfgDraft((d) => ({ ...d, sendChunkDelayMs: e.target.value }))
           })
         ),
+        // QQ 平台凭证
+        platformId === "qq" && React.createElement(
+          "div",
+          { style: { display: "flex", flexDirection: "column", gap: 10 } },
+          React.createElement(
+            "div",
+            null,
+            React.createElement("div", { style: { ...s.muted, marginBottom: 4 } }, "AppID \u2014 QQ \u5F00\u653E\u5E73\u53F0\u673A\u5668\u4EBA\u5E94\u7528 ID"),
+            React.createElement("input", {
+              style: { ...s.input, width: 220 },
+              placeholder: "\u8BF7\u8F93\u5165 AppID",
+              value: cfgDraft.appId,
+              onChange: (e) => setCfgDraft((d) => ({ ...d, appId: e.target.value }))
+            })
+          ),
+          React.createElement(
+            "div",
+            null,
+            React.createElement("div", { style: { ...s.muted, marginBottom: 4 } }, "ClientSecret \u2014 QQ \u5F00\u653E\u5E73\u53F0\u673A\u5668\u4EBA\u5BC6\u94A5"),
+            React.createElement("input", {
+              style: { ...s.input, width: 220 },
+              placeholder: "\u8BF7\u8F93\u5165 ClientSecret",
+              value: cfgDraft.clientSecret,
+              onChange: (e) => setCfgDraft((d) => ({ ...d, clientSecret: e.target.value }))
+            })
+          )
+        ),
         React.createElement("button", {
           style: { ...s.btnPri, alignSelf: "flex-start", opacity: cfgDirty && !busy ? 1 : 0.5 },
           disabled: !cfgDirty || busy,
@@ -615,7 +695,7 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
       React.createElement(
         "div",
         { style: { ...s.tip, fontSize: 12 } },
-        platformId === "wechat" ? "\u8BF4\u660E: \u626B\u7801\u6210\u529F\u540E\uFF0C\u5411\u8BE5\u5FAE\u4FE1 Bot \u53D1\u9001\u7B2C\u4E00\u6761\u6D88\u606F\u5373\u81EA\u52A8\u5B8C\u6210\u767D\u540D\u5355\u6388\u6743\u3002\u4EC5\u767D\u540D\u5355\u5185\u7684\u5FAE\u4FE1\u7528\u6237\u80FD\u9A71\u52A8 agent\uFF0C\u5176\u4ED6\u4EBA\u6D88\u606F\u4F1A\u88AB\u5FFD\u7565\u3002\u4F7F\u7528\u4E13\u7528\u5FAE\u4FE1\u53F7\uFF0C\u907F\u514D\u5F71\u54CD\u4E3B\u53F7\u3002" : "\u8BF4\u660E: \u767B\u5F55\u6210\u529F\u540E\uFF0C\u53D1\u9001\u7B2C\u4E00\u6761\u6D88\u606F\u5373\u81EA\u52A8\u5B8C\u6210\u767D\u540D\u5355\u6388\u6743\u3002\u4EC5\u767D\u540D\u5355\u5185\u7684\u7528\u6237\u80FD\u9A71\u52A8 agent\uFF0C\u5176\u4ED6\u4EBA\u6D88\u606F\u4F1A\u88AB\u5FFD\u7565\u3002"
+        platformId === "wechat" ? "\u8BF4\u660E: \u626B\u7801\u6210\u529F\u540E\uFF0C\u5411\u8BE5\u5FAE\u4FE1 Bot \u53D1\u9001\u7B2C\u4E00\u6761\u6D88\u606F\u5373\u81EA\u52A8\u5B8C\u6210\u767D\u540D\u5355\u6388\u6743\u3002\u4EC5\u767D\u540D\u5355\u5185\u7684\u5FAE\u4FE1\u7528\u6237\u80FD\u9A71\u52A8 agent\uFF0C\u5176\u4ED6\u4EBA\u6D88\u606F\u4F1A\u88AB\u5FFD\u7565\u3002\u4F7F\u7528\u4E13\u7528\u5FAE\u4FE1\u53F7\uFF0C\u907F\u514D\u5F71\u54CD\u4E3B\u53F7\u3002" : platformId === "qq" ? "\u8BF4\u660E: \u586B\u5165 QQ \u5F00\u653E\u5E73\u53F0\u673A\u5668\u4EBA\u7684 AppID \u4E0E ClientSecret \u540E\u4FDD\u5B58\u5373\u81EA\u52A8\u8FDE\u63A5\u3002\u7528\u6237\u5411 Bot \u53D1\u9001\u7B2C\u4E00\u6761\u6D88\u606F\u5373\u81EA\u52A8\u5B8C\u6210\u767D\u540D\u5355\u6388\u6743\u3002\u4EC5\u767D\u540D\u5355\u5185\u7684 QQ \u7528\u6237\u80FD\u9A71\u52A8 agent\uFF0C\u5176\u4ED6\u4EBA\u6D88\u606F\u4F1A\u88AB\u5FFD\u7565\u3002" : "\u8BF4\u660E: \u767B\u5F55\u6210\u529F\u540E\uFF0C\u53D1\u9001\u7B2C\u4E00\u6761\u6D88\u606F\u5373\u81EA\u52A8\u5B8C\u6210\u767D\u540D\u5355\u6388\u6743\u3002\u4EC5\u767D\u540D\u5355\u5185\u7684\u7528\u6237\u80FD\u9A71\u52A8 agent\uFF0C\u5176\u4ED6\u4EBA\u6D88\u606F\u4F1A\u88AB\u5FFD\u7565\u3002"
       )
     )
   );
@@ -932,7 +1012,7 @@ function BridgePanel({ rpcCall }) {
   } else if (activeTab === "im") {
     const IM_PLATFORMS = [
       { id: "wechat", label: "\u5FAE\u4FE1", desc: "iLink Bot API\uFF08ClawBot\uFF09" },
-      { id: "qq", label: "QQ", desc: "NapCat / Mirai" },
+      { id: "qq", label: "QQ", desc: "QQ Bot OpenAPI v2\uFF08\u79C1\u804A/\u7FA4\u804A/\u6309\u94AE\uFF09" },
       { id: "feishu", label: "\u98DE\u4E66", desc: "\u5B98\u65B9\u4E8B\u4EF6\u56DE\u8C03 API" }
     ];
     tabContent = React.createElement(
