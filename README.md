@@ -1,27 +1,27 @@
 # dsh-bridge
 
-[中文文档](README.zh-CN.md)
+[English](README.zh-CN.md) | 简体中文
 
 ![dsh-bridge banner](docs/banner.jpg)
 
-> Multi-channel remote access plugin for DeepSeek Harness
+> DeepSeek Harness 多通道远程访问插件
 
-Keep using your DeepSeek Harness on the go. Scan a QR code with your phone and keep working from your sofa, another room, or across the world — no need to sit at your desk, no need to be on the same network, and no need to set up your own public server.
+手机扫个码，人不在电脑前也能继续用 DeepSeek Harness。躺在沙发上、出差在外、跨网访问——都不用守着电脑，也不用自己搭公网服务器，扫码就能在手机/平板或任意设备上接着干。
 
-Seamlessly extend your local DeepSeek Harness to mobile phones, tablets, public networks, and even WeChat. Access your AI assistant anytime, anywhere via QR code scanning, web browsers, or the WeChat Bot.
+把你本地的 DeepSeek Harness 无缝延伸到手机、平板、公网、甚至微信。无论你在哪，都能通过扫码、网页或微信 Bot，随时调用你的 AI 助手。
 
 ---
 
-## Features
+## 功能特性
 
-- **LAN Access**: Scan QR code with your smartphone/tablet, direct access on the same Wi-Fi — keep the conversation going from your phone
-- **Cloudflare Tunnel**: One-click public internet exposure, connect from anywhere without a public server of your own — keep working even when you're away from home
-- **Custom Tunnel**: Connect to your own tunnel server with a fixed domain ([Setup Guide](docs/custom-tunnel.md))
-- **WeChat Bot (ClawBot / iLink)**: Scan a QR code to log in a WeChat personal account, then chat with, control, and approve your DeepSeek Harness agents right inside WeChat. **Multi-workspace selection, restart-persistent sessions, grouped session listing with titles, media (image/file/voice) transfer, and permission approvals** — over Tencent's official iLink Bot API, no public server or tunnel required ([Usage Guide](docs/wechat-usage.md))
-- **QQ Bot (OpenAPI v2)**: Connect your QQ Bot to receive private/group messages, send Markdown, button keyboards, and rich media. **Full event coverage (C2C / GROUP_AT_MESSAGE_CREATE), auto token refresh, reconnection with backoff, message deduplication** — over Tencent's official QQ Bot OpenAPI v2 ([Usage Guide](docs/qq-usage.md))
-- **IM Integration (More Planned)**: WeChat / QQ / Feishu / OpenClaw direct chat integration
-- **Security Alerts**: URLs and QR codes with access warnings to prevent accidental sharing
-- **Auto Version Check**: Automatic update detection when entering the panel
+- **局域网访问**：手机/平板扫码，同一 Wi-Fi 直接访问，躺着也能在手机上接着聊
+- **Cloudflare 隧道**：一键暴露公网地址，随时随地连接，出差在外、不在家也能接着干，无需自建公网服务器
+- **自建隧道**：连接自己的隧道服务器，获得固定域名（[搭建教程](docs/custom-tunnel.md)）
+- **微信 Bot（ClawBot / iLink）**：扫码登录微信个人号后，直接在微信里对话、控制 DeepSeek Harness 的 agent。**支持多工作区选择、会话跨重启持久化、按工作区分组查看、媒体（图片/文件/语音）收发、权限审批**——走腾讯官方 iLink Bot API，无需公网（[使用说明](docs/wechat-usage.md)）
+- **QQ Bot（OpenAPI v2）**：接入 QQ 机器人，私聊/群聊接收消息，发送 Markdown、按钮键盘和富媒体。**完整事件覆盖（C2C / GROUP_AT_MESSAGE_CREATE）、Token 自动刷新、断线重连、消息去重**——走腾讯官方 QQ Bot OpenAPI v2（[使用说明](docs/qq-usage.md)）
+- **IM 集成（更多平台规划中）**：飞书 / OpenClaw，直接在聊天软件里呼唤你的 Agent
+- **安全提示**：URL 和二维码带访问警告，防止误分享
+- **版本检查**：进入面板自动检测是否有新版本
 
 ![npm](https://img.shields.io/npm/v/@wenbin_wb/dsh-bridge?label=npm)
 ![npm downloads](https://img.shields.io/npm/dt/@wenbin_wb/dsh-bridge?label=downloads)
@@ -30,184 +30,184 @@ Seamlessly extend your local DeepSeek Harness to mobile phones, tablets, public 
 
 ---
 
-## Roadmap
+## 开发路线图
 
-| Target | Description | Status |
-|--------|-------------|--------|
-| **Platform Abstraction** | Platform-agnostic core (sessions / approvals / commands / digest) shared across IM channels | ✅ **Completed** (v2.0.0) |
-| **WeChat** | Chat with your Agent directly in WeChat | ✅ Supported (workspaces / persisted sessions / media / approvals) |
-| **QQ Bot** | QQ bot integration for group/private chat | ✅ **Completed** (v2.1.0) — Markdown / buttons / rich media |
-| **Feishu** | Feishu message/bot integration for workplace scenarios | Planned |
-| **OpenClaw** | Integration with OpenClaw ecosystem | Planned |
-| **Telegram** | Self-hosted IM channel | Planned |
+| 目标 | 说明 | 状态 |
+|------|------|------|
+| **平台抽象层** | 平台无关的核心（会话/审批/命令/digest）跨 IM 渠道复用 | ✅ **已完成**（v2.0.0） |
+| **微信** | 在微信里直接与你的 Agent 对话 | ✅ 已支持（多工作区 / 会话持久化 / 媒体 / 审批） |
+| **QQ Bot** | 接入 QQ 机器人，群聊/私聊唤起 Agent | ✅ **已完成**（v2.1.0）— Markdown / 按钮 / 富媒体 |
+| **飞书** | 飞书消息/机器人集成，办公场景直接调用 | 规划中 |
+| **OpenClaw** | 与 OpenClaw 生态打通 | 规划中 |
+| **Telegram** | 适合自托管的 IM 渠道 | 规划中 |
 
 ---
 
-## Requirements
+## 环境要求
 
-Before installing the plugin, ensure:
+安装插件前，请先确保：
 
-1. **Node.js ≥ 22** (DSH requires `^22.19.0` or `≥ 24.0.0`)
-2. **dsh CLI available** — you can run `dsh` command in terminal
+1. **Node.js ≥ 22** (DSH 要求 `^22.19.0` 或 `≥ 24.0.0`)
+2. **dsh CLI 可用** — 能在终端直接运行 `dsh` 命令
 
 ```bash
-# Check Node version
-node -v   # Should show v22.19+ or v24+
+# 检查 Node 版本
+node -v   # 应显示 v22.19+ 或 v24+
 
-# Check dsh availability
+# 检查 dsh 是否可用
 dsh --version
 ```
 
-If `dsh` command is not found, install DSH globally:
+如果 `dsh` 命令提示"无法识别/找不到"，先安装 DSH：
 
 ```bash
 npm install -g @deepseek-ai/dsh
 ```
 
-> Alternative without global install (use `npx`):
+> 若没有全局安装的权限，也可以用 `npx` 方式：
 > ```bash
 > npx --yes @deepseek-ai/dsh plugin --profile web add @wenbin_wb/dsh-bridge
 > ```
 
 ---
 
-## Installation
+## 安装
 
-### From npm
+### 从 npm 安装
 
 ```bash
 dsh plugin --profile web add @wenbin_wb/dsh-bridge
 ```
 
-### From source
+### 从源码安装
 
 ```bash
 git clone https://github.com/wenbin-wb/dsh-bridge.git
 dsh plugin --profile web add ./dsh-bridge
 ```
 
-After installation, restart DSH and find "Remote Access" in settings.
+安装完成后重启 DSH，在设置页找到「远程访问」即可使用。
 
-### Upgrade to latest
+### 升级到最新版
 
 ```bash
 dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 ```
 
-> **Note**: `update --latest` may fail to reach the newest major version due to version constraints from already-installed dependencies. Use the `add @latest` command above to force-install the latest version (no need to know the exact version number).
+> **注意**：`update --latest` 可能因已安装依赖的版本约束而无法升级到最新版。用上面的 `add @latest` 命令即可强制安装最新版（无需知道具体版本号）。
 
-#### Still on an old version after upgrading? (pnpm 11 new-version filtering)
+#### 升级后仍是旧版本？（pnpm 11 新版本过滤）
 
-If you upgrade right after a release, `add @latest` may still install an older version. This is caused by **pnpm 11's supply-chain safety mechanism `minimumReleaseAge`** (default: filters versions published less than 24 hours ago) — not a plugin issue.
+如果你刚发布后立即升级，`add @latest` 可能仍然装到旧版本。这是 **pnpm 11 的供应链安全机制 `minimumReleaseAge`**（默认过滤发布不足 24 小时的新版本）导致的，不是插件问题。
 
-**Solutions** (pick one):
+**解决方法**（任选其一）：
 
-1. **Add `minimumReleaseAge: 0` to your profile's `pnpm-workspace.yaml`**, then run `pnpm install` (recommended, permanent)
-2. **Specify the exact version**: `dsh plugin --profile web add @wenbin_wb/dsh-bridge@2.0.2` (works immediately, no waiting)
-3. **Wait 24 hours**: the protection lifts automatically after 1 day
+1. **在 profile 的 `pnpm-workspace.yaml` 添加 `minimumReleaseAge: 0`**，然后重新 `pnpm install`（推荐，一劳永逸）
+2. **显式指定版本号**：`dsh plugin --profile web add @wenbin_wb/dsh-bridge@2.0.2`（立即生效，无需等待）
+3. **等待 24 小时**：发布满 1 天后保护自动解除
 
-After upgrading, restart DSH and **hard-refresh** the browser (Windows: `Ctrl+Shift+R`, macOS: `Cmd+Shift+R`) to clear the cache, then confirm the latest version is shown in settings.
-
----
-
-## Usage
-
-### LAN Access
-
-Automatically enabled after plugin starts, no configuration needed. Open Settings → "Remote Access", scan the QR code with your mobile device.
-
-### Cloudflare Tunnel
-
-1. Click "Enable" in the Cloudflare Tunnel card
-2. First use will auto-download cloudflared (~30MB) from GitHub
-3. Public URL and QR code appear within seconds
-4. URL changes after each restart; click "Reset Link" to get a new one
-
-### Custom Tunnel
-
-Requires a server with public IP. See [Custom Tunnel Guide](docs/custom-tunnel.md) for detailed setup.
-
-1. Deploy tunnel server following the guide
-2. Fill in WebSocket address (`wss://...`) and access token in the "Custom Tunnel" card
-3. Click "Save Config" then "Enable"
-
-Config is auto-persisted to `~/.dsh/dsh-bridge/config.json`, no need to re-enter after restart.
-
-### WeChat Bot (ClawBot / iLink)
-
-Built on Tencent's official WeChat ClawBot feature (iLink Bot API). Scan a QR code to log in a WeChat personal account, then chat with, control, and approve your DeepSeek Harness agents directly in WeChat — all through Tencent's official servers, no public server or tunnel required.
-
-**Highlights**
-
-- 🗂️ **Multi-workspace**: `/workspaces` to list workspaces; `@N` or `@path` to create sessions in a specific project directory
-- 💾 **Persistent sessions**: sessions survive DSH restarts — just keep chatting
-- 🏷️ **Session titles**: `/sessions` shows sessions grouped by workspace, each with an auto-generated title
-- 🖼️ **Media**: send/receive images, files, and voice (auto-transcribed)
-- 📝 **Approvals**: sensitive operations approved in WeChat, auto-denied on timeout
-- 🔔 **Live status**: heartbeat progress + "typing" indicator, long replies auto-chunked
-
-**Usage**
-
-1. Open Settings → "Remote Access" → "IM Bots" tab → select "WeChat"
-2. Click "Scan Login" and scan the QR code with WeChat, then confirm
-3. After login, **send the bot your first message to auto-complete allowlist authorization** (one step)
-4. Start issuing commands in WeChat
-
-**Commands in WeChat** (full details in [WeChat Bot Guide](docs/wechat-usage.md))
-
-| Command | What it does |
-|---------|--------------|
-| *(plain text)* | Routes to the active agent |
-| `/sessions` | List sessions (grouped by workspace, with titles) |
-| `/use N` | Switch to session N |
-| `/workspaces` | List available workspaces |
-| `/new <prompt>` | Create a fresh session and start (current workspace) |
-| `/new <prompt> @N` (or `@path`) | Create a session in a specific workspace |
-| `/stop` | Cancel the active turn |
-| `/status` | Agent status + session summary |
-| `/yes` `/no` (or `1`/`2`) | Answer a permission request |
-| `/start` | Auto-start a session after first scan |
-| `/help` | Command list |
-
-**Security**
-
-- Hard allowlist: only allowlisted WeChat users can drive the agent; everyone else is ignored and never fed to the model
-- Approvals default to deny: a permission request not answered with `/yes` within the timeout (default 10 min) is auto-rejected
-- Credentials are stored via the DSH credential service, never in plain config
-- iLink allows exactly **one poller per account** (exclusive lock); coexisting with hermes-agent / OpenClaw causes HTTP 403 drops. **Use a dedicated WeChat account** for the bot
-
-> Disclaimer: iLink is Tencent's official open channel but still subject to the WeChat ClawBot Terms of Use, including content filtering and rate limits. Not recommended for mission-critical use.
+升级完成后重启 DSH，并在浏览器**硬刷新**（Windows: `Ctrl+Shift+R`，macOS: `Cmd+Shift+R`）清除缓存，然后确认设置页显示最新版本号。
 
 ---
 
-## Optional Configuration
+## 使用
 
-Plugin works out-of-the-box, no configuration needed. To change proxy port, add to cordis.yml:
+### 局域网访问
+
+插件启动后自动开启，无需任何配置。打开设置页「远程访问」，用手机扫描二维码即可访问。
+
+### Cloudflare 隧道
+
+1. 点击「Cloudflare 隧道」卡片中的「开启」按钮
+2. 首次使用会自动从 GitHub 下载 cloudflared（约 30MB）
+3. 下载完成后自动启动，几秒内显示公网 URL 和二维码
+4. 每次重启后 URL 会变化；点「重置链接」可主动获取新 URL
+
+### 自建隧道
+
+需要一台有公网 IP 的服务器。详细搭建步骤见 [自建隧道教程](docs/custom-tunnel.md)。
+
+1. 按教程在服务器上部署隧道服务端
+2. 在「自建隧道」卡片中填写 WebSocket 地址（`wss://...`）和访问令牌
+3. 点「保存配置」后点「开启」
+
+配置自动持久化，重启后无需重新填写。
+
+### 微信 Bot（ClawBot / iLink）
+
+基于腾讯官方开放的微信 ClawBot 插件功能（底层 iLink Bot API），扫码登录微信个人号后，即可在微信里直接与你的 DeepSeek Harness agent 对话、控制和审批，全程走腾讯官方服务器，无需公网与隧道。
+
+**功能亮点**
+
+- 🗂️ **多工作区**：`/workspaces` 查看工作区，`@N` 或 `@路径` 指定项目目录新建会话
+- 💾 **会话持久化**：重启 DSH 后会话不丢失，直接续聊
+- 🏷️ **会话标题**：`/sessions` 按工作区分组、显示每个会话的标题，一眼可辨
+- 🖼️ **媒体收发**：支持图片/文件/语音（自动转文字）双向传输
+- 📝 **审批问答**：敏感操作在微信里审批，超时自动拒绝
+- 🔔 **状态推送**：任务进行中心跳进度 + "正在输入"指示，长回复自动分条
+
+**使用步骤**
+
+1. 打开设置页「远程访问」→「IM 机器人」→ 选中「微信」
+2. 点「扫码登录」，用微信扫二维码并按提示确认
+3. 登录成功后，**向该微信 Bot 发送第一条消息即自动完成白名单授权**（一步到位）
+4. 之后就可以在微信里下命令了
+
+**微信里的命令**（完整说明见 [微信 Bot 使用说明](docs/wechat-usage.md)）
+
+| 命令 | 说明 |
+|------|------|
+| *(普通文本)* | 发给当前活动 agent |
+| `/sessions` | 列出会话（按工作区分组，带标题） |
+| `/use N` | 切换到会话 N |
+| `/workspaces` | 列出可用工作区 |
+| `/new <提示词>` | 新建会话并开始（当前工作区） |
+| `/new <提示词> @N`（或 `@路径`） | 在指定工作区新建会话 |
+| `/stop` | 停止当前任务 |
+| `/status` | 查看 agent 状态与会话摘要 |
+| `/yes` `/no`（或 `1`/`2`） | 回应权限审批请求 |
+| `/start` | 首次扫码后自动开始一个会话 |
+| `/help` | 查看全部命令 |
+
+**安全说明**
+
+- 强制白名单：仅白名单内的微信用户能驱动 agent，其他人发的消息会被忽略、绝不喂给模型
+- 审批默认拒绝：权限请求在规定时间（默认 10 分钟）内未回复 `/yes` 则自动拒绝
+- 凭证存于 DSH 凭证服务，不落配置明文
+- 同一微信账号同一时间只允许一个 Bot 轮询（iLink 独占锁）；若同时使用 hermes-agent / OpenClaw 会互相 403。**请使用专用微信账号**承载 Bot
+
+> 声明：iLink 为腾讯官方开放通道，仍需遵守《微信 ClawBot 功能使用条款》，腾讯保留内容过滤和限速的权利。不建议用于核心业务。
+
+---
+
+## 可选配置
+
+插件开箱即用，无需配置。如需修改代理端口，在 cordis.yml 中添加：
 
 ```yaml
 - name: dsh-bridge
   config:
-    port: 3082  # Default 3082
+    port: 3082  # 默认 3082
 ```
 
 ---
 
-## Development
+## 开发
 
 ```bash
 git clone https://github.com/wenbin-wb/dsh-bridge.git
 cd dsh-bridge
 npm install
 
-# Rebuild after modifying client/index.js
+# 修改 client/index.js 后重新构建
 npm run build:client
 
-# Install to web profile and restart DSH
+# 安装到 web profile 并重启 DSH
 dsh plugin --profile web add .
 ```
 
 ---
 
-## License
+## 许可证
 
 MIT © [wenbin-wb](https://github.com/wenbin-wb)
