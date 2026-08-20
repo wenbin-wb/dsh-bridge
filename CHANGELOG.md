@@ -1,6 +1,59 @@
 # Changelog
 
-## 2.1.0（最新）
+## 2.1.1（最新）
+
+### 🚀 QQ Bot 体验增强
+
+**大幅改进 QQ 平台交互体验，充分利用 QQ 开放能力**
+
+#### 新增特性
+
+- **流式消息输出**：
+  - 长文本自动分段流式推送（每段 200 字符），降低等待感
+  - 使用 QQ `/stream-messages` API 实现逐段发送
+  - 多段消息自动关联（`msg_id` 链接到第一段）
+
+- **消息引用与文本交互**：
+  - 用户回复机器人消息时自动创建新会话（无需手动输入 `/new`）
+  - 检测 `message_reference` 字段，智能判断用户意图
+  - 保存最后发送的消息 ID，方便用户直接回复继续对话
+
+- **按钮交互优化**：
+  - 无活动会话时自动发送带按钮的提示消息
+  - 快捷按钮：🆕 新建会话、📋 会话列表、❓ 帮助
+  - 按钮互动事件自动映射到对应命令（`INTERACTION_CREATE` → `/new` / `/list` / `/help`）
+
+- **事件监听增强**：
+  - 默认启用 `INTERACTION_CREATE` intent（`1 << 26`）
+  - 支持按钮点击、表单提交等互动事件
+  - `respondInteraction` 立即响应，避免超时
+
+#### 改进的交互流程
+
+1. **首次接入**：发送任意消息 → 收到带按钮的欢迎提示 → 点击"新建会话"按钮 → 开始对话
+2. **继续对话**：直接回复机器人的任何消息 → 自动关联到活动会话 → 无需输入命令
+3. **长回复体验**：AI 回复长文本时逐段推送 → 实时看到输出 → 不用等待完整响应
+
+#### 技术改进
+
+- `lib/qq/gateway.js`：
+  - 修复 `sendKeyboard` 参数顺序（现在是 `peerId, content, keyboard, opts`）
+  - `sendStream` 支持 `msg_id` 关联
+  - 默认 intents 包含 `C2C_MESSAGE_CREATE | GROUP_AT_MESSAGE_CREATE | INTERACTION_CREATE`
+
+- `lib/qq/node.js`：
+  - `QqConversationNode.sendText` 覆盖：自动流式发送、保存消息 ID、带按钮提示
+  - `_handleInbound` 检测消息引用：有引用且无活动会话时自动 `/new`
+  - `_handleInteraction` 处理按钮点击：映射 button_id 到命令
+
+#### 测试
+
+- **零回归**：56/56 测试通过
+- 所有平台抽象层测试保持稳定
+
+---
+
+## 2.1.0
 
 ### 🎉 QQ Bot OpenAPI v2 接入
 
