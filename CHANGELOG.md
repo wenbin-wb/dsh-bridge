@@ -1,6 +1,41 @@
 # Changelog
 
-## 2.0.0（最新）
+## 2.1.0（最新）
+
+### 🎉 QQ Bot OpenAPI v2 接入
+
+**新增 QQ 机器人平台支持，覆盖私聊、群聊、Markdown、按钮交互、富媒体消息**
+
+#### 核心特性
+
+- **QQ Bot OpenAPI v2 完整实现**：
+  - `lib/qq/gateway.js` — QqGateway：App Access Token 自动刷新（7200s TTL，提前 5min）、WebSocket 长连接（hello/identify/heartbeat/dispatch）、指数退避重连、消息去重（300s TTL）
+  - 事件支持：`C2C_MESSAGE_CREATE`（私聊）、`GROUP_AT_MESSAGE_CREATE`（群聊 @提及）、`AT_MESSAGE_CREATE`（群聊 @）
+  - 消息类型：文本、Markdown（`msg_type: 2`）、按钮键盘（`keyboard`）、富媒体上传（`/v2/users|groups/{id}/files` + `file_type: 1|2|3|4`）
+  - REST API 封装：`sendText` / `sendMarkdown` / `sendKeyboard` / `sendMedia` / `api` 统一鉴权请求
+  
+- **平台抽象层集成**：
+  - `lib/qq/index.js` — `QqService extends Platform`：完整生命周期、凭证管理、状态同步、保存后自动连接
+  - `lib/qq/node.js` — `QqConversationNode extends ConversationBridge`：作用域映射（`user_openid` / `group_openid`）、文本提取、媒体处理
+  - 自动注册到 `PlatformManager`，无缝接入统一 RPC 层（`platform*` 端点）
+
+- **前端 UI 自动适配**：
+  - 平台选择器新增"QQ"选项（描述：`QQ Bot OpenAPI v2（私聊 / 群聊 / 按钮）`）
+  - AppID / ClientSecret 配置表单（密钥不回传浏览器，留空保持原值）
+  - 保存并连接按钮（调用 `platformSetConfig` 后自动 `start`）
+  - 官方文档链接：https://bot.q.qq.com/wiki/develop/api-v2/
+
+- **测试与质量保证**：
+  - `test/qq-service.test.mjs` — 9 个单元测试（gateway 初始化、token 管理、消息发送、事件规范化、PlatformManager 集成）
+  - **零回归**：56/56 测试通过（47 个原有 + 9 个 QQ 新增）
+
+#### 文件变更
+- 新增：`lib/qq/gateway.js`（433 行）、`lib/qq/index.js`（223 行）、`lib/qq/node.js`（124 行）、`test/qq-service.test.mjs`（128 行）
+- 修改：`lib/index.js`（注册 QqService）、`client/index.js`（QQ 平台 UI）、`client/client.js`（构建产物）
+
+---
+
+## 2.0.0
 
 ### 🎉 架构重构：多平台抽象层
 
