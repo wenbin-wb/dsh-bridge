@@ -73,11 +73,20 @@ npm install -g @deepseek-ai/dsh
 
 ## Installation
 
-### From npm
+### From npm (Recommended)
 
 ```bash
+# Install latest version
 dsh plugin --profile web add @wenbin_wb/dsh-bridge
+
+# Or specify version (e.g. 2.2.4)
+dsh plugin --profile web add @wenbin_wb/dsh-bridge@2.2.4
 ```
+
+> 💡 **No global install permission?** Use `npx`:
+> ```bash
+> npx --yes @deepseek-ai/dsh plugin --profile web add @wenbin_wb/dsh-bridge
+> ```
 
 ### From source
 
@@ -91,7 +100,10 @@ After installation, restart DSH and find "Remote Access" in settings.
 ### Upgrade to latest
 
 ```bash
+# Force install latest version (recommended)
 dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
+
+# Or copy the upgrade command from DSH Web Settings → "Remote Access" → "Version Check"
 ```
 
 > **Note**: `update --latest` may fail to reach the newest major version due to version constraints from already-installed dependencies. Use the `add @latest` command above to force-install the latest version (no need to know the exact version number).
@@ -103,7 +115,7 @@ If you upgrade right after a release, `add @latest` may still install an older v
 **Solutions** (pick one):
 
 1. **Add `minimumReleaseAge: 0` to your profile's `pnpm-workspace.yaml`**, then run `pnpm install` (recommended, permanent)
-2. **Specify the exact version**: `dsh plugin --profile web add @wenbin_wb/dsh-bridge@2.0.2` (works immediately, no waiting)
+2. **Copy the versioned upgrade command from DSH Web Settings → "Remote Access" → "Version Check"** (works immediately, no waiting)
 3. **Wait 24 hours**: the protection lifts automatically after 1 day
 
 After upgrading, restart DSH and **hard-refresh** the browser (Windows: `Ctrl+Shift+R`, macOS: `Cmd+Shift+R`) to clear the cache, then confirm the latest version is shown in settings.
@@ -115,6 +127,8 @@ After upgrading, restart DSH and **hard-refresh** the browser (Windows: `Ctrl+Sh
 ### LAN Access
 
 Automatically enabled after plugin starts, no configuration needed. Open Settings → "Remote Access", scan the QR code with your mobile device.
+
+![QR Code Access](docs/screenshots/qr-scan.jpg)
 
 ### Cloudflare Tunnel
 
@@ -136,6 +150,8 @@ Config is auto-persisted to `~/.dsh/dsh-bridge/config.json`, no need to re-enter
 ### WeChat Bot (ClawBot / iLink)
 
 Built on Tencent's official WeChat ClawBot feature (iLink Bot API). Scan a QR code to log in a WeChat personal account, then chat with, control, and approve your DeepSeek Harness agents directly in WeChat — all through Tencent's official servers, no public server or tunnel required.
+
+![WeChat Chat Example](docs/screenshots/wechat-chat.jpg)
 
 **Highlights**
 
@@ -177,6 +193,54 @@ Built on Tencent's official WeChat ClawBot feature (iLink Bot API). Scan a QR co
 - iLink allows exactly **one poller per account** (exclusive lock); coexisting with hermes-agent / OpenClaw causes HTTP 403 drops. **Use a dedicated WeChat account** for the bot
 
 > Disclaimer: iLink is Tencent's official open channel but still subject to the WeChat ClawBot Terms of Use, including content filtering and rate limits. Not recommended for mission-critical use.
+
+---
+
+### QQ Bot (OpenAPI v2)
+
+Connect your official QQ Bot for private/group chat (@mention in groups), streaming output, Markdown rendering, message buttons, and rich media (images/files). Built on Tencent's official QQ Bot OpenAPI v2, WebSocket real-time push, auto token refresh, auto-reconnect.
+
+![QQ Private Chat](docs/screenshots/qq-chat.jpg)
+
+![QQ Group Chat](docs/screenshots/qq-group.jpg)
+
+**Highlights**
+
+- 💬 **Private + Group Chat**: direct message for private chat, @mention to trigger in groups (first @mention auto-authorizes the group)
+- 📝 **Streaming Markdown**: real-time streaming output, code highlighting, tables, lists fully rendered
+- 🎯 **Message Buttons**: /end and other commands trigger quick buttons (new session/list/help), requires latest QQ client
+- 🖼️ **Rich Media**: send/receive images and files
+- 🔄 **Session Management**: multi-session switching, persistence, grouped by workspace
+- ✅ **Auto Authorization**: first message in private chat, first @mention in group auto-adds to allowlist
+
+**Usage**
+
+1. Go to [QQ Open Platform](https://q.qq.com) to create a bot app, get AppID and ClientSecret
+2. Open Settings → "Remote Access" → "IM Bots" → select "QQ"
+3. Fill in AppID and ClientSecret, click "Save Config" to auto-connect
+4. **Private Chat**: add bot as friend, send first message to auto-authorize
+5. **Group Chat**: invite bot to group, @mention bot to send message (first @mention auto-authorizes the group)
+
+**Commands in QQ** (full details in [QQ Bot Guide](docs/qq-usage.md))
+
+| Command | What it does |
+|---------|--------------|
+| *(plain text)* | Routes to the active agent |
+| `/new <prompt>` | Create new session and start |
+| `/sessions` | List sessions (grouped by workspace) |
+| `/list` | View sessions in current workspace |
+| `/resume N` | Resume session N |
+| `/end` | End current session (triggers quick buttons) |
+| `/stop` | Stop current task |
+| `/status` | View agent status |
+| `/workspaces` | List available workspaces |
+| `/help` | View all commands |
+
+**Important Notes**
+
+- **Custom menus / command panels / message buttons require latest QQ client** (2026-08-12 new feature, mobile version priority support)
+- API config success but client not showing is normal — update QQ to latest version and try again, or wait for official gradual rollout
+- Plain text commands (like `/new` `/sessions` `/help`) work on any version
 
 ---
 

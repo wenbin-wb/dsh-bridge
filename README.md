@@ -73,11 +73,20 @@ npm install -g @deepseek-ai/dsh
 
 ## 安装
 
-### 从 npm 安装
+### 从 npm 安装（推荐）
 
 ```bash
+# 安装最新版
 dsh plugin --profile web add @wenbin_wb/dsh-bridge
+
+# 或指定版本（如 2.2.4）
+dsh plugin --profile web add @wenbin_wb/dsh-bridge@2.2.4
 ```
+
+> 💡 **没有全局安装权限？** 使用 `npx` 方式：
+> ```bash
+> npx --yes @deepseek-ai/dsh plugin --profile web add @wenbin_wb/dsh-bridge
+> ```
 
 ### 从源码安装
 
@@ -91,7 +100,10 @@ dsh plugin --profile web add ./dsh-bridge
 ### 升级到最新版
 
 ```bash
+# 强制安装最新版（推荐）
 dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
+
+# 或在 DSH Web 设置页的「远程访问」→「版本检查」中一键复制升级命令
 ```
 
 > **注意**：`update --latest` 可能因已安装依赖的版本约束而无法升级到最新版。用上面的 `add @latest` 命令即可强制安装最新版（无需知道具体版本号）。
@@ -103,7 +115,7 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 **解决方法**（任选其一）：
 
 1. **在 profile 的 `pnpm-workspace.yaml` 添加 `minimumReleaseAge: 0`**，然后重新 `pnpm install`（推荐，一劳永逸）
-2. **显式指定版本号**：`dsh plugin --profile web add @wenbin_wb/dsh-bridge@2.0.2`（立即生效，无需等待）
+2. **在 DSH Web 设置页的「远程访问」→「版本检查」中复制带版本号的升级命令**（立即生效，无需等待）
 3. **等待 24 小时**：发布满 1 天后保护自动解除
 
 升级完成后重启 DSH，并在浏览器**硬刷新**（Windows: `Ctrl+Shift+R`，macOS: `Cmd+Shift+R`）清除缓存，然后确认设置页显示最新版本号。
@@ -115,6 +127,8 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 ### 局域网访问
 
 插件启动后自动开启，无需任何配置。打开设置页「远程访问」，用手机扫描二维码即可访问。
+
+![扫码访问](docs/screenshots/qr-scan.jpg)
 
 ### Cloudflare 隧道
 
@@ -136,6 +150,8 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 ### 微信 Bot（ClawBot / iLink）
 
 基于腾讯官方开放的微信 ClawBot 插件功能（底层 iLink Bot API），扫码登录微信个人号后，即可在微信里直接与你的 DeepSeek Harness agent 对话、控制和审批，全程走腾讯官方服务器，无需公网与隧道。
+
+![微信对话示例](docs/screenshots/wechat-chat.jpg)
 
 **功能亮点**
 
@@ -177,6 +193,54 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 - 同一微信账号同一时间只允许一个 Bot 轮询（iLink 独占锁）；若同时使用 hermes-agent / OpenClaw 会互相 403。**请使用专用微信账号**承载 Bot
 
 > 声明：iLink 为腾讯官方开放通道，仍需遵守《微信 ClawBot 功能使用条款》，腾讯保留内容过滤和限速的权利。不建议用于核心业务。
+
+---
+
+### QQ Bot（OpenAPI v2）
+
+接入 QQ 官方机器人，支持单聊/群聊（群聊需 @机器人）、流式输出、Markdown 渲染、消息按钮、富媒体消息（图片/文件）。走腾讯官方 QQ Bot OpenAPI v2，WebSocket 实时推送，Token 自动刷新，断线自动重连。
+
+![QQ 单聊对话](docs/screenshots/qq-chat.jpg)
+
+![QQ 群聊对话](docs/screenshots/qq-group.jpg)
+
+**功能亮点**
+
+- 💬 **单聊 + 群聊**：私聊直接对话，群聊 @机器人 触发（首次 @自动授权该群）
+- 📝 **流式 Markdown**：实时流式输出，代码高亮、表格、列表完整渲染
+- 🎯 **消息按钮**：/end 等命令触发快捷按钮（新建会话/列表/帮助），需最新版 QQ 客户端
+- 🖼️ **富媒体**：图片/文件双向传输
+- 🔄 **会话管理**：多会话切换、持久化、按工作区分组
+- ✅ **自动授权**：单聊首次发消息、群聊首次 @机器人 自动加白名单
+
+**使用步骤**
+
+1. 前往 [QQ 开放平台](https://q.qq.com) 创建机器人应用，获取 AppID 和 ClientSecret
+2. 打开设置页「远程访问」→「IM 机器人」→ 选中「QQ」
+3. 填入 AppID 和 ClientSecret，点「保存配置」后自动连接
+4. **单聊**：添加机器人好友，发送第一条消息自动完成授权
+5. **群聊**：将机器人拉入群，@机器人 发送消息（首次 @自动授权该群）
+
+**QQ 里的命令**（完整说明见 [QQ Bot 使用说明](docs/qq-usage.md)）
+
+| 命令 | 说明 |
+|------|------|
+| *(普通文本)* | 发给当前活动 agent |
+| `/new <提示词>` | 新建会话并开始 |
+| `/sessions` | 列出会话（按工作区分组） |
+| `/list` | 查看当前工作区的会话 |
+| `/resume N` | 恢复会话 N |
+| `/end` | 结束当前会话（触发快捷按钮） |
+| `/stop` | 停止当前任务 |
+| `/status` | 查看 agent 状态 |
+| `/workspaces` | 列出可用工作区 |
+| `/help` | 查看全部命令 |
+
+**重要提示**
+
+- **自定义菜单 / 指令面板 / 消息按钮需要最新版 QQ 客户端**（2026-08-12 新功能，手机版优先支持）
+- API 配置成功但客户端不显示是正常现象——更新 QQ 到最新版再试，或等官方灰度全量开放
+- 纯文字命令（如 `/new` `/sessions` `/help`）在任何版本都完全可用
 
 ---
 
