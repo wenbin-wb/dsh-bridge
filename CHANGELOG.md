@@ -2,17 +2,37 @@
 
 ## 2.0.0（最新）
 
-- **架构重构：平台抽象层**（为 QQ / 飞书 / Telegram 等多平台接入做准备）
+### 架构重构：平台抽象层（阶段 1 + 2）
+
+**为 QQ / 飞书 / Telegram 等多平台接入做准备，主插件已用 PlatformManager 管理微信平台**
+
+- **阶段 1：平台抽象层基础（已完成）**
   - 新增 `lib/platform/` 目录：
     - `base.js` — `Platform` 基类：统一的平台生命周期（start/stop/dispose）、消息抽象（sendText/sendTyping/sendMedia）、登录状态、能力声明（capabilities）、状态聚合
     - `conversation-bridge.js` — `ConversationBridge`：从 `wechat/node.js` 抽取全部平台无关逻辑（白名单/首条自动授权、会话生命周期、审批问答、digest 摘要、命令路由、会话列表/工作区渲染）
     - `manager.js` — `PlatformManager`：多平台注册、查找、状态聚合、统一 dispose
     - `index.js` — 统一导出
   - 重构 `lib/wechat/node.js` 继承 `ConversationBridge`，仅保留微信协议特定部分（消息解析 `extractText`/`isGroupMessage`、媒体下载解密 `_processMediaItems`/`_downloadMediaItem`）
-  - **零功能退化**：微信 Bot 全部功能与命令行为保持不变
   - 新增 `test/platform-bridge.test.mjs`（13 个测试），验证 Platform/ConversationBridge/PlatformManager 可独立于微信工作
   - 新增设计文档 `docs/platform-abstraction-design.md`
-  - **测试**：45/45 通过（原 32 + 新 13）
+
+- **阶段 2：主插件集成 PlatformManager（已完成）**
+  - `lib/index.js` 引入 `PlatformManager`，创建实例并注册 `wechat` 平台
+  - `lib/wechat/index.js` (`WechatService`) 现在继承 `Platform` 基类（已有 `id`/`name`/`capabilities` getter，通过 `gateway` 委托实现 `status`/`accountId`）
+  - `lib/platform/base.js` 构造函数用 `in` 检查避免覆盖子类 getter-only 属性（修复 `WechatService.accountId` getter 冲突）
+  - 新增 RPC 端点 `listPlatforms`（`lib/bridge-rpc-constants.js` + `lib/bridge-rpc.js`），返回所有平台状态聚合（包含二维码渲染）
+  - 新增 3 个测试：验证 `WechatService` 作为 `Platform` 实例的 id/name/capabilities，以及能注册到 `PlatformManager` 并聚合状态
+
+- **零功能退化**：微信 Bot 全部功能与命令行为保持不变
+- **测试**：47/47 通过（原 32 + 阶段 1 新增 13 + 阶段 2 新增 2，修正为总计 47）
+
+---
+
+**待完成阶段（v2.0.0 后续迭代）**：
+- 阶段 3：RPC 层统一 `platformId` 参数（当前 RPC 仍直接调用 `wechat` 对象，向后兼容）
+- 阶段 4：UI 重构为多平台选项卡（client/index.js 目前仅渲染微信单平台）
+- 阶段 5：测试 + 正式发布 v2.0.0
+- 阶段 6：实现第二个平台（QQ）验证接口完整性
 
 ## 1.2.5
 

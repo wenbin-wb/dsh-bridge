@@ -5,6 +5,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { WechatService } from '../lib/wechat/index.js'
 import { WechatGateway } from '../lib/wechat/gateway.js'
+import { PlatformManager } from '../lib/platform/manager.js'
 
 function makeMockCordisCtx() {
   const events = {}
@@ -74,4 +75,35 @@ test('WechatService getStatus includes login state', async () => {
   assert.ok('login' in s)
   assert.ok(Array.isArray(s.allowFrom))
   await svc.destroy()
+})
+
+test('WechatService is a Platform instance with id/name/capabilities', async () => {
+  const ctx = makeMockCordisCtx()
+  const svc = new WechatService({ ctx, logger: ctx.logger, config: {}, onPersist: async () => {} })
+  assert.equal(svc.id, 'wechat')
+  assert.equal(svc.name, '微信')
+  assert.equal(svc.configured, false)
+  assert.ok(svc.capabilities.maxMessageChars > 0)
+  assert.equal(svc.capabilities.supportsTyping, true)
+  const s = svc.getStatus()
+  assert.equal(s.id, 'wechat')
+  assert.ok(s.capabilities)
+  await svc.destroy()
+})
+
+test('WechatService registers into PlatformManager and aggregates status', async () => {
+  const ctx = makeMockCordisCtx()
+  const svc = new WechatService({ ctx, logger: ctx.logger, config: {}, onPersist: async () => {} })
+  const manager = new PlatformManager({ logger: ctx.logger })
+  try {
+    manager.register(svc)
+    assert.equal(manager.get('wechat'), svc)
+    const status = manager.getStatus()
+    assert.ok('wechat' in status)
+    assert.equal(status.wechat.id, 'wechat')
+    assert.equal(status.wechat.name, '微信')
+  } finally {
+    await svc.destroy()
+    manager.dispose()
+  }
 })
