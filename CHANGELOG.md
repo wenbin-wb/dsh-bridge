@@ -2,13 +2,20 @@
 
 ## 2.2.4（最新）
 
-### 🔧 QQ API 全面对齐官方文档（流式 + 按钮 + 网关）
+### 🔧 QQ 群聊修复 + API 全面对齐官方文档
 
-**对照 QQ 官方文档逐项校准，一次性修复所有不符合项**
+**修复群聊@机器人不回复 + 快捷按钮不显示，并对照 QQ 官方文档逐项校准所有不符合项**
 
-#### 🐛 关键修复
+#### 🐛 关键修复（用户反馈）
 
-- **群聊不支持流式**：官方文档明确"群消息不支持流式参数"，群聊回复改为直接发送 Markdown（之前所有消息都走流式，群聊会失败）
+- **群聊@机器人不回复**：`ConversationBridge.handleInbound` 有 v0.1 遗留代码无条件忽略所有群消息，导致 QQ 群聊事件被挡。改为按平台能力判断（`supportsGroup`），QQ 放行群消息
+- **群聊授权按群维度**：QQ 群聊授权主体改为 `group_openid`（此前按群成员 member_openid 判断白名单，永远不匹配单聊 user_openid 白名单 → 群消息被拒）
+- **群聊自动授权**：首次 @机器人 的群自动纳入白名单（群内成员均可使用）
+- **快捷按钮不显示**：群聊场景下按钮提示消息被群消息拦截连带失效，随群消息修复解决
+
+#### 🔧 其他对齐
+
+- **群聊不支持流式**：官方文档明确"群消息不支持流式参数"，群聊回复改为直接发送 Markdown
 - **按钮键盘结构对齐官方**（[消息按钮文档](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/trans/msg-btn.html)）：
   - `keyboard.content.rows`（之前缺 `content` 包裹层，按钮不显示/不响应）
   - `action.type=1`（回调按钮触发 INTERACTION_CREATE；之前误用 2 指令按钮）
@@ -18,18 +25,19 @@
   - 仅 type=11（消息按钮）/12（快捷菜单）调用 `PUT /interactions/{id}` 回应
   - 其他类型（反馈/清空会话/授权等）无需回应，跳过
   - 回应失败不阻断命令执行
+- **Intent 修正**：`GROUP_AT_MESSAGE_CREATE` 从错误的 `1<<30` 修正为 `1<<25`（与 `C2C_MESSAGE_CREATE` 同属 `GROUP_AND_C2C_EVENT`，官方文档确认）
 - **WebSocket 网关域名更新**：`wss://api.sgroup.qq.com/websocket/` → `wss://api.bot.qq.com/websocket/`（官方 2026-08-10 域名统一）
 - **网关发现接口**：`/gateway` → `/gateway/bot`（官方"获取带分片 WSS 接入点"）
-- **群聊输入状态**：群聊消息类型不含 msg_type=6，群聊跳过 typing
+- **群聊输入状态**：群聊消息类型不含 msg_type=6，群聊跳过 typing；QQ `supportsTyping` 声明 false → true
 - **新增撤回消息**：`withdrawMessage`（DELETE `/v2/users|groups/{id}/messages/{message_id}`）
 
 #### ✅ 其他确认（已合规）
 
 - 流式消息 replace 模式 + 每片递增 msg_seq 防去重（对照[流式文档](https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_users_user_openid_stream_messages.post.html)）
 - 富媒体上传 `/files` + `srv_send_msg`（对照[富媒体上传文档](https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_users_user_openid_files.post.html)）
-- 自定义菜单 / 指令面板 路径正确
+- 官方 `GROUP_AT_MESSAGE_CREATE` 的 content 已自动去除 @机器人 前缀，agent 收到干净文本
 
-- 单元测试 65 → 67 全绿
+- 单元测试 65 → 68 全绿
 
 ---
 

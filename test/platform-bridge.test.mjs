@@ -125,9 +125,26 @@ test('ConversationBridge 首条自动授权（白名单为空时）', async () =
   platform.dispose()
 })
 
-test('ConversationBridge 群消息被忽略（v0.1 不支持群聊）', async () => {
+test('ConversationBridge 群消息：支持群聊的平台放行并路由', async () => {
   const { ctx } = makeMockCtx()
   const platform = new MockPlatform({ ctx, logger: ctx.logger })
+  // MockPlatform supportsGroup=true → 群消息应放行
+  const bridge = new ConversationBridge({ ctx, logger: ctx.logger, config: { allowFrom: ['g1'] }, platform })
+  let fed = 0
+  ctx.agents.get = () => ({ session: { id: 's1' }, status: 'idle', followup: () => { fed++ }, cancel: () => {} })
+  bridge.activeSessionId = 's1'
+  const out = await bridge.handleInbound({ senderId: 'g1', text: 'hi', isGroup: true })
+  assert.equal(out, 'routed')
+  assert.equal(fed, 1)
+  bridge.dispose()
+  platform.dispose()
+})
+
+test('ConversationBridge 群消息：不支持群聊的平台忽略', async () => {
+  const { ctx } = makeMockCtx()
+  const platform = new MockPlatform({ ctx, logger: ctx.logger })
+  // 覆盖为不支持群聊 → 群消息忽略（旧行为保持）
+  Object.defineProperty(platform, 'capabilities', { get: () => ({ supportsGroup: false }) })
   const bridge = new ConversationBridge({ ctx, logger: ctx.logger, config: { allowFrom: ['u1'] }, platform })
   let fed = 0
   ctx.agents.get = () => ({ session: { id: 's1' }, status: 'idle', followup: () => { fed++ }, cancel: () => {} })

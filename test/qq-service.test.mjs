@@ -48,9 +48,12 @@ test('QqGateway configured requires appId + clientSecret', () => {
 })
 
 test('QqGateway QQ_INTENTS bit flags match OpenAPI v2', () => {
-  // 官方 intent 位（来自 API v2 文档）
+  // 官方 intent 位（来自 API v2 文档）：
+  // C2C_MESSAGE_CREATE 与 GROUP_AT_MESSAGE_CREATE 同属 GROUP_AND_C2C_EVENT (1<<25)
   assert.equal(QQ_INTENTS.C2C_MESSAGE_CREATE, 1 << 25)
-  assert.equal(QQ_INTENTS.GROUP_AT_MESSAGE_CREATE, 1 << 30)
+  assert.equal(QQ_INTENTS.GROUP_AT_MESSAGE_CREATE, 1 << 25)
+  assert.equal(QQ_INTENTS.GROUP_AND_C2C_EVENT, 1 << 25)
+  assert.equal(QQ_INTENTS.INTERACTION_CREATE, 1 << 26)
 })
 
 test('QqService constructs gateway + node and wires allowlist', async () => {
