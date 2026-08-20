@@ -2,18 +2,19 @@
 
 ## 2.2.4（最新）
 
-### 🔧 QQ 群聊修复 + API 全面对齐官方文档
+### 🔧 QQ 群聊真正可用的修复 + API 全面对齐官方文档
 
-**修复群聊@机器人不回复 + 快捷按钮不显示，并对照 QQ 官方文档逐项校准所有不符合项**
+**用户日志确认 `[QQ EVENT] t=GROUP_AT_MESSAGE_CREATE` 已到达 WebSocket，修复本地处理逻辑后群聊可用**
 
-#### 🐛 关键修复（用户反馈）
+#### 🐛 群聊不回复 / 快捷按钮不显示（根因）
 
-- **群聊@机器人不回复**：`ConversationBridge.handleInbound` 有 v0.1 遗留代码无条件忽略所有群消息，导致 QQ 群聊事件被挡。改为按平台能力判断（`supportsGroup`），QQ 放行群消息
-- **群聊授权按群维度**：QQ 群聊授权主体改为 `group_openid`（此前按群成员 member_openid 判断白名单，永远不匹配单聊 user_openid 白名单 → 群消息被拒）
-- **群聊自动授权**：首次 @机器人 的群自动纳入白名单（群内成员均可使用）
-- **快捷按钮不显示**：群聊场景下按钮提示消息被群消息拦截连带失效，随群消息修复解决
+- **群聊快速预检查拦截 bug（最终根因）**：`_handleInbound`/`_handleInteraction` 的快速预检查在群聊时直接拦截未授权群（`allowFrom` 里只有单聊 user_openid，群 openid 永远不匹配）→ 消息到不了 `handleInbound` 的群聊自动授权。改为：单聊未授权才快速拦截，群聊交给 handleInbound 自动授权
+- **群消息被无条件忽略**：`handleInbound` 有 v0.1 遗留代码忽略所有群消息，改为按 `supportsGroup` 判断
+- **`/end` 命令**：结束当前会话（清除 activeSessionId），提示文本含"没有活动会话"→ 立即展示快捷按钮（此前 activeSessionId 一旦设置就不清除，用户永远无法触发按钮提示）
+- **onFirstSender 持久化修复**：从覆盖式 `allowFrom: [senderId]` 改为追加式（持久化完整 allowFrom），避免群聊自动授权把已授权的单聊用户踢出白名单
+- 网关记录事件名（`[QQ EVENT] t=...`）；normalizeEvent 兼容 `GROUP_MESSAGE_CREATE`（全量模式）
 
-#### 🔧 其他对齐
+#### 🔧 API 对齐官方文档
 
 - **群聊不支持流式**：官方文档明确"群消息不支持流式参数"，群聊回复改为直接发送 Markdown
 - **按钮键盘结构对齐官方**（[消息按钮文档](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/trans/msg-btn.html)）：
