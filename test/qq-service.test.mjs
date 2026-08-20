@@ -134,7 +134,28 @@ test('QqGateway API_BASE uses unified api.bot.qq.com domain', () => {
   try {
     // 官方 2026-08-10 变更：所有接口域名统一为 api.bot.qq.com
     assert.equal(gatewayConstants.API_BASE, 'https://api.bot.qq.com')
-    assert.equal(gatewayConstants.DEFAULT_GATEWAY, 'wss://api.sgroup.qq.com/websocket/')
+    // 官方 WebSocket 网关地址同样统一为 api.bot.qq.com
+    assert.equal(gatewayConstants.DEFAULT_GATEWAY, 'wss://api.bot.qq.com/websocket/')
+  } finally {
+    gw.dispose()
+  }
+})
+
+test('QqGateway gateway discovery uses /gateway/bot endpoint', () => {
+  const ctx = makeMockCordisCtx()
+  const gw = new QqGateway({ ctx, logger: ctx.logger, config: {} })
+  try {
+    let capturedUrl = null
+    gw.refreshAccessToken = async () => 'tok'
+    gw.connect = async () => { gw.stopRequested = true } // 连一次即停，避免死循环
+    const originalFetch = global.fetch
+    global.fetch = async (url) => {
+      capturedUrl = url
+      return { ok: true, text: async () => JSON.stringify({ url: 'wss://api.bot.qq.com/websocket', shards: 1 }) }
+    }
+    return gw.runLoop().finally(() => { global.fetch = originalFetch }).then(() => {
+      assert.ok(capturedUrl?.includes('/gateway/bot'), 'should call /gateway/bot, got ' + capturedUrl)
+    })
   } finally {
     gw.dispose()
   }

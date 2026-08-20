@@ -1,6 +1,39 @@
 # Changelog
 
-## 2.2.3（最新）
+## 2.2.4（最新）
+
+### 🔧 QQ API 全面对齐官方文档（流式 + 按钮 + 网关）
+
+**对照 QQ 官方文档逐项校准，一次性修复所有不符合项**
+
+#### 🐛 关键修复
+
+- **群聊不支持流式**：官方文档明确"群消息不支持流式参数"，群聊回复改为直接发送 Markdown（之前所有消息都走流式，群聊会失败）
+- **按钮键盘结构对齐官方**（[消息按钮文档](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/trans/msg-btn.html)）：
+  - `keyboard.content.rows`（之前缺 `content` 包裹层，按钮不显示/不响应）
+  - `action.type=1`（回调按钮触发 INTERACTION_CREATE；之前误用 2 指令按钮）
+  - 补齐必填字段 `render_data.style` / `action.data` / `action.unsupport_tips`
+  - 提示消息改用 `sendMarkdown(msg_type=2) + keyboard`（官方：按钮挂载于 markdown 消息）
+- **互动事件按类型处理**（[INTERACTION_CREATE](https://bot.q.qq.com/wiki/develop/api-v2/autogen/event/interaction_create.html)）：
+  - 仅 type=11（消息按钮）/12（快捷菜单）调用 `PUT /interactions/{id}` 回应
+  - 其他类型（反馈/清空会话/授权等）无需回应，跳过
+  - 回应失败不阻断命令执行
+- **WebSocket 网关域名更新**：`wss://api.sgroup.qq.com/websocket/` → `wss://api.bot.qq.com/websocket/`（官方 2026-08-10 域名统一）
+- **网关发现接口**：`/gateway` → `/gateway/bot`（官方"获取带分片 WSS 接入点"）
+- **群聊输入状态**：群聊消息类型不含 msg_type=6，群聊跳过 typing
+- **新增撤回消息**：`withdrawMessage`（DELETE `/v2/users|groups/{id}/messages/{message_id}`）
+
+#### ✅ 其他确认（已合规）
+
+- 流式消息 replace 模式 + 每片递增 msg_seq 防去重（对照[流式文档](https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_users_user_openid_stream_messages.post.html)）
+- 富媒体上传 `/files` + `srv_send_msg`（对照[富媒体上传文档](https://bot.q.qq.com/wiki/develop/api-v2/autogen/api/v2_users_user_openid_files.post.html)）
+- 自定义菜单 / 指令面板 路径正确
+
+- 单元测试 65 → 67 全绿
+
+---
+
+## 2.2.3
 
 ### 🐛 流式消息去重错误修复（补充发布）
 

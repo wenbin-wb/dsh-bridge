@@ -95,15 +95,16 @@ dsh web
 
 ### 5. 流式输出与输入状态
 
-#### 流式输出（全回复流式 Markdown）
+#### 流式输出（单聊全回复流式 Markdown）
 
-**所有 AI 回复统一走流式接口**，手机端实时看到消息逐段增长，且 Markdown 正常渲染：
+**单聊中所有 AI 回复统一走流式接口**，手机端实时看到消息逐段增长，且 Markdown 正常渲染：
 
-- **流式**：使用官方 `/stream_messages`（下划线）接口 + `append` 追加模式，首片服务端返回 `stream_msg_id`，后续片关联到同一条消息
+- **流式**：使用官方 `/stream_messages`（下划线）接口 + `replace` 覆盖模式（官方推荐），每片是全量前缀，服务端逐片覆盖 → 一条消息逐渐变长
 - **Markdown**：流式内容用 `content_type: markdown`，手机端正常渲染粗体/代码块/列表等，不再显示原始语法
-- **分段**：按段落边界切分（400 字符/片），短消息自动拆两片保证"生成中→生成结束"过渡
+- **分段**：按段落边界切分，短消息自动拆两片保证"生成中→生成结束"过渡；每片带递增 `msg_seq` 避免去重
 - **安全转换**：QQ 不支持的表格自动降级为纯文本，`![图片]()` 转成链接，代码块内容原样保留
-- **回退**：流式失败时依次回退「带 msg_id 的 Markdown」→「主动 Markdown」，确保消息必达
+- **回退**：流式失败时补发完整内容 replace 收尾，再失败降级「主动 Markdown」，确保消息必达
+- **群聊**：官方不支持群消息流式，群聊回复直接发送 Markdown
 
 #### 输入状态指示
 
@@ -227,14 +228,16 @@ await gateway.sendMarkdown(
 
 按钮类型（`action.type`）：
 - `0` — 跳转按钮（`action.data` 为 URL）
-- `1` — 回调按钮（触发 `INTERACTION_CREATE` 事件）
+- `1` — 回调按钮（触发 `INTERACTION_CREATE` 事件）✅ dsh-bridge 快捷按钮使用此类型
 - `2` — 指令按钮（用户点击后自动发送 `action.data` 作为消息）
 
 按钮样式（`render_data.style`）：
-- `0` — 灰色（次要操作）
-- `1` — 蓝色（主要操作）
+- `0` — 灰色线框（次要操作）
+- `1` — 蓝色线框（主要操作）
 
-> **v2.1.1 改进**：dsh-bridge 已启用 `INTERACTION_CREATE` intent，按钮点击会自动映射到对应命令（如 `/new`、`/list`、`/help`），无需用户手动输入。
+> **按钮结构（v2.2.4 对齐官方）**：`keyboard.content.rows`（含 `content` 包裹层），按钮必填 `render_data.style` / `action.data` / `action.unsupport_tips`。快捷按钮基于 `msg_type=2`（Markdown）挂载。
+
+> **v2.2.4 互动事件处理**：仅消息按钮（type=11）与快捷菜单（type=12）需要调用 `PUT /interactions/{id}` 回应；其他类型（消息反馈/清空会话/授权等）无需回应。点击快捷按钮会自动映射到对应命令（如 `/new`、`/list`、`/help`）。
 
 ### 富媒体上传
 
