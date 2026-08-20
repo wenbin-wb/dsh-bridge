@@ -213,10 +213,10 @@ const TunnelCard = React.memo(function TunnelCard({ title, desc, data, onStart, 
   );
 });
 
-// ---- 微信 Bot 卡片 ----
+// ---- 通用 IM 平台卡片 ----
 
-function WechatCard({ rpcCall, onStatusChange }) {
-  const [wx, setWx] = React.useState(null);
+function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatusChange }) {
+  const [platform, setPlatform] = React.useState(null);
   const [err, setErr] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
   const [showAdvanced, setShowAdvanced] = React.useState(false);
@@ -225,48 +225,50 @@ function WechatCard({ rpcCall, onStatusChange }) {
   // 高级设置本地草稿
   const [cfgDraft, setCfgDraft] = React.useState(null);
   React.useEffect(() => {
-    if (wx?.config && !cfgDraft) {
+    if (platform?.config && !cfgDraft) {
       setCfgDraft({
-        digestIntervalSec:  String(wx.config.digestIntervalSec  ?? 300),
-        approvalTimeoutSec: String(wx.config.approvalTimeoutSec ?? 600),
-        maxMessageChars:    String(wx.config.maxMessageChars    ?? 2000),
-        sendChunkDelayMs:   String(wx.config.sendChunkDelayMs   ?? 1500),
+        digestIntervalSec:  String(platform.config.digestIntervalSec  ?? 300),
+        approvalTimeoutSec: String(platform.config.approvalTimeoutSec ?? 600),
+        maxMessageChars:    String(platform.config.maxMessageChars    ?? 2000),
+        sendChunkDelayMs:   String(platform.config.sendChunkDelayMs   ?? 1500),
       });
     }
-  }, [wx?.config]);
+  }, [platform?.config]);
 
   // 向上传递连接状态（供平台列表卡片绿点使用）
   React.useEffect(() => {
-    const connected = wx?.status === 'connected' || wx?.status === 'starting' || wx?.status === 'reconnecting';
+    const connected = platform?.status === 'connected' || platform?.status === 'starting' || platform?.status === 'reconnecting';
     onStatusChange?.(connected);
-  }, [wx?.status, onStatusChange]);
+  }, [platform?.status, onStatusChange]);
 
   const load = React.useCallback(async (quiet = false) => {
     try {
-      const r = await rpcCall(BRIDGE_ENDPOINTS.wechatGetStatus, {});
+      // 用通用端点读取平台状态（不执行登录操作，只获取状态）
+      const r = await rpcCall(BRIDGE_ENDPOINTS.listPlatforms, {});
       if (!r?.ok) throw new Error(r?.error?.message ?? 'RPC failed');
-      setWx(r.value);
+      const allPlatforms = r.value ?? {};
+      setPlatform(allPlatforms[platformId] ?? null);
       if (!quiet) setErr(null);
     } catch (e) {
       if (!quiet) setErr(e.message);
     }
-  }, [rpcCall]);
+  }, [rpcCall, platformId]);
 
   // 轮询：登录中（qr/scaned）快速刷新，其余放慢
   React.useEffect(() => {
     load();
-    const activeLogin = wx?.login && (wx.login.phase === 'qr' || wx.login.phase === 'scaned');
+    const activeLogin = platform?.login && (platform.login.phase === 'qr' || platform.login.phase === 'scaned');
     const interval = activeLogin ? 1500 : 3000;
     const t = setInterval(() => load(true), interval);
     return () => clearInterval(t);
-  }, [load, wx?.login?.phase]);
+  }, [load, platform?.login?.phase]);
 
   const act = React.useCallback(async (endpoint, payload) => {
     setBusy(true);
     try {
-      const r = await rpcCall(endpoint, payload ?? {});
+      const r = await rpcCall(endpoint, { platformId, ...payload });
       if (!r?.ok) throw new Error(r?.error?.message ?? 'RPC failed');
-      setWx(r.value);
+      setPlatform(r.value);
       setErr(null);
       await load(true);
     } catch (e) {
@@ -274,74 +276,72 @@ function WechatCard({ rpcCall, onStatusChange }) {
     } finally {
       setBusy(false);
     }
-  }, [rpcCall, load]);
+  }, [rpcCall, load, platformId]);
 
-  const onLogin = React.useCallback(() => act(BRIDGE_ENDPOINTS.wechatLogin, {}), [act]);
-  const onStop  = React.useCallback(() => act(BRIDGE_ENDPOINTS.wechatStop, {}), [act]);
+  const onLogin = React.useCallback(() => act(BRIDGE_ENDPOINTS.platformLogin, {}), [act]);
+  const onStop  = React.useCallback(() => act(BRIDGE_ENDPOINTS.platformStop, {}), [act]);
 
   // 白名单管理
   const [newId, setNewId] = React.useState('');
   const addAllow = React.useCallback(async () => {
     const id = newId.trim();
     if (!id) return;
-    const list = [...(wx?.allowFrom ?? []), id];
-    await act(BRIDGE_ENDPOINTS.wechatSetAllowFrom, { allowFrom: list });
+    const list = [...(platform?.allowFrom ?? []), id];
+    await act(BRIDGE_ENDPOINTS.platformSetAllowFrom, { allowFrom: list });
     setNewId('');
-  }, [act, newId, wx?.allowFrom]);
+  }, [act, newId, platform?.allowFrom]);
   const removeAllow = React.useCallback(async (id) => {
-    const list = (wx?.allowFrom ?? []).filter((x) => x !== id);
-    await act(BRIDGE_ENDPOINTS.wechatSetAllowFrom, { allowFrom: list });
-  }, [act, wx?.allowFrom]);
+    const list = (platform?.allowFrom ?? []).filter((x) => x !== id);
+    await act(BRIDGE_ENDPOINTS.platformSetAllowFrom, { allowFrom: list });
+  }, [act, platform?.allowFrom]);
   const handleNewId = React.useCallback((e) => setNewId(e.target.value), []);
 
   // 高级设置保存
   const saveConfig = React.useCallback(async () => {
     if (!cfgDraft) return;
-    await act(BRIDGE_ENDPOINTS.wechatSetConfig, {
+    await act(BRIDGE_ENDPOINTS.platformSetConfig, {
       digestIntervalSec:  Number(cfgDraft.digestIntervalSec),
       approvalTimeoutSec: Number(cfgDraft.approvalTimeoutSec),
       maxMessageChars:    Number(cfgDraft.maxMessageChars),
       sendChunkDelayMs:   Number(cfgDraft.sendChunkDelayMs),
     });
   }, [act, cfgDraft]);
-  const cfgDirty = cfgDraft && wx?.config && (
-    Number(cfgDraft.digestIntervalSec)  !== wx.config.digestIntervalSec  ||
-    Number(cfgDraft.approvalTimeoutSec) !== wx.config.approvalTimeoutSec ||
-    Number(cfgDraft.maxMessageChars)    !== wx.config.maxMessageChars    ||
-    Number(cfgDraft.sendChunkDelayMs)   !== wx.config.sendChunkDelayMs
+  const cfgDirty = cfgDraft && platform?.config && (
+    Number(cfgDraft.digestIntervalSec)  !== platform.config.digestIntervalSec  ||
+    Number(cfgDraft.approvalTimeoutSec) !== platform.config.approvalTimeoutSec ||
+    Number(cfgDraft.maxMessageChars)    !== platform.config.maxMessageChars    ||
+    Number(cfgDraft.sendChunkDelayMs)   !== platform.config.sendChunkDelayMs
   );
 
-  if (!wx && !err) {
+  if (!platform && !err) {
     return React.createElement('div', { style: s.card },
-      React.createElement('div', { style: s.label }, '微信 Bot'),
+      React.createElement('div', { style: s.label }, platformName),
       React.createElement('div', { style: { ...s.muted, marginTop: 6 } }, '加载中…'),
     );
   }
 
-  const connected = wx?.status === 'connected' || wx?.status === 'starting';
-  const login = wx?.login ?? {};
+  const connected = platform?.status === 'connected' || platform?.status === 'starting';
+  const login = platform?.login ?? {};
   const showQr = login.phase === 'qr' || login.phase === 'scaned';
-  const statusLabel = wx?.status === 'connected' ? '已连接'
-    : wx?.status === 'starting' ? '连接中…'
-    : wx?.status === 'reconnecting' ? '重连中…'
-    : wx?.status === 'paused' ? '暂停（会话过期）'
-    : wx?.status === 'error' ? '错误'
+  const statusLabel = platform?.status === 'connected' ? '已连接'
+    : platform?.status === 'starting' ? '连接中…'
+    : platform?.status === 'reconnecting' ? '重连中…'
+    : platform?.status === 'paused' ? '暂停（会话过期）'
+    : platform?.status === 'error' ? '错误'
     : '未连接';
 
   return React.createElement('div', { style: s.card },
     React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
       React.createElement('div', null,
-        React.createElement('div', { style: s.label }, '微信 Bot'),
-        React.createElement('div', { style: { ...s.muted, marginTop: 2 } },
-          '通过微信扫 ClawBot 二维码，在微信里远程对话和控制 DSH agent'
-        ),
+        React.createElement('div', { style: s.label }, platformName),
+        React.createElement('div', { style: { ...s.muted, marginTop: 2 } }, platformDesc),
       ),
       React.createElement(StatusTag, { running: connected }),
     ),
 
     // 快捷入口：使用说明 / 命令
     React.createElement('div', { style: { display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' } },
-      React.createElement('a', {
+      platformId === 'wechat' && React.createElement('a', {
         href: 'https://github.com/wenbin-wb/dsh-bridge/blob/main/docs/wechat-usage.md',
         target: '_blank', rel: 'noopener noreferrer',
         style: s.btnGhost,
@@ -349,7 +349,7 @@ function WechatCard({ rpcCall, onStatusChange }) {
       React.createElement('button', {
         style: s.btnGhost,
         onClick: () => setShowHelp(v => !v),
-      }, showHelp ? '收起命令' : '微信命令'),
+      }, showHelp ? '收起命令' : '命令列表'),
     ),
 
     // 命令速查
@@ -368,18 +368,18 @@ function WechatCard({ rpcCall, onStatusChange }) {
     err && React.createElement('div', { style: { ...s.warn, marginTop: 10 } }, err),
 
     // 已配置：状态详情 + 白名单
-    wx?.configured && React.createElement('div', { style: s.block },
+    platform?.configured && React.createElement('div', { style: s.block },
       React.createElement('div', { style: { fontSize: 12, lineHeight: 1.7 } },
         React.createElement('div', null, `状态: ${statusLabel}`),
-        wx.accountId && React.createElement('div', null, `账号: ${wx.accountId}`),
-        wx.sessionId && React.createElement('div', null, `当前会话: ${wx.sessionId}`),
+        platform.accountId && React.createElement('div', null, `账号: ${platform.accountId}`),
+        platform.sessionId && React.createElement('div', null, `当前会话: ${platform.sessionId}`),
       ),
       React.createElement('div', { style: { ...s.muted, fontSize: 12, marginTop: 8, lineHeight: 1.6 } },
-        '白名单（仅这些微信用户可驱动 agent）:'
+        '白名单（仅这些用户可驱动 agent）:'
       ),
       React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 } },
-        (wx.allowFrom?.length
-          ? wx.allowFrom.map((id) =>
+        (platform.allowFrom?.length
+          ? platform.allowFrom.map((id) =>
               React.createElement('span', { key: id, style: { ...s.tag, background: 'var(--dsw-alias-bg-layer-2,#f3f4f6)', color: 'var(--dsw-alias-label-primary,currentColor)', gap: 6 } },
                 React.createElement('span', { style: { fontSize: 12, wordBreak: 'break-all' } }, id),
                 React.createElement('button', {
@@ -388,12 +388,16 @@ function WechatCard({ rpcCall, onStatusChange }) {
                 }, '×'),
               )
             )
-          : React.createElement('div', { style: { ...s.muted, fontSize: 12 } }, '(空 — 扫码后首个发消息的微信用户将自动加入)')),
+          : React.createElement('div', { style: { ...s.muted, fontSize: 12 } },
+              platformId === 'wechat'
+                ? '(空 — 扫码后首个发消息的微信用户将自动加入)'
+                : '(空 — 首个发消息的用户将自动加入)'
+            )),
       ),
       React.createElement('div', { style: { display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' } },
         React.createElement('input', {
           style: { ...s.input, flex: 1 },
-          placeholder: '添加允许的微信 ID（如 xxx@im.wechat）',
+          placeholder: platformId === 'wechat' ? '添加允许的微信 ID（如 xxx@im.wechat）' : '添加允许的用户 ID',
           value: newId,
           onChange: handleNewId,
         }),
@@ -403,26 +407,28 @@ function WechatCard({ rpcCall, onStatusChange }) {
         }, '添加'),
       ),
       React.createElement('div', { style: { display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' } },
-        wx.status !== 'connected' && wx.status !== 'starting' &&
-          React.createElement('button', { style: s.btnPri, onClick: onLogin, disabled: busy }, '重新扫码'),
-        (wx.status === 'connected' || wx.status === 'starting') &&
+        platform.status !== 'connected' && platform.status !== 'starting' &&
+          React.createElement('button', { style: s.btnPri, onClick: onLogin, disabled: busy }, '重新登录'),
+        (platform.status === 'connected' || platform.status === 'starting') &&
           React.createElement('button', { style: s.btnGhost, onClick: onStop, disabled: busy }, '断开'),
         React.createElement('button', {
           style: { ...s.btnGhost, color: 'var(--dsw-alias-state-error-primary,#dc2626)', borderColor: 'var(--dsw-alias-state-error-primary,#dc2626)', opacity: busy ? 0.5 : 1 },
           disabled: busy,
-          onClick: () => { if (window.confirm('确认解绑？这将清除登录凭证，下次需重新扫码登录。')) act(BRIDGE_ENDPOINTS.wechatUnbind, {}); },
-          title: '清除登录凭证，下次需重新扫码',
+          onClick: () => { if (window.confirm('确认解绑？这将清除登录凭证，下次需重新登录。')) act(BRIDGE_ENDPOINTS.platformUnbind, {}); },
+          title: '清除登录凭证，下次需重新登录',
         }, '解绑账号'),
       ),
     ),
 
     // 未配置 / 登录中：二维码
-    (!wx?.configured || showQr) && React.createElement('div', { style: s.block },
+    (!platform?.configured || showQr) && React.createElement('div', { style: s.block },
       showQr && login.qr
         ? React.createElement('div', null,
-            React.createElement('img', { src: login.qr, alt: 'wechat QR', style: s.qr }),
+            React.createElement('img', { src: login.qr, alt: 'login QR', style: s.qr }),
             React.createElement('div', { style: { ...s.muted, marginTop: 4 } },
-              login.phase === 'scaned' ? '已扫码，请在手机上确认…' : '请使用微信扫码登录（ClawBot）'
+              login.phase === 'scaned'
+                ? '已扫码，请在手机上确认…'
+                : (platformId === 'wechat' ? '请使用微信扫码登录（ClawBot）' : '请扫码登录')
             ),
             login.error && React.createElement('div', { style: { ...s.muted, marginTop: 4, color: 'var(--dsw-alias-state-warn-primary,#92400e)' } }, login.error),
           )
@@ -492,7 +498,9 @@ function WechatCard({ rpcCall, onStatusChange }) {
 
     React.createElement('div', { style: s.block },
       React.createElement('div', { style: { ...s.tip, fontSize: 12 } },
-        '说明: 扫码成功后，向该微信 Bot 发送第一条消息即自动完成白名单授权。仅白名单内的微信用户能驱动 agent，其他人消息会被忽略。使用专用微信号，避免影响主号。'
+        platformId === 'wechat'
+          ? '说明: 扫码成功后，向该微信 Bot 发送第一条消息即自动完成白名单授权。仅白名单内的微信用户能驱动 agent，其他人消息会被忽略。使用专用微信号，避免影响主号。'
+          : '说明: 登录成功后，发送第一条消息即自动完成白名单授权。仅白名单内的用户能驱动 agent，其他人消息会被忽略。'
       ),
     ),
   );
@@ -651,6 +659,8 @@ function BridgePanel({ rpcCall }) {
   const [activeTab, setActiveTab] = React.useState('lan');
   // 微信连接状态：独立轮询，不依赖 WechatCard 是否挂载
   const [wechatConnected, setWechatConnected] = React.useState(false);
+  // IM 平台选择：默认选中微信
+  const [selectedPlatform, setSelectedPlatform] = React.useState('wechat');
 
   const load = React.useCallback(async (quiet = false) => {
     try {
@@ -769,14 +779,13 @@ function BridgePanel({ rpcCall }) {
     );
   } else if (activeTab === 'im') {
     // 平台列表：已接入的可点击，未接入的置灰
-    // wechatConnected 来自 WechatCard 的 onStatusChange 回调，状态准确
     const IM_PLATFORMS = [
       { id: 'wechat', label: '微信', desc: 'iLink Bot API（ClawBot）', available: true,  active: wechatConnected },
       { id: 'qq',     label: 'QQ',   desc: 'NapCat / Mirai',          available: false, active: false },
       { id: 'feishu', label: '飞书', desc: '官方事件回调 API',          available: false, active: false },
     ];
     tabContent = React.createElement('div', null,
-      // 平台选择器
+      // 平台选择器（可点击切换）
       React.createElement('div', {
         style: { display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' },
       },
@@ -785,13 +794,15 @@ function BridgePanel({ rpcCall }) {
             key: id,
             style: {
               flex: '1 1 140px',
-              border: `1px solid ${active ? 'var(--dsw-alias-state-success-primary,#10b981)' : 'var(--dsw-alias-border-l2,#e5e7eb)'}`,
+              border: `1px solid ${selectedPlatform === id ? 'var(--dsw-alias-state-info-primary,#3b82f6)' : active ? 'var(--dsw-alias-state-success-primary,#10b981)' : 'var(--dsw-alias-border-l2,#e5e7eb)'}`,
               borderRadius: 10,
               padding: '12px 14px',
               opacity: available ? 1 : 0.45,
-              cursor: available ? 'default' : 'not-allowed',
-              background: active ? 'var(--dsw-alias-state-success-bg,#ecfdf5)' : available ? 'var(--dsw-alias-bg-layer-1,transparent)' : 'var(--dsw-alias-bg-layer-2,#f9fafb)',
+              cursor: available ? 'pointer' : 'not-allowed',
+              background: selectedPlatform === id ? 'var(--dsw-alias-state-info-bg,#eff6ff)' : active ? 'var(--dsw-alias-state-success-bg,#ecfdf5)' : available ? 'var(--dsw-alias-bg-layer-1,transparent)' : 'var(--dsw-alias-bg-layer-2,#f9fafb)',
+              transition: 'all 0.15s ease',
             },
+            onClick: available ? () => setSelectedPlatform(id) : undefined,
           },
             React.createElement('div', { style: { ...s.label, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 } },
               label,
@@ -809,8 +820,14 @@ function BridgePanel({ rpcCall }) {
           )
         ),
       ),
-      // 微信卡片（onStatusChange 向上报连接状态）
-      React.createElement(WechatCard, { rpcCall, onStatusChange: setWechatConnected }),
+      // 显示选中的平台卡片
+      selectedPlatform && React.createElement(PlatformCard, {
+        platformId: selectedPlatform,
+        platformName: IM_PLATFORMS.find(p => p.id === selectedPlatform)?.label ?? selectedPlatform,
+        platformDesc: IM_PLATFORMS.find(p => p.id === selectedPlatform)?.desc ?? '',
+        rpcCall,
+        onStatusChange: setWechatConnected, // 暂时复用这个状态，未来需要改为通用 platformStatuses
+      }),
     );
   }
 

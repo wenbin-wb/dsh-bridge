@@ -276,50 +276,51 @@ var TunnelCard = React.memo(function TunnelCard2({ title, desc, data, onStart, o
     )
   );
 });
-function WechatCard({ rpcCall, onStatusChange }) {
-  const [wx, setWx] = React.useState(null);
+function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatusChange }) {
+  const [platform, setPlatform] = React.useState(null);
   const [err, setErr] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
   const [showAdvanced, setShowAdvanced] = React.useState(false);
   const [showHelp, setShowHelp] = React.useState(false);
   const [cfgDraft, setCfgDraft] = React.useState(null);
   React.useEffect(() => {
-    if (wx?.config && !cfgDraft) {
+    if (platform?.config && !cfgDraft) {
       setCfgDraft({
-        digestIntervalSec: String(wx.config.digestIntervalSec ?? 300),
-        approvalTimeoutSec: String(wx.config.approvalTimeoutSec ?? 600),
-        maxMessageChars: String(wx.config.maxMessageChars ?? 2e3),
-        sendChunkDelayMs: String(wx.config.sendChunkDelayMs ?? 1500)
+        digestIntervalSec: String(platform.config.digestIntervalSec ?? 300),
+        approvalTimeoutSec: String(platform.config.approvalTimeoutSec ?? 600),
+        maxMessageChars: String(platform.config.maxMessageChars ?? 2e3),
+        sendChunkDelayMs: String(platform.config.sendChunkDelayMs ?? 1500)
       });
     }
-  }, [wx?.config]);
+  }, [platform?.config]);
   React.useEffect(() => {
-    const connected2 = wx?.status === "connected" || wx?.status === "starting" || wx?.status === "reconnecting";
+    const connected2 = platform?.status === "connected" || platform?.status === "starting" || platform?.status === "reconnecting";
     onStatusChange?.(connected2);
-  }, [wx?.status, onStatusChange]);
+  }, [platform?.status, onStatusChange]);
   const load = React.useCallback(async (quiet = false) => {
     try {
-      const r = await rpcCall(BRIDGE_ENDPOINTS.wechatGetStatus, {});
+      const r = await rpcCall(BRIDGE_ENDPOINTS.listPlatforms, {});
       if (!r?.ok) throw new Error(r?.error?.message ?? "RPC failed");
-      setWx(r.value);
+      const allPlatforms = r.value ?? {};
+      setPlatform(allPlatforms[platformId] ?? null);
       if (!quiet) setErr(null);
     } catch (e) {
       if (!quiet) setErr(e.message);
     }
-  }, [rpcCall]);
+  }, [rpcCall, platformId]);
   React.useEffect(() => {
     load();
-    const activeLogin = wx?.login && (wx.login.phase === "qr" || wx.login.phase === "scaned");
+    const activeLogin = platform?.login && (platform.login.phase === "qr" || platform.login.phase === "scaned");
     const interval = activeLogin ? 1500 : 3e3;
     const t = setInterval(() => load(true), interval);
     return () => clearInterval(t);
-  }, [load, wx?.login?.phase]);
+  }, [load, platform?.login?.phase]);
   const act = React.useCallback(async (endpoint, payload) => {
     setBusy(true);
     try {
-      const r = await rpcCall(endpoint, payload ?? {});
+      const r = await rpcCall(endpoint, { platformId, ...payload });
       if (!r?.ok) throw new Error(r?.error?.message ?? "RPC failed");
-      setWx(r.value);
+      setPlatform(r.value);
       setErr(null);
       await load(true);
     } catch (e) {
@@ -327,44 +328,44 @@ function WechatCard({ rpcCall, onStatusChange }) {
     } finally {
       setBusy(false);
     }
-  }, [rpcCall, load]);
-  const onLogin = React.useCallback(() => act(BRIDGE_ENDPOINTS.wechatLogin, {}), [act]);
-  const onStop = React.useCallback(() => act(BRIDGE_ENDPOINTS.wechatStop, {}), [act]);
+  }, [rpcCall, load, platformId]);
+  const onLogin = React.useCallback(() => act(BRIDGE_ENDPOINTS.platformLogin, {}), [act]);
+  const onStop = React.useCallback(() => act(BRIDGE_ENDPOINTS.platformStop, {}), [act]);
   const [newId, setNewId] = React.useState("");
   const addAllow = React.useCallback(async () => {
     const id = newId.trim();
     if (!id) return;
-    const list = [...wx?.allowFrom ?? [], id];
-    await act(BRIDGE_ENDPOINTS.wechatSetAllowFrom, { allowFrom: list });
+    const list = [...platform?.allowFrom ?? [], id];
+    await act(BRIDGE_ENDPOINTS.platformSetAllowFrom, { allowFrom: list });
     setNewId("");
-  }, [act, newId, wx?.allowFrom]);
+  }, [act, newId, platform?.allowFrom]);
   const removeAllow = React.useCallback(async (id) => {
-    const list = (wx?.allowFrom ?? []).filter((x) => x !== id);
-    await act(BRIDGE_ENDPOINTS.wechatSetAllowFrom, { allowFrom: list });
-  }, [act, wx?.allowFrom]);
+    const list = (platform?.allowFrom ?? []).filter((x) => x !== id);
+    await act(BRIDGE_ENDPOINTS.platformSetAllowFrom, { allowFrom: list });
+  }, [act, platform?.allowFrom]);
   const handleNewId = React.useCallback((e) => setNewId(e.target.value), []);
   const saveConfig = React.useCallback(async () => {
     if (!cfgDraft) return;
-    await act(BRIDGE_ENDPOINTS.wechatSetConfig, {
+    await act(BRIDGE_ENDPOINTS.platformSetConfig, {
       digestIntervalSec: Number(cfgDraft.digestIntervalSec),
       approvalTimeoutSec: Number(cfgDraft.approvalTimeoutSec),
       maxMessageChars: Number(cfgDraft.maxMessageChars),
       sendChunkDelayMs: Number(cfgDraft.sendChunkDelayMs)
     });
   }, [act, cfgDraft]);
-  const cfgDirty = cfgDraft && wx?.config && (Number(cfgDraft.digestIntervalSec) !== wx.config.digestIntervalSec || Number(cfgDraft.approvalTimeoutSec) !== wx.config.approvalTimeoutSec || Number(cfgDraft.maxMessageChars) !== wx.config.maxMessageChars || Number(cfgDraft.sendChunkDelayMs) !== wx.config.sendChunkDelayMs);
-  if (!wx && !err) {
+  const cfgDirty = cfgDraft && platform?.config && (Number(cfgDraft.digestIntervalSec) !== platform.config.digestIntervalSec || Number(cfgDraft.approvalTimeoutSec) !== platform.config.approvalTimeoutSec || Number(cfgDraft.maxMessageChars) !== platform.config.maxMessageChars || Number(cfgDraft.sendChunkDelayMs) !== platform.config.sendChunkDelayMs);
+  if (!platform && !err) {
     return React.createElement(
       "div",
       { style: s.card },
-      React.createElement("div", { style: s.label }, "\u5FAE\u4FE1 Bot"),
+      React.createElement("div", { style: s.label }, platformName),
       React.createElement("div", { style: { ...s.muted, marginTop: 6 } }, "\u52A0\u8F7D\u4E2D\u2026")
     );
   }
-  const connected = wx?.status === "connected" || wx?.status === "starting";
-  const login = wx?.login ?? {};
+  const connected = platform?.status === "connected" || platform?.status === "starting";
+  const login = platform?.login ?? {};
   const showQr = login.phase === "qr" || login.phase === "scaned";
-  const statusLabel = wx?.status === "connected" ? "\u5DF2\u8FDE\u63A5" : wx?.status === "starting" ? "\u8FDE\u63A5\u4E2D\u2026" : wx?.status === "reconnecting" ? "\u91CD\u8FDE\u4E2D\u2026" : wx?.status === "paused" ? "\u6682\u505C\uFF08\u4F1A\u8BDD\u8FC7\u671F\uFF09" : wx?.status === "error" ? "\u9519\u8BEF" : "\u672A\u8FDE\u63A5";
+  const statusLabel = platform?.status === "connected" ? "\u5DF2\u8FDE\u63A5" : platform?.status === "starting" ? "\u8FDE\u63A5\u4E2D\u2026" : platform?.status === "reconnecting" ? "\u91CD\u8FDE\u4E2D\u2026" : platform?.status === "paused" ? "\u6682\u505C\uFF08\u4F1A\u8BDD\u8FC7\u671F\uFF09" : platform?.status === "error" ? "\u9519\u8BEF" : "\u672A\u8FDE\u63A5";
   return React.createElement(
     "div",
     { style: s.card },
@@ -374,12 +375,8 @@ function WechatCard({ rpcCall, onStatusChange }) {
       React.createElement(
         "div",
         null,
-        React.createElement("div", { style: s.label }, "\u5FAE\u4FE1 Bot"),
-        React.createElement(
-          "div",
-          { style: { ...s.muted, marginTop: 2 } },
-          "\u901A\u8FC7\u5FAE\u4FE1\u626B ClawBot \u4E8C\u7EF4\u7801\uFF0C\u5728\u5FAE\u4FE1\u91CC\u8FDC\u7A0B\u5BF9\u8BDD\u548C\u63A7\u5236 DSH agent"
-        )
+        React.createElement("div", { style: s.label }, platformName),
+        React.createElement("div", { style: { ...s.muted, marginTop: 2 } }, platformDesc)
       ),
       React.createElement(StatusTag, { running: connected })
     ),
@@ -387,7 +384,7 @@ function WechatCard({ rpcCall, onStatusChange }) {
     React.createElement(
       "div",
       { style: { display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", alignItems: "center" } },
-      React.createElement("a", {
+      platformId === "wechat" && React.createElement("a", {
         href: "https://github.com/wenbin-wb/dsh-bridge/blob/main/docs/wechat-usage.md",
         target: "_blank",
         rel: "noopener noreferrer",
@@ -396,7 +393,7 @@ function WechatCard({ rpcCall, onStatusChange }) {
       React.createElement("button", {
         style: s.btnGhost,
         onClick: () => setShowHelp((v) => !v)
-      }, showHelp ? "\u6536\u8D77\u547D\u4EE4" : "\u5FAE\u4FE1\u547D\u4EE4")
+      }, showHelp ? "\u6536\u8D77\u547D\u4EE4" : "\u547D\u4EE4\u5217\u8868")
     ),
     // 命令速查
     showHelp && React.createElement(
@@ -414,25 +411,25 @@ function WechatCard({ rpcCall, onStatusChange }) {
     ),
     err && React.createElement("div", { style: { ...s.warn, marginTop: 10 } }, err),
     // 已配置：状态详情 + 白名单
-    wx?.configured && React.createElement(
+    platform?.configured && React.createElement(
       "div",
       { style: s.block },
       React.createElement(
         "div",
         { style: { fontSize: 12, lineHeight: 1.7 } },
         React.createElement("div", null, `\u72B6\u6001: ${statusLabel}`),
-        wx.accountId && React.createElement("div", null, `\u8D26\u53F7: ${wx.accountId}`),
-        wx.sessionId && React.createElement("div", null, `\u5F53\u524D\u4F1A\u8BDD: ${wx.sessionId}`)
+        platform.accountId && React.createElement("div", null, `\u8D26\u53F7: ${platform.accountId}`),
+        platform.sessionId && React.createElement("div", null, `\u5F53\u524D\u4F1A\u8BDD: ${platform.sessionId}`)
       ),
       React.createElement(
         "div",
         { style: { ...s.muted, fontSize: 12, marginTop: 8, lineHeight: 1.6 } },
-        "\u767D\u540D\u5355\uFF08\u4EC5\u8FD9\u4E9B\u5FAE\u4FE1\u7528\u6237\u53EF\u9A71\u52A8 agent\uFF09:"
+        "\u767D\u540D\u5355\uFF08\u4EC5\u8FD9\u4E9B\u7528\u6237\u53EF\u9A71\u52A8 agent\uFF09:"
       ),
       React.createElement(
         "div",
         { style: { display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 } },
-        wx.allowFrom?.length ? wx.allowFrom.map(
+        platform.allowFrom?.length ? platform.allowFrom.map(
           (id) => React.createElement(
             "span",
             { key: id, style: { ...s.tag, background: "var(--dsw-alias-bg-layer-2,#f3f4f6)", color: "var(--dsw-alias-label-primary,currentColor)", gap: 6 } },
@@ -443,14 +440,18 @@ function WechatCard({ rpcCall, onStatusChange }) {
               title: "\u79FB\u51FA\u767D\u540D\u5355"
             }, "\xD7")
           )
-        ) : React.createElement("div", { style: { ...s.muted, fontSize: 12 } }, "(\u7A7A \u2014 \u626B\u7801\u540E\u9996\u4E2A\u53D1\u6D88\u606F\u7684\u5FAE\u4FE1\u7528\u6237\u5C06\u81EA\u52A8\u52A0\u5165)")
+        ) : React.createElement(
+          "div",
+          { style: { ...s.muted, fontSize: 12 } },
+          platformId === "wechat" ? "(\u7A7A \u2014 \u626B\u7801\u540E\u9996\u4E2A\u53D1\u6D88\u606F\u7684\u5FAE\u4FE1\u7528\u6237\u5C06\u81EA\u52A8\u52A0\u5165)" : "(\u7A7A \u2014 \u9996\u4E2A\u53D1\u6D88\u606F\u7684\u7528\u6237\u5C06\u81EA\u52A8\u52A0\u5165)"
+        )
       ),
       React.createElement(
         "div",
         { style: { display: "flex", gap: 8, marginTop: 8, alignItems: "center" } },
         React.createElement("input", {
           style: { ...s.input, flex: 1 },
-          placeholder: "\u6DFB\u52A0\u5141\u8BB8\u7684\u5FAE\u4FE1 ID\uFF08\u5982 xxx@im.wechat\uFF09",
+          placeholder: platformId === "wechat" ? "\u6DFB\u52A0\u5141\u8BB8\u7684\u5FAE\u4FE1 ID\uFF08\u5982 xxx@im.wechat\uFF09" : "\u6DFB\u52A0\u5141\u8BB8\u7684\u7528\u6237 ID",
           value: newId,
           onChange: handleNewId
         }),
@@ -463,30 +464,30 @@ function WechatCard({ rpcCall, onStatusChange }) {
       React.createElement(
         "div",
         { style: { display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", alignItems: "center" } },
-        wx.status !== "connected" && wx.status !== "starting" && React.createElement("button", { style: s.btnPri, onClick: onLogin, disabled: busy }, "\u91CD\u65B0\u626B\u7801"),
-        (wx.status === "connected" || wx.status === "starting") && React.createElement("button", { style: s.btnGhost, onClick: onStop, disabled: busy }, "\u65AD\u5F00"),
+        platform.status !== "connected" && platform.status !== "starting" && React.createElement("button", { style: s.btnPri, onClick: onLogin, disabled: busy }, "\u91CD\u65B0\u767B\u5F55"),
+        (platform.status === "connected" || platform.status === "starting") && React.createElement("button", { style: s.btnGhost, onClick: onStop, disabled: busy }, "\u65AD\u5F00"),
         React.createElement("button", {
           style: { ...s.btnGhost, color: "var(--dsw-alias-state-error-primary,#dc2626)", borderColor: "var(--dsw-alias-state-error-primary,#dc2626)", opacity: busy ? 0.5 : 1 },
           disabled: busy,
           onClick: () => {
-            if (window.confirm("\u786E\u8BA4\u89E3\u7ED1\uFF1F\u8FD9\u5C06\u6E05\u9664\u767B\u5F55\u51ED\u8BC1\uFF0C\u4E0B\u6B21\u9700\u91CD\u65B0\u626B\u7801\u767B\u5F55\u3002")) act(BRIDGE_ENDPOINTS.wechatUnbind, {});
+            if (window.confirm("\u786E\u8BA4\u89E3\u7ED1\uFF1F\u8FD9\u5C06\u6E05\u9664\u767B\u5F55\u51ED\u8BC1\uFF0C\u4E0B\u6B21\u9700\u91CD\u65B0\u767B\u5F55\u3002")) act(BRIDGE_ENDPOINTS.platformUnbind, {});
           },
-          title: "\u6E05\u9664\u767B\u5F55\u51ED\u8BC1\uFF0C\u4E0B\u6B21\u9700\u91CD\u65B0\u626B\u7801"
+          title: "\u6E05\u9664\u767B\u5F55\u51ED\u8BC1\uFF0C\u4E0B\u6B21\u9700\u91CD\u65B0\u767B\u5F55"
         }, "\u89E3\u7ED1\u8D26\u53F7")
       )
     ),
     // 未配置 / 登录中：二维码
-    (!wx?.configured || showQr) && React.createElement(
+    (!platform?.configured || showQr) && React.createElement(
       "div",
       { style: s.block },
       showQr && login.qr ? React.createElement(
         "div",
         null,
-        React.createElement("img", { src: login.qr, alt: "wechat QR", style: s.qr }),
+        React.createElement("img", { src: login.qr, alt: "login QR", style: s.qr }),
         React.createElement(
           "div",
           { style: { ...s.muted, marginTop: 4 } },
-          login.phase === "scaned" ? "\u5DF2\u626B\u7801\uFF0C\u8BF7\u5728\u624B\u673A\u4E0A\u786E\u8BA4\u2026" : "\u8BF7\u4F7F\u7528\u5FAE\u4FE1\u626B\u7801\u767B\u5F55\uFF08ClawBot\uFF09"
+          login.phase === "scaned" ? "\u5DF2\u626B\u7801\uFF0C\u8BF7\u5728\u624B\u673A\u4E0A\u786E\u8BA4\u2026" : platformId === "wechat" ? "\u8BF7\u4F7F\u7528\u5FAE\u4FE1\u626B\u7801\u767B\u5F55\uFF08ClawBot\uFF09" : "\u8BF7\u626B\u7801\u767B\u5F55"
         ),
         login.error && React.createElement("div", { style: { ...s.muted, marginTop: 4, color: "var(--dsw-alias-state-warn-primary,#92400e)" } }, login.error)
       ) : React.createElement(
@@ -580,7 +581,7 @@ function WechatCard({ rpcCall, onStatusChange }) {
       React.createElement(
         "div",
         { style: { ...s.tip, fontSize: 12 } },
-        "\u8BF4\u660E: \u626B\u7801\u6210\u529F\u540E\uFF0C\u5411\u8BE5\u5FAE\u4FE1 Bot \u53D1\u9001\u7B2C\u4E00\u6761\u6D88\u606F\u5373\u81EA\u52A8\u5B8C\u6210\u767D\u540D\u5355\u6388\u6743\u3002\u4EC5\u767D\u540D\u5355\u5185\u7684\u5FAE\u4FE1\u7528\u6237\u80FD\u9A71\u52A8 agent\uFF0C\u5176\u4ED6\u4EBA\u6D88\u606F\u4F1A\u88AB\u5FFD\u7565\u3002\u4F7F\u7528\u4E13\u7528\u5FAE\u4FE1\u53F7\uFF0C\u907F\u514D\u5F71\u54CD\u4E3B\u53F7\u3002"
+        platformId === "wechat" ? "\u8BF4\u660E: \u626B\u7801\u6210\u529F\u540E\uFF0C\u5411\u8BE5\u5FAE\u4FE1 Bot \u53D1\u9001\u7B2C\u4E00\u6761\u6D88\u606F\u5373\u81EA\u52A8\u5B8C\u6210\u767D\u540D\u5355\u6388\u6743\u3002\u4EC5\u767D\u540D\u5355\u5185\u7684\u5FAE\u4FE1\u7528\u6237\u80FD\u9A71\u52A8 agent\uFF0C\u5176\u4ED6\u4EBA\u6D88\u606F\u4F1A\u88AB\u5FFD\u7565\u3002\u4F7F\u7528\u4E13\u7528\u5FAE\u4FE1\u53F7\uFF0C\u907F\u514D\u5F71\u54CD\u4E3B\u53F7\u3002" : "\u8BF4\u660E: \u767B\u5F55\u6210\u529F\u540E\uFF0C\u53D1\u9001\u7B2C\u4E00\u6761\u6D88\u606F\u5373\u81EA\u52A8\u5B8C\u6210\u767D\u540D\u5355\u6388\u6743\u3002\u4EC5\u767D\u540D\u5355\u5185\u7684\u7528\u6237\u80FD\u9A71\u52A8 agent\uFF0C\u5176\u4ED6\u4EBA\u6D88\u606F\u4F1A\u88AB\u5FFD\u7565\u3002"
       )
     )
   );
@@ -750,6 +751,7 @@ function BridgePanel({ rpcCall }) {
   const [err, setErr] = React.useState(null);
   const [activeTab, setActiveTab] = React.useState("lan");
   const [wechatConnected, setWechatConnected] = React.useState(false);
+  const [selectedPlatform, setSelectedPlatform] = React.useState("wechat");
   const load = React.useCallback(async (quiet = false) => {
     try {
       const r = await rpcCall(BRIDGE_ENDPOINTS.getStatus, {});
@@ -873,7 +875,7 @@ function BridgePanel({ rpcCall }) {
     tabContent = React.createElement(
       "div",
       null,
-      // 平台选择器
+      // 平台选择器（可点击切换）
       React.createElement(
         "div",
         {
@@ -886,13 +888,15 @@ function BridgePanel({ rpcCall }) {
               key: id,
               style: {
                 flex: "1 1 140px",
-                border: `1px solid ${active ? "var(--dsw-alias-state-success-primary,#10b981)" : "var(--dsw-alias-border-l2,#e5e7eb)"}`,
+                border: `1px solid ${selectedPlatform === id ? "var(--dsw-alias-state-info-primary,#3b82f6)" : active ? "var(--dsw-alias-state-success-primary,#10b981)" : "var(--dsw-alias-border-l2,#e5e7eb)"}`,
                 borderRadius: 10,
                 padding: "12px 14px",
                 opacity: available ? 1 : 0.45,
-                cursor: available ? "default" : "not-allowed",
-                background: active ? "var(--dsw-alias-state-success-bg,#ecfdf5)" : available ? "var(--dsw-alias-bg-layer-1,transparent)" : "var(--dsw-alias-bg-layer-2,#f9fafb)"
-              }
+                cursor: available ? "pointer" : "not-allowed",
+                background: selectedPlatform === id ? "var(--dsw-alias-state-info-bg,#eff6ff)" : active ? "var(--dsw-alias-state-success-bg,#ecfdf5)" : available ? "var(--dsw-alias-bg-layer-1,transparent)" : "var(--dsw-alias-bg-layer-2,#f9fafb)",
+                transition: "all 0.15s ease"
+              },
+              onClick: available ? () => setSelectedPlatform(id) : void 0
             },
             React.createElement(
               "div",
@@ -912,8 +916,15 @@ function BridgePanel({ rpcCall }) {
           )
         )
       ),
-      // 微信卡片（onStatusChange 向上报连接状态）
-      React.createElement(WechatCard, { rpcCall, onStatusChange: setWechatConnected })
+      // 显示选中的平台卡片
+      selectedPlatform && React.createElement(PlatformCard, {
+        platformId: selectedPlatform,
+        platformName: IM_PLATFORMS.find((p) => p.id === selectedPlatform)?.label ?? selectedPlatform,
+        platformDesc: IM_PLATFORMS.find((p) => p.id === selectedPlatform)?.desc ?? "",
+        rpcCall,
+        onStatusChange: setWechatConnected
+        // 暂时复用这个状态，未来需要改为通用 platformStatuses
+      })
     );
   }
   return React.createElement(
