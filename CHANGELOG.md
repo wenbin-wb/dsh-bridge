@@ -55,6 +55,14 @@
 
 - **阶段 6**：实现第二个平台（QQ Bot）验证架构完整性
 
+## 2.0.2
+
+- **UI**：版本更新提示优化
+  - 升级命令改用 `dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest`（`update --latest` 受依赖版本约束可能无法升级到最新版）
+  - 新增「复制」按钮，一键复制升级命令
+  - 新增「更新日志」链接，直达 GitHub Releases
+  - 重构复制逻辑为通用 `useCopy` hook
+
 ## 2.0.1
 
 - **文档**：README / README.zh-CN 新增「升级到最新版」指引 —— 使用 `dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest`（无需知道版本号），解决 `update --latest` 因依赖版本约束无法升级到最新版的问题

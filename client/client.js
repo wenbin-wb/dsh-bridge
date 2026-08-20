@@ -62,8 +62,10 @@ var BRIDGE_ENDPOINTS = {
 
 // client/index.js
 var GITHUB_URL = "https://github.com/wenbin-wb/dsh-bridge";
+var RELEASES_URL = "https://github.com/wenbin-wb/dsh-bridge/releases";
 var ISSUES_URL = "https://github.com/wenbin-wb/dsh-bridge/issues/new";
 var TUNNEL_DOCS_URL = "https://github.com/wenbin-wb/dsh-bridge/blob/main/docs/custom-tunnel.md";
+var UPGRADE_COMMAND = "dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest";
 var name = "dsh-bridge";
 var inject = ["slots", "connection"];
 function semverGt(a, b) {
@@ -95,6 +97,32 @@ var s = {
   warn: { background: "var(--dsw-alias-state-warn-bg,#fffbeb)", border: "1px solid var(--dsw-alias-state-warn-border,#fde68a)", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "var(--dsw-alias-state-warn-primary,#92400e)", lineHeight: 1.6 },
   tip: { background: "var(--dsw-alias-bg-layer-2,#f9fafb)", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "var(--dsw-alias-label-secondary,#6b7280)", lineHeight: 1.6 }
 };
+function useCopy() {
+  const [copied, setCopied] = React.useState(false);
+  const copy = React.useCallback((text) => {
+    const done = () => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2e3);
+    };
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy());
+    } else {
+      fallbackCopy();
+    }
+    function fallbackCopy() {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      const success = document.execCommand("copy");
+      document.body.removeChild(textarea);
+      if (success) done();
+    }
+  }, []);
+  return [copied, copy];
+}
 function StatusTag({ running }) {
   return React.createElement("span", {
     style: {
@@ -589,6 +617,7 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
 function VersionBanner({ rpcCall }) {
   const [info, setInfo] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
+  const [copied, copy] = useCopy();
   const check = React.useCallback(async () => {
     setLoading(true);
     try {
@@ -604,13 +633,19 @@ function VersionBanner({ rpcCall }) {
   const hasUpdate = info?.latest && info?.current && !info.error && semverGt(info.latest, info.current);
   const links = React.createElement(
     "div",
-    { style: { display: "flex", gap: 12, alignItems: "center" } },
+    { style: { display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" } },
     React.createElement("a", {
       href: GITHUB_URL,
       target: "_blank",
       rel: "noreferrer",
       style: s.btnLink
     }, "\u2B50 GitHub"),
+    React.createElement("a", {
+      href: RELEASES_URL,
+      target: "_blank",
+      rel: "noreferrer",
+      style: s.btnLink
+    }, "\u{1F4CB} \u66F4\u65B0\u65E5\u5FD7"),
     React.createElement("a", {
       href: ISSUES_URL,
       target: "_blank",
@@ -639,23 +674,36 @@ function VersionBanner({ rpcCall }) {
           React.createElement("span", { style: { fontSize: 20 } }, "\u{1F389}"),
           React.createElement(
             "div",
-            { style: { flex: 1 } },
+            { style: { flex: 1, minWidth: 0 } },
             React.createElement("div", {
               style: {
                 fontSize: 13,
                 fontWeight: 600,
                 color: "var(--dsw-alias-state-info-primary,#1e40af)",
-                marginBottom: 4
+                marginBottom: 6
               }
             }, `\u53D1\u73B0\u65B0\u7248\u672C v${info.latest}\uFF08\u5F53\u524D v${info.current}\uFF09`),
-            React.createElement("code", {
-              style: {
-                ...s.code,
-                fontSize: 11,
-                color: "var(--dsw-alias-label-secondary,#6b7280)",
-                display: "block"
-              }
-            }, "dsh plugin --profile web update @wenbin_wb/dsh-bridge --latest")
+            React.createElement(
+              "div",
+              {
+                style: { display: "flex", alignItems: "center", gap: 8 }
+              },
+              React.createElement("code", {
+                style: {
+                  ...s.code,
+                  fontSize: 11,
+                  color: "var(--dsw-alias-label-secondary,#6b7280)",
+                  flex: 1,
+                  minWidth: 0,
+                  wordBreak: "break-all"
+                }
+              }, UPGRADE_COMMAND),
+              React.createElement("button", {
+                style: { ...s.btnGhost, height: 26, padding: "0 10px", fontSize: 12, flexShrink: 0 },
+                onClick: () => copy(UPGRADE_COMMAND),
+                title: "\u590D\u5236\u5347\u7EA7\u547D\u4EE4"
+              }, copied ? "\u2713 \u5DF2\u590D\u5236" : "\u590D\u5236")
+            )
           ),
           React.createElement("button", {
             style: {

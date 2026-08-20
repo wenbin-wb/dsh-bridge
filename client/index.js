@@ -3,8 +3,12 @@
 import { BRIDGE_RPC_CHANNEL, BRIDGE_ENDPOINTS } from '../lib/bridge-rpc-constants.js';
 
 const GITHUB_URL = 'https://github.com/wenbin-wb/dsh-bridge';
+const RELEASES_URL = 'https://github.com/wenbin-wb/dsh-bridge/releases';
 const ISSUES_URL = 'https://github.com/wenbin-wb/dsh-bridge/issues/new';
 const TUNNEL_DOCS_URL = 'https://github.com/wenbin-wb/dsh-bridge/blob/main/docs/custom-tunnel.md';
+
+// 升级命令：用 add @latest 强制安装最新版（update --latest 受已安装依赖版本约束可能无法升级到最新版）
+const UPGRADE_COMMAND = 'dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest';
 
 const name = 'dsh-bridge';
 const inject = ['slots', 'connection'];
@@ -42,6 +46,35 @@ const s = {
 };
 
 // ---- 子组件 ----
+
+// 通用复制 hook：返回 [copied, copy]，copy(text) 复制文本并短暂显示成功状态
+function useCopy() {
+  const [copied, setCopied] = React.useState(false);
+  const copy = React.useCallback((text) => {
+    const done = () => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    };
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy());
+    } else {
+      fallbackCopy();
+    }
+    // 降级方案：使用 document.execCommand (HTTP 环境下 Clipboard API 不可用)
+    function fallbackCopy() {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      const success = document.execCommand('copy');
+      document.body.removeChild(textarea);
+      if (success) done();
+    }
+  }, []);
+  return [copied, copy];
+}
 
 function StatusTag({ running }) {
   return React.createElement('span', {
@@ -507,8 +540,10 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
 }
 
 // 版本检查 + GitHub/反馈入口
-function VersionBanner({ rpcCall }) {  const [info, setInfo] = React.useState(null);
+function VersionBanner({ rpcCall }) {
+  const [info, setInfo] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
+  const [copied, copy] = useCopy();
 
   const check = React.useCallback(async () => {
     setLoading(true);
@@ -525,11 +560,14 @@ function VersionBanner({ rpcCall }) {  const [info, setInfo] = React.useState(nu
   // 只有 npm 上的版本严格大于当前版本才算有新版本
   const hasUpdate = info?.latest && info?.current && !info.error && semverGt(info.latest, info.current);
 
-  // 链接按钮组：GitHub + 反馈 Bug
-  const links = React.createElement('div', { style: { display: 'flex', gap: 12, alignItems: 'center' } },
+  // 链接按钮组：GitHub + 更新日志 + 反馈 Bug
+  const links = React.createElement('div', { style: { display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' } },
     React.createElement('a', {
       href: GITHUB_URL, target: '_blank', rel: 'noreferrer', style: s.btnLink,
     }, '⭐ GitHub'),
+    React.createElement('a', {
+      href: RELEASES_URL, target: '_blank', rel: 'noreferrer', style: s.btnLink,
+    }, '📋 更新日志'),
     React.createElement('a', {
       href: ISSUES_URL, target: '_blank', rel: 'noreferrer', style: s.btnLink,
     }, '🐛 反馈 Bug'),
@@ -549,23 +587,34 @@ function VersionBanner({ rpcCall }) {  const [info, setInfo] = React.useState(nu
       },
         React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 12 } },
           React.createElement('span', { style: { fontSize: 20 } }, '🎉'),
-          React.createElement('div', { style: { flex: 1 } },
+          React.createElement('div', { style: { flex: 1, minWidth: 0 } },
             React.createElement('div', {
               style: {
                 fontSize: 13,
                 fontWeight: 600,
                 color: 'var(--dsw-alias-state-info-primary,#1e40af)',
-                marginBottom: 4,
+                marginBottom: 6,
               },
             }, `发现新版本 v${info.latest}（当前 v${info.current}）`),
-            React.createElement('code', {
-              style: {
-                ...s.code,
-                fontSize: 11,
-                color: 'var(--dsw-alias-label-secondary,#6b7280)',
-                display: 'block',
-              },
-            }, 'dsh plugin --profile web update @wenbin_wb/dsh-bridge --latest'),
+            React.createElement('div', {
+              style: { display: 'flex', alignItems: 'center', gap: 8 },
+            },
+              React.createElement('code', {
+                style: {
+                  ...s.code,
+                  fontSize: 11,
+                  color: 'var(--dsw-alias-label-secondary,#6b7280)',
+                  flex: 1,
+                  minWidth: 0,
+                  wordBreak: 'break-all',
+                },
+              }, UPGRADE_COMMAND),
+              React.createElement('button', {
+                style: { ...s.btnGhost, height: 26, padding: '0 10px', fontSize: 12, flexShrink: 0 },
+                onClick: () => copy(UPGRADE_COMMAND),
+                title: '复制升级命令',
+              }, copied ? '✓ 已复制' : '复制'),
+            ),
           ),
           React.createElement('button', {
             style: {
