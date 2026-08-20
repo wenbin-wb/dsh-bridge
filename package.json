@@ -23,7 +23,8 @@
     "docs/wechat-usage.md"
   ],
   "scripts": {
-    "build:client": "node client/build.mjs"
+    "build:client": "node client/build.mjs",
+    "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
     "qrcode": "^1.5.3",
