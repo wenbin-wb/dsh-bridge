@@ -418,8 +418,52 @@ function PlatformPanel({ platform, status, children }) {
 | UI 重构影响用户体验 | 中 | 保持单平台下 UI 与 v1.x 一致 |
 | 配置迁移问题 | 低 | 保持配置结构兼容；自动迁移脚本 |
 
+## 实施进度
+
+### ✅ 阶段 1：抽取平台无关逻辑（已完成）
+- ✅ 创建 `lib/platform/base.js`（Platform 基类）
+- ✅ 创建 `lib/platform/conversation-bridge.js`（从 `node.js` 提取）
+- ✅ 创建 `lib/platform/manager.js`（PlatformManager）
+- ✅ 13 个平台抽象层测试通过
+- 提交：`e31d723`
+
+### ✅ 阶段 2：重构 WeChat 为平台适配器（已完成）
+- ✅ `lib/wechat/index.js` → `WechatPlatform extends Platform`
+- ✅ `lib/wechat/node.js` 继承 `ConversationBridge`，仅保留微信特定逻辑
+- ✅ 通过 `makePlatform(ctx)` 适配对象桥接 gateway → Platform 接口
+- ✅ 保持 `config.wechat` 配置结构不变
+- ✅ 45/45 测试通过（零退化）
+- 提交：`e31d723`
+
+### ✅ 阶段 3：更新主插件 + RPC（已完成）
+- ✅ `lib/index.js` 使用 `PlatformManager` 管理所有平台
+- ✅ 添加新端点：`listPlatforms` / `platformLogin` / `platformSetAllowFrom` / `platformSetConfig` / `platformStop` / `platformUnbind`
+- ✅ 保留旧端点向后兼容：`wechatGetStatus` / `wechatLogin` 等（内部调用新端点）
+- ✅ RPC 方法添加 `platformId` 参数
+- ✅ 47/47 测试通过
+- 提交：`e31d723`
+
+### ✅ 阶段 4：重构 UI（已完成）
+- ✅ 创建 `PlatformCard` 通用组件（替代 `WechatCard`）
+- ✅ 支持动态平台选择（wechat / qq / feishu）
+- ✅ 平台选择器显示连接状态绿点，可点击切换
+- ✅ 通过 `platformId` / `platformName` / `platformDesc` 参数化组件
+- ✅ 保留微信使用说明链接（`platformId === 'wechat'` 时）
+- ✅ 客户端构建成功，47/47 测试通过
+- 提交：`97cea18`
+
+### ⏳ 阶段 5：测试 + 发版 v2.0.0
+- [ ] 端到端测试：微信扫码登录 → 会话创建 → 命令执行
+- [ ] 验证 UI 多平台切换流畅
+- [ ] 更新 CHANGELOG.md
+- [ ] 发布 npm 包 v2.0.0
+
+### ⏳ 阶段 6：实现第二个平台（QQ）
+- [ ] 创建 `lib/qq/index.js`（QQPlatform）
+- [ ] 实现 QQ Bot 协议（NapCat / Mirai）
+- [ ] 添加 QQ 特定消息解析
+- [ ] 验证多平台并存
+
 ## 下一步行动
 
-1. 你确认这个方案可行吗？
-2. 是否需要调整接口设计？
-3. 开始实现阶段 1（抽取平台无关逻辑）？
+继续阶段 5：测试与发版 v2.0.0
