@@ -5,6 +5,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { QqService } from '../lib/qq/index.js'
 import { QqGateway, QQ_INTENTS, gatewayConstants } from '../lib/qq/gateway.js'
+import { qqNodeHelpers } from '../lib/qq/node.js'
 import { PlatformManager } from '../lib/platform/manager.js'
 
 function makeMockCordisCtx() {
@@ -214,6 +215,63 @@ test('QqGateway sendTyping uses msg_type=6 with input_notify', () => {
     // 上限 60 秒
     void gw.sendTyping('u_123', { scope: 'c2c', durationSeconds: 999 })
     assert.equal(captured.input_notify.input_second, 60)
+  } finally {
+    gw.dispose()
+  }
+})
+
+test('sanitizeQQMarkdown downgrades unsupported table & image syntax', () => {
+  const input = [
+    '| 名称 | 说明 |',
+    '|------|------|',
+    '| /new | 新建 |',
+    '',
+    '![图](https://example.com/a.png) 和 **粗体**',
+    '',
+    '```js',
+    'const a = 1 | 2',
+    '```',
+  ].join('\n')
+  const out = qqNodeHelpers.sanitizeQQMarkdown(input)
+  // 表格被降级为纯文本（保留内容、去掉分隔行与 |）
+  assert.ok(out.includes('名称  说明'), '表头被降级')
+  assert.ok(out.includes('/new  新建'), '表格内容被降级')
+  assert.ok(!out.includes('|------|'), '分隔行被移除')
+  // 图片语法转为链接，粗体保留
+  assert.ok(out.includes('[图](https://example.com/a.png)'), '图片语法转为链接')
+  assert.ok(out.includes('**粗体**'), '粗体保留')
+  // 代码块原样保留（含 | 不被误伤）
+  assert.ok(out.includes('const a = 1 | 2'), '代码块内容保留')
+  assert.ok(!out.includes('!['), '无残留图片语法')
+})
+
+test('splitIntoChunks splits at boundaries and splits single block in two', () => {
+  const { splitIntoChunks } = qqNodeHelpers
+  // 短内容：单块拆两片（保证流式过渡）
+  const short = '很短的内容'
+  const shortChunks = splitIntoChunks(short, 400)
+  assert.equal(shortChunks.length, 2)
+  assert.equal(shortChunks.join(''), short)
+  // 长内容：多片且拼接完整
+  const long = Array.from({ length: 50 }, (_, i) => `第${i}行内容`).join('\n')
+  const chunks = splitIntoChunks(long, 400)
+  assert.ok(chunks.length >= 2)
+  assert.equal(chunks.join(''), long)
+})
+
+test('QqGateway sendStream passes content_type markdown through', () => {
+  const ctx = makeMockCordisCtx()
+  const gw = new QqGateway({ ctx, logger: ctx.logger, config: {} })
+  try {
+    let captured = null
+    gw.api = async (path, opts) => { captured = opts.body; return { id: 's_1' } }
+    void gw.sendStream('u_123', '**粗体**', {
+      scope: 'c2c', contentType: 'markdown', inputState: 10, index: 0, inputMode: 'append',
+    })
+    assert.equal(captured.content_type, 'markdown')
+    assert.equal(captured.content_raw, '**粗体**')
+    assert.equal(captured.input_state, 10)
+    assert.equal(captured.input_mode, 'append')
   } finally {
     gw.dispose()
   }
