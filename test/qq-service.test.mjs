@@ -191,12 +191,50 @@ test('QqGateway sendKeyboard uses msg_type=0 with content+keyboard', () => {
   try {
     let captured = null
     gw.api = async (path, opts) => { captured = opts.body; return { id: 'msg_1' } }
-    const keyboard = { rows: [{ buttons: [{ id: 'b1' }] }] }
+    const keyboard = { content: { rows: [{ buttons: [{ id: 'b1' }] }] } }
     void gw.sendKeyboard('u_123', '提示文本', keyboard, { scope: 'c2c', msgId: 'u_msg' })
     assert.equal(captured.msg_type, 0)
     assert.equal(captured.content, '提示文本')
     assert.equal(captured.keyboard, keyboard)
     assert.equal(captured.msg_id, 'u_msg')
+  } finally {
+    gw.dispose()
+  }
+})
+
+test('QqGateway sendMarkdown passes keyboard through and omits undefined optional fields', () => {
+  const ctx = makeMockCordisCtx()
+  const gw = new QqGateway({ ctx, logger: ctx.logger, config: {} })
+  try {
+    let captured = null
+    gw.api = async (path, opts) => { captured = opts.body; return { id: 'msg_1' } }
+    // 官方键盘结构：keyboard.content.rows；回调按钮 action.type=1
+    const keyboard = {
+      content: {
+        rows: [
+          {
+            buttons: [
+              {
+                id: 'new_conversation',
+                render_data: { label: '🆕 新建会话', visited_label: '新建会话', style: 1 },
+                action: { type: 1, permission: { type: 2 }, data: 'new', unsupport_tips: '请升级QQ客户端后使用' },
+              },
+            ],
+          },
+        ],
+      },
+    }
+    void gw.sendMarkdown('u_123', '**提示**', { scope: 'c2c', msgId: 'u_msg', keyboard })
+    assert.equal(captured.msg_type, 2)
+    assert.equal(captured.markdown.content, '**提示**')
+    assert.deepEqual(captured.keyboard, keyboard)
+    assert.equal(captured.msg_id, 'u_msg')
+    // 未提供的可选字段不出现（避免 undefined 污染）
+    assert.ok(!('event_id' in captured))
+    assert.ok(!('msg_seq' in captured))
+    // 无 keyboard 时不带该字段
+    void gw.sendMarkdown('u_123', '**提示**', { scope: 'c2c' })
+    assert.ok(!('keyboard' in captured))
   } finally {
     gw.dispose()
   }
