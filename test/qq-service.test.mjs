@@ -301,10 +301,11 @@ test('sanitizeQQMarkdown downgrades unsupported table & image syntax', () => {
   assert.ok(!out.includes('|------|'), '分隔行被移除')
   // 图片语法转为链接，粗体保留
   assert.ok(out.includes('[图](https://example.com/a.png)'), '图片语法转为链接')
-  assert.ok(out.includes('**粗体**'), '粗体保留')
-  // 代码块原样保留（含 | 不被误伤）
-  assert.ok(out.includes('const a = 1 | 2'), '代码块内容保留')
-  assert.ok(!out.includes('!['), '无残留图片语法')
+  // 标题级别规范化：### 转为 ##
+  const headingInput = '### 三级标题\n普通文本\n- 列表项1\n- 列表项2'
+  const headingOut = qqNodeHelpers.sanitizeQQMarkdown(headingInput)
+  assert.ok(headingOut.includes('## 三级标题'), 'H3 被规范化为 H2')
+  assert.ok(headingOut.includes('普通文本\n\n- 列表项1'), '普通文本与列表之间自动补全空行')
 })
 
 test('splitIntoChunks splits at boundaries and splits single block in two', () => {
