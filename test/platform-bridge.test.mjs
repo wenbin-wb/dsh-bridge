@@ -213,6 +213,40 @@ test('sessionsInDisplayOrder 按工作区字母序分组', () => {
   assert.deepEqual(ordered, ['s-n1', 's-b2', 's-b1', 's-a1'])
 })
 
+test('ConversationBridge 群聊首次发言追加授权，不覆盖已有单聊白名单', async () => {
+  const { ctx } = makeMockCtx()
+  const platform = new MockPlatform({ ctx, logger: ctx.logger })
+  const persisted = []
+  const bridge = new ConversationBridge({
+    ctx, logger: ctx.logger, config: { allowFrom: ['user-openid'] }, platform,
+    onFirstSender: (id) => persisted.push({ id, allowFrom: [...bridge.config.allowFrom] }),
+  })
+  const out = await bridge.handleInbound({ senderId: 'group-openid', text: '群消息', isGroup: true })
+  assert.equal(out, 'routed')
+  assert.deepEqual(bridge.config.allowFrom, ['user-openid', 'group-openid'])
+  assert.deepEqual(persisted, [{ id: 'group-openid', allowFrom: ['user-openid', 'group-openid'] }])
+  bridge.dispose()
+  platform.dispose()
+})
+
+test('ConversationBridge /end 清除活动会话并持久化 null', async () => {
+  const { ctx } = makeMockCtx()
+  const platform = new MockPlatform({ ctx, logger: ctx.logger })
+  const persisted = []
+  const bridge = new ConversationBridge({
+    ctx, logger: ctx.logger, config: { allowFrom: ['u1'], activeSessionId: 's1' }, platform,
+    onActiveSessionChange: (id) => persisted.push(id),
+  })
+  ctx.agents.get = () => ({ session: { id: 's1' }, status: 'idle', followup() {}, cancel() {} })
+  const out = await bridge.handleInbound({ senderId: 'u1', text: '/end' })
+  assert.equal(out, 'routed')
+  assert.equal(bridge.activeSessionId, null)
+  assert.deepEqual(persisted, [null])
+  assert.match(platform.sent.at(-1)?.text ?? '', /没有活动会话/)
+  bridge.dispose()
+  platform.dispose()
+})
+
 // ---------------------------------------------------------------------------
 // PlatformManager
 // ---------------------------------------------------------------------------
