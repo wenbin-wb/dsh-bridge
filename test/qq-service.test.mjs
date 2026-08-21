@@ -282,10 +282,10 @@ test('QqGateway sendTyping uses msg_type=6 with input_notify', () => {
   }
 })
 
-test('sanitizeQQMarkdown downgrades unsupported table & image syntax', () => {
+test('sanitizeQQMarkdown preserves table and sanitizes images/headings', () => {
   const input = [
     '| 名称 | 说明 |',
-    '|------|------|',
+    '| :--- | :--- |',
     '| /new | 新建 |',
     '',
     '![图](https://example.com/a.png) 和 **粗体**',
@@ -295,10 +295,10 @@ test('sanitizeQQMarkdown downgrades unsupported table & image syntax', () => {
     '```',
   ].join('\n')
   const out = qqNodeHelpers.sanitizeQQMarkdown(input)
-  // 表格被降级为纯文本（保留内容、去掉分隔行与 |）
-  assert.ok(out.includes('名称  说明'), '表头被降级')
-  assert.ok(out.includes('/new  新建'), '表格内容被降级')
-  assert.ok(!out.includes('|------|'), '分隔行被移除')
+  // 表格内容与格式保留
+  assert.ok(out.includes('| 名称 | 说明 |'), '表头保留')
+  assert.ok(out.includes('| /new | 新建 |'), '表格内容保留')
+  assert.ok(out.includes('| :--- | :--- |'), '分隔行保留')
   // 图片语法转为链接，粗体保留
   assert.ok(out.includes('[图](https://example.com/a.png)'), '图片语法转为链接')
   // 标题级别规范化：### 转为 ##
