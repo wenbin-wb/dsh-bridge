@@ -27,7 +27,7 @@
 QQ Bot 使用 WebSocket 接收事件，需要配置 Intents（事件订阅）：
 
 - **C2C_MESSAGE_CREATE**（私聊消息）：`1 << 25`
-- **GROUP_AT_MESSAGE_CREATE**（群聊 @提及）：`1 << 30`
+- **GROUP_AT_MESSAGE_CREATE**（群聊 @提及）：`1 << 25`（与私聊同属 `GROUP_AND_C2C_EVENT`）
 - **INTERACTION_CREATE**（互动事件）：`1 << 26`
 
 > dsh-bridge 默认已开启以上三个 intents，支持私聊、群聊和按钮交互，无需额外配置。
@@ -181,10 +181,13 @@ AI 生成过程中，QQ 会显示机器人的"正在输入"状态：
 
 所有操作都支持传统文本命令：
 
-- `/new` - 新建会话
-- `/list` - 列出所有会话
-- `/resume <number>` - 恢复指定会话
-- `/forget` - 清空当前会话历史
+- `/new <提示词>` - 新建会话并开始
+- `/sessions`（或 `/list`）- 列出所有会话（按工作区分组）
+- `/use N`（或 `/resume N`）- 切换到/恢复会话 N
+- `/end` - 结束当前会话（清除活动会话并触发快捷按钮）
+- `/stop` - 停止当前任务
+- `/status` - 查看状态与会话摘要
+- `/workspaces` - 列出可用工作区
 - `/help` - 显示帮助
 
 ### 支持的消息类型

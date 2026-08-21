@@ -247,6 +247,34 @@ test('ConversationBridge /end 清除活动会话并持久化 null', async () => 
   platform.dispose()
 })
 
+test('ConversationBridge /list 与 /resume 命令别名正常路由', async () => {
+  const { ctx } = makeMockCtx()
+  const platform = new MockPlatform({ ctx, logger: ctx.logger })
+  const mockSessions = [
+    { id: 's-1', cwd: 'proj-a', createdAt: 100, title: 'Session 1' },
+    { id: 's-2', cwd: 'proj-b', createdAt: 200, title: 'Session 2' },
+  ]
+  ctx.sessions.list = () => mockSessions
+  ctx.sessions.get = (id) => mockSessions.find((s) => s.id === id)
+  const bridge = new ConversationBridge({
+    ctx, logger: ctx.logger, config: { allowFrom: ['u1'] }, platform,
+  })
+
+  // /list 测试
+  const listOut = await bridge.handleInbound({ senderId: 'u1', text: '/list' })
+  assert.equal(listOut, 'routed')
+  assert.match(platform.sent.at(-1)?.text ?? '', /会话列表/)
+
+  // /resume 测试
+  const resumeOut = await bridge.handleInbound({ senderId: 'u1', text: '/resume 1' })
+  assert.equal(resumeOut, 'routed')
+  assert.equal(bridge.activeSessionId, 's-1')
+  assert.match(platform.sent.at(-1)?.text ?? '', /已切换到会话 #1/)
+
+  bridge.dispose()
+  platform.dispose()
+})
+
 // ---------------------------------------------------------------------------
 // PlatformManager
 // ---------------------------------------------------------------------------

@@ -1,27 +1,28 @@
-// dsh-remote 配置文件示例
+# dsh-bridge cordis.yml 配置文件示例
+# 插件开箱即用，以下配置均为可选
 
-export default {
-  // 插件配置
-  plugins: [
-    // Host 端插件 - 处理代理和隧道
-    {
-      name: 'dsh-remote',
-      config: {
-        // 本地代理端口 (默认 3082)
-        port: 3082,
-        
-        // 自建服务器配置
-        serverUrl: process.env.DSH_REMOTE_SERVER || '', // WebSocket URL, 如: ws://your-server.com:8080
-        accessToken: process.env.DSH_REMOTE_TOKEN || '', // 访问令牌
-        
-        // 可选: 自定义缓存目录
-        // home: '/path/to/.dsh-remote',
-      },
-    },
-    
-    // Client 端插件 - 设置页面 UI
-    {
-      name: 'dsh-remote:client',
-    },
-  ],
-};
+- name: '@wenbin_wb/dsh-bridge'
+  config:
+    # 本地代理端口 (默认 3082)
+    port: 3082
+
+    # 自建隧道配置 (可选，也可在 Web 设置页面中配置)
+    customTunnel:
+      serverUrl: ''   # WebSocket URL, 如: wss://tunnel.example.com/connect
+      accessToken: '' # 访问令牌
+
+    # 微信 Bot 配置 (可选，建议在 Web 设置页面中扫码配置)
+    wechat:
+      digestIntervalSec: 300
+      approvalTimeoutSec: 600
+      maxMessageChars: 2000
+      sendChunkDelayMs: 1500
+
+    # QQ Bot 配置 (可选，建议在 Web 设置页面中配置)
+    qq:
+      appId: ''
+      clientSecret: ''
+      digestIntervalSec: 300
+      approvalTimeoutSec: 600
+      maxMessageChars: 2000
+      sendChunkDelayMs: 1500

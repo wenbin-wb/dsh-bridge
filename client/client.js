@@ -97,7 +97,7 @@ var s = {
   btnPri: { font: "inherit", cursor: "pointer", border: "none", background: "var(--dsw-alias-brand-primary,#4f6ef7)", color: "var(--dsw-alias-label-primary-foreground,#fff)", height: 32, padding: "0 14px", borderRadius: 999, fontSize: 13, fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 4 },
   btnGhost: { font: "inherit", cursor: "pointer", border: "1px solid var(--dsw-alias-border-l2,#d1d5db)", background: "var(--dsw-alias-bg-layer-2,#f9fafb)", color: "var(--dsw-alias-label-primary,currentColor)", height: 32, padding: "0 14px", borderRadius: 999, fontSize: 13, display: "inline-flex", alignItems: "center", gap: 4, textDecoration: "none" },
   btnLink: { font: "inherit", cursor: "pointer", border: "none", background: "none", color: "var(--dsw-alias-brand-primary,#4f6ef7)", fontSize: 12, padding: 0, display: "inline-flex", alignItems: "center", gap: 3, textDecoration: "none" },
-  qr: { width: 200, height: 200, borderRadius: 10, border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", margin: "8px 0", display: "block" },
+  qr: { width: 200, height: 200, borderRadius: 10, border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", margin: "8px 0", display: "block", background: "#ffffff", padding: 6, boxSizing: "border-box" },
   tag: { display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: 999, fontSize: 12, fontWeight: 500 },
   input: { width: "100%", font: "inherit", fontSize: 13, padding: "7px 10px", borderRadius: 8, border: "1px solid var(--dsw-alias-border-l2,#d1d5db)", background: "var(--dsw-alias-bg-layer-2,#f9fafb)", color: "var(--dsw-alias-label-primary,currentColor)", outline: "none", boxSizing: "border-box" },
   warn: { background: "var(--dsw-alias-state-warn-bg,#fffbeb)", border: "1px solid var(--dsw-alias-state-warn-border,#fde68a)", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "var(--dsw-alias-state-warn-primary,#92400e)", lineHeight: 1.6 },
@@ -129,14 +129,38 @@ function useCopy() {
   }, []);
   return [copied, copy];
 }
-function StatusTag({ running }) {
+function StatusTag({ running, status }) {
+  let bg = "var(--dsw-alias-bg-layer-2,#f3f4f6)";
+  let color = "var(--dsw-alias-label-secondary,#6b7280)";
+  let text = running ? "\u8FD0\u884C\u4E2D" : "\u672A\u542F\u52A8";
+  if (status === "connected") {
+    bg = "var(--dsw-alias-state-success-bg,#ecfdf5)";
+    color = "var(--dsw-alias-state-success-primary,#059669)";
+    text = "\u5DF2\u8FDE\u63A5";
+  } else if (status === "starting") {
+    bg = "var(--dsw-alias-state-info-bg,#eff6ff)";
+    color = "var(--dsw-alias-state-info-primary,#3b82f6)";
+    text = "\u8FDE\u63A5\u4E2D\u2026";
+  } else if (status === "reconnecting") {
+    bg = "var(--dsw-alias-state-warn-bg,#fffbeb)";
+    color = "var(--dsw-alias-state-warn-primary,#d97706)";
+    text = "\u91CD\u8FDE\u4E2D\u2026";
+  } else if (status === "paused") {
+    bg = "var(--dsw-alias-state-warn-bg,#fffbeb)";
+    color = "var(--dsw-alias-state-warn-primary,#d97706)";
+    text = "\u6682\u505C\u4E2D";
+  } else if (status === "error") {
+    bg = "var(--dsw-alias-state-error-bg,#fef2f2)";
+    color = "var(--dsw-alias-state-error-primary,#dc2626)";
+    text = "\u5F02\u5E38";
+  } else if (running) {
+    bg = "var(--dsw-alias-state-success-bg,#ecfdf5)";
+    color = "var(--dsw-alias-state-success-primary,#059669)";
+    text = "\u8FD0\u884C\u4E2D";
+  }
   return React.createElement("span", {
-    style: {
-      ...s.tag,
-      background: running ? "var(--dsw-alias-state-success-bg,#ecfdf5)" : "var(--dsw-alias-bg-layer-2,#f3f4f6)",
-      color: running ? "var(--dsw-alias-state-success-primary,#059669)" : "var(--dsw-alias-label-secondary,#6b7280)"
-    }
-  }, running ? "\u8FD0\u884C\u4E2D" : "\u672A\u542F\u52A8");
+    style: { ...s.tag, background: bg, color }
+  }, text);
 }
 function QrBlock({ url, qr, onReset }) {
   const [copied, setCopied] = React.useState(false);
@@ -220,6 +244,7 @@ var CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm2({ serve
   const [serverUrl, setServerUrl] = React.useState(initUrl ?? "");
   const [accessToken, setAccessToken] = React.useState(initToken ?? "");
   const [saving, setSaving] = React.useState(false);
+  const [saveSuccess, setSaveSuccess] = React.useState(false);
   const syncedRef = React.useRef(false);
   React.useEffect(() => {
     if (!syncedRef.current && (initUrl || initToken)) {
@@ -231,14 +256,23 @@ var CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm2({ serve
   const dirty = serverUrl !== (initUrl ?? "") || accessToken !== (initToken ?? "");
   const handleSave = React.useCallback(async () => {
     setSaving(true);
+    setSaveSuccess(false);
     try {
       await onSave(serverUrl, accessToken);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2500);
     } finally {
       setSaving(false);
     }
   }, [onSave, serverUrl, accessToken]);
-  const handleUrlChange = React.useCallback((e) => setServerUrl(e.target.value), []);
-  const handleTokenChange = React.useCallback((e) => setAccessToken(e.target.value), []);
+  const handleUrlChange = React.useCallback((e) => {
+    setServerUrl(e.target.value);
+    setSaveSuccess(false);
+  }, []);
+  const handleTokenChange = React.useCallback((e) => {
+    setAccessToken(e.target.value);
+    setSaveSuccess(false);
+  }, []);
   return React.createElement(
     "div",
     { style: s.block },
@@ -251,6 +285,9 @@ var CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm2({ serve
         placeholder: "WebSocket \u5730\u5740\uFF0C\u4F8B\u5982 wss://tunnel.example.com/connect",
         value: serverUrl,
         onChange: handleUrlChange,
+        onKeyDown: (e) => {
+          if (e.key === "Enter" && dirty && !saving) handleSave();
+        },
         disabled: saving
       }),
       React.createElement("input", {
@@ -259,13 +296,21 @@ var CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm2({ serve
         placeholder: "\u8BBF\u95EE\u4EE4\u724C\uFF08Access Token\uFF09",
         value: accessToken,
         onChange: handleTokenChange,
+        onKeyDown: (e) => {
+          if (e.key === "Enter" && dirty && !saving) handleSave();
+        },
         disabled: saving
       }),
       React.createElement("button", {
-        style: { ...s.btnPri, alignSelf: "flex-start", opacity: !dirty || saving ? 0.5 : 1 },
-        disabled: !dirty || saving,
+        style: {
+          ...s.btnPri,
+          alignSelf: "flex-start",
+          opacity: !dirty || saving ? saveSuccess ? 1 : 0.5 : 1,
+          background: saveSuccess ? "var(--dsw-alias-state-success-primary,#059669)" : void 0
+        },
+        disabled: !dirty && !saveSuccess || saving,
         onClick: handleSave
-      }, saving ? "\u4FDD\u5B58\u4E2D\u2026" : "\u4FDD\u5B58\u914D\u7F6E")
+      }, saving ? "\u4FDD\u5B58\u4E2D\u2026" : saveSuccess ? "\u2713 \u5DF2\u4FDD\u5B58" : "\u4FDD\u5B58\u914D\u7F6E")
     )
   );
 });
@@ -381,6 +426,16 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
     await act(BRIDGE_ENDPOINTS.platformSetAllowFrom, { allowFrom: list });
   }, [act, platform?.allowFrom]);
   const handleNewId = React.useCallback((e) => setNewId(e.target.value), []);
+  const [showSecret, setShowSecret] = React.useState(false);
+  const resetDefaults = React.useCallback(() => {
+    setCfgDraft((d) => ({
+      ...d,
+      digestIntervalSec: "300",
+      approvalTimeoutSec: "600",
+      maxMessageChars: "2000",
+      sendChunkDelayMs: "1500"
+    }));
+  }, []);
   const saveConfig = React.useCallback(async () => {
     if (!cfgDraft) return;
     const payload = {
@@ -420,9 +475,9 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
         React.createElement("div", { style: s.label }, platformName),
         React.createElement("div", { style: { ...s.muted, marginTop: 2 } }, platformDesc)
       ),
-      React.createElement(StatusTag, { running: connected })
+      React.createElement(StatusTag, { status: platform?.status, running: connected })
     ),
-    // 快捷入口：使用说明 / 命令
+    // 快捷入口：使用说明 / 开放平台 / 命令速查
     React.createElement(
       "div",
       { style: { display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", alignItems: "center" } },
@@ -431,7 +486,19 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
         target: "_blank",
         rel: "noopener noreferrer",
         style: s.btnGhost
-      }, "\u{1F4D6} \u4F7F\u7528\u8BF4\u660E"),
+      }, "\u{1F4D6} \u5FAE\u4FE1\u4F7F\u7528\u8BF4\u660E"),
+      platformId === "qq" && React.createElement("a", {
+        href: "https://github.com/wenbin-wb/dsh-bridge/blob/main/docs/qq-usage.md",
+        target: "_blank",
+        rel: "noopener noreferrer",
+        style: s.btnGhost
+      }, "\u{1F4D6} QQ \u4F7F\u7528\u8BF4\u660E"),
+      platformId === "qq" && React.createElement("a", {
+        href: "https://bot.q.qq.com/wiki/develop/api-v2/",
+        target: "_blank",
+        rel: "noopener noreferrer",
+        style: s.btnGhost
+      }, "\u{1F310} QQ \u5F00\u653E\u5E73\u53F0"),
       React.createElement("button", {
         style: s.btnGhost,
         onClick: () => setShowHelp((v) => !v)
@@ -441,32 +508,89 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
     showHelp && React.createElement(
       "div",
       { style: { ...s.block, fontSize: 12, lineHeight: 1.8, fontFamily: "monospace" } },
-      React.createElement("div", null, "/new <\u63D0\u793A\u8BCD> \u2014 \u65B0\u5EFA\u4F1A\u8BDD\uFF08\u5F53\u524D\u5DE5\u4F5C\u533A\uFF09"),
-      React.createElement("div", null, "/new <\u63D0\u793A\u8BCD> @N \u2014 \u5728\u6307\u5B9A\u5DE5\u4F5C\u533A\u65B0\u5EFA"),
-      React.createElement("div", null, "/sessions \u2014 \u6309\u5DE5\u4F5C\u533A\u5206\u7EC4\u5217\u4F1A\u8BDD"),
-      React.createElement("div", null, "/use N \u2014 \u5207\u6362\u5230\u4F1A\u8BDD N"),
-      React.createElement("div", null, "/workspaces \u2014 \u5217\u51FA\u5DE5\u4F5C\u533A"),
-      React.createElement("div", null, "/stop \u2014 \u505C\u6B62\u4EFB\u52A1"),
-      React.createElement("div", null, "/status \u2014 \u67E5\u770B\u72B6\u6001"),
-      React.createElement("div", null, "/yes \u6216 /no \u2014 \u56DE\u5E94\u5BA1\u6279"),
-      React.createElement("div", null, "/help \u2014 \u5168\u90E8\u547D\u4EE4")
+      React.createElement("div", null, "/new <\u63D0\u793A\u8BCD> \u2014 \u65B0\u5EFA\u4F1A\u8BDD\u5E76\u5F00\u59CB\uFF08\u5F53\u524D\u5DE5\u4F5C\u533A\uFF09"),
+      React.createElement("div", null, "/new <\u63D0\u793A\u8BCD> @N \u2014 \u5728\u6307\u5B9A\u5DE5\u4F5C\u533A\u65B0\u5EFA\u4F1A\u8BDD"),
+      React.createElement("div", null, "/sessions\uFF08\u6216 /list\uFF09\u2014 \u5217\u51FA\u4F1A\u8BDD\uFF08\u6309\u5DE5\u4F5C\u533A\u5206\u7EC4\uFF0C\u5E26\u6807\u9898\uFF09"),
+      React.createElement("div", null, "/use N\uFF08\u6216 /resume N\uFF09\u2014 \u5207\u6362\u5230\u4F1A\u8BDD N"),
+      React.createElement("div", null, "/workspaces \u2014 \u5217\u51FA\u6240\u6709\u53EF\u7528\u5DE5\u4F5C\u533A"),
+      React.createElement("div", null, "/end \u2014 \u7ED3\u675F\u5F53\u524D\u4F1A\u8BDD\uFF08\u56DE\u5230\u65E0\u6D3B\u52A8\u4F1A\u8BDD\u72B6\u6001\uFF09"),
+      React.createElement("div", null, "/stop \u2014 \u505C\u6B62\u5F53\u524D\u4EFB\u52A1"),
+      React.createElement("div", null, "/status \u2014 \u67E5\u770B Agent \u72B6\u6001\u4E0E\u4F1A\u8BDD\u6458\u8981"),
+      React.createElement("div", null, "/yes \u6216 /no\uFF08\u6216 1/2\uFF09\u2014 \u56DE\u5E94\u6743\u9650\u5BA1\u6279\u8BF7\u6C42"),
+      React.createElement("div", null, "/help \u2014 \u663E\u793A\u5B8C\u6574\u547D\u4EE4\u5E2E\u52A9")
     ),
     err && React.createElement("div", { style: { ...s.warn, marginTop: 10 } }, err),
-    // 已配置：状态详情 + 白名单
+    // 已配置：结构化状态看板 + 白名单
     platform?.configured && React.createElement(
       "div",
       { style: s.block },
+      // 结构化状态卡片看板
       React.createElement(
         "div",
-        { style: { fontSize: 12, lineHeight: 1.7 } },
-        React.createElement("div", null, `\u72B6\u6001: ${statusLabel}`),
-        platform.accountId && React.createElement("div", null, `\u8D26\u53F7: ${platform.accountId}`),
-        platform.sessionId && React.createElement("div", null, `\u5F53\u524D\u4F1A\u8BDD: ${platform.sessionId}`)
+        {
+          style: {
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+            gap: 8,
+            marginBottom: 12
+          }
+        },
+        React.createElement(
+          "div",
+          {
+            style: {
+              background: "var(--dsw-alias-bg-layer-1,#fff)",
+              border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)",
+              borderRadius: 8,
+              padding: "8px 12px"
+            }
+          },
+          React.createElement("div", { style: { ...s.muted, fontSize: 11 } }, "\u8FDE\u63A5\u72B6\u6001"),
+          React.createElement(
+            "div",
+            { style: { ...s.label, fontSize: 13, marginTop: 2, display: "flex", alignItems: "center", gap: 6 } },
+            React.createElement("span", {
+              style: {
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: connected ? "var(--dsw-alias-state-success-primary,#10b981)" : "var(--dsw-alias-label-tertiary,#9ca3af)"
+              }
+            }),
+            statusLabel
+          )
+        ),
+        platform.accountId && React.createElement(
+          "div",
+          {
+            style: {
+              background: "var(--dsw-alias-bg-layer-1,#fff)",
+              border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)",
+              borderRadius: 8,
+              padding: "8px 12px"
+            }
+          },
+          React.createElement("div", { style: { ...s.muted, fontSize: 11 } }, "\u767B\u5F55\u8D26\u53F7"),
+          React.createElement("div", { style: { ...s.code, fontSize: 12, marginTop: 2, fontWeight: 500 } }, platform.accountId)
+        ),
+        platform.sessionId && React.createElement(
+          "div",
+          {
+            style: {
+              background: "var(--dsw-alias-bg-layer-1,#fff)",
+              border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)",
+              borderRadius: 8,
+              padding: "8px 12px"
+            }
+          },
+          React.createElement("div", { style: { ...s.muted, fontSize: 11 } }, "\u6D3B\u52A8\u4F1A\u8BDD"),
+          React.createElement("div", { style: { ...s.code, fontSize: 12, marginTop: 2 } }, platform.sessionId)
+        )
       ),
       React.createElement(
         "div",
         { style: { ...s.muted, fontSize: 12, marginTop: 8, lineHeight: 1.6 } },
-        "\u767D\u540D\u5355\uFF08\u4EC5\u8FD9\u4E9B\u7528\u6237\u53EF\u9A71\u52A8 agent\uFF09:"
+        `\u767D\u540D\u5355 (\u5DF2\u6388\u6743 ${platform.allowFrom?.length || 0} \u4E2A\u8D26\u53F7/\u7FA4):`
       ),
       React.createElement(
         "div",
@@ -493,9 +617,12 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
         { style: { display: "flex", gap: 8, marginTop: 8, alignItems: "center" } },
         React.createElement("input", {
           style: { ...s.input, flex: 1 },
-          placeholder: platformId === "wechat" ? "\u6DFB\u52A0\u5141\u8BB8\u7684\u5FAE\u4FE1 ID\uFF08\u5982 xxx@im.wechat\uFF09" : "\u6DFB\u52A0\u5141\u8BB8\u7684\u7528\u6237 ID",
+          placeholder: platformId === "wechat" ? "\u6DFB\u52A0\u5141\u8BB8\u7684\u5FAE\u4FE1 ID\uFF08\u5982 xxx@im.wechat\uFF09\uFF0C\u6309 Enter \u6DFB\u52A0" : "\u6DFB\u52A0\u5141\u8BB8\u7684\u7528\u6237/\u7FA4 ID\uFF0C\u6309 Enter \u6DFB\u52A0",
           value: newId,
-          onChange: handleNewId
+          onChange: handleNewId,
+          onKeyDown: (e) => {
+            if (e.key === "Enter" && newId.trim() && !busy) addAllow();
+          }
         }),
         React.createElement("button", {
           style: { ...s.btnGhost, whiteSpace: "nowrap", opacity: newId.trim() && !busy ? 1 : 0.5 },
@@ -543,19 +670,36 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
             style: { ...s.input, width: "100%" },
             placeholder: "\u8BF7\u8F93\u5165 AppID",
             value: cfgDraft?.appId ?? "",
-            onChange: (e) => setCfgDraft((d) => ({ ...d, appId: e.target.value }))
+            onChange: (e) => setCfgDraft((d) => ({ ...d, appId: e.target.value })),
+            onKeyDown: (e) => {
+              if (e.key === "Enter" && cfgDraft?.appId?.trim() && cfgDraft?.clientSecret?.trim() && !busy) saveConfig();
+            }
           })
         ),
         React.createElement(
           "div",
           null,
           React.createElement("div", { style: { ...s.muted, marginBottom: 4 } }, "ClientSecret \u2014 QQ \u5F00\u653E\u5E73\u53F0\u673A\u5668\u4EBA\u5BC6\u94A5"),
-          React.createElement("input", {
-            style: { ...s.input, width: "100%" },
-            placeholder: "\u8BF7\u8F93\u5165 ClientSecret",
-            value: cfgDraft?.clientSecret ?? "",
-            onChange: (e) => setCfgDraft((d) => ({ ...d, clientSecret: e.target.value }))
-          })
+          React.createElement(
+            "div",
+            { style: { display: "flex", gap: 6, alignItems: "center" } },
+            React.createElement("input", {
+              style: { ...s.input, flex: 1 },
+              type: showSecret ? "text" : "password",
+              placeholder: "\u8BF7\u8F93\u5165 ClientSecret",
+              value: cfgDraft?.clientSecret ?? "",
+              onChange: (e) => setCfgDraft((d) => ({ ...d, clientSecret: e.target.value })),
+              onKeyDown: (e) => {
+                if (e.key === "Enter" && cfgDraft?.appId?.trim() && cfgDraft?.clientSecret?.trim() && !busy) saveConfig();
+              }
+            }),
+            React.createElement("button", {
+              style: { ...s.btnGhost, height: 32, padding: "0 10px", fontSize: 13, flexShrink: 0 },
+              onClick: () => setShowSecret((v) => !v),
+              type: "button",
+              title: showSecret ? "\u9690\u85CF\u5BC6\u94A5" : "\u663E\u793A\u660E\u6587"
+            }, showSecret ? "\u{1F648} \u9690\u85CF" : "\u{1F441}\uFE0F \u663E\u793A")
+          )
         ),
         React.createElement(
           "div",
@@ -588,7 +732,7 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
         login.phase === "error" && React.createElement("div", { style: { ...s.muted, fontSize: 12 } }, login.error ?? "\u767B\u5F55\u5931\u8D25")
       )
     ),
-    // 高级设置（可折叠）
+    // 高级设置（紧凑 2x2 网格 + 恢复默认值）
     cfgDraft && React.createElement(
       "div",
       { style: s.block },
@@ -599,72 +743,83 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
       showAdvanced && React.createElement(
         "div",
         { style: { display: "flex", flexDirection: "column", gap: 10 } },
-        // 心跳间隔
+        // 2x2 参数网格
         React.createElement(
           "div",
-          null,
-          React.createElement("div", { style: { ...s.muted, marginBottom: 4 } }, "\u5FC3\u8DF3\u95F4\u9694\uFF08\u79D2\uFF09\u2014 \u957F\u4EFB\u52A1\u5904\u7406\u4E2D\u6BCF\u9694\u591A\u4E45\u53D1\u4E00\u6B21\u8FDB\u5EA6\u63D0\u793A"),
-          React.createElement("input", {
-            style: { ...s.input, width: 120 },
-            type: "number",
-            min: 30,
-            max: 3600,
-            value: cfgDraft.digestIntervalSec,
-            onChange: (e) => setCfgDraft((d) => ({ ...d, digestIntervalSec: e.target.value }))
-          })
-        ),
-        // 审批超时
-        React.createElement(
-          "div",
-          null,
-          React.createElement("div", { style: { ...s.muted, marginBottom: 4 } }, "\u5BA1\u6279\u8D85\u65F6\uFF08\u79D2\uFF09\u2014 \u5DE5\u5177\u8C03\u7528\u5BA1\u6279\u65E0\u54CD\u5E94\u540E\u81EA\u52A8\u62D2\u7EDD"),
-          React.createElement("input", {
-            style: { ...s.input, width: 120 },
-            type: "number",
-            min: 30,
-            max: 86400,
-            value: cfgDraft.approvalTimeoutSec,
-            onChange: (e) => setCfgDraft((d) => ({ ...d, approvalTimeoutSec: e.target.value }))
-          })
-        ),
-        // 每气泡字数
-        React.createElement(
-          "div",
-          null,
-          React.createElement("div", { style: { ...s.muted, marginBottom: 4 } }, "\u6BCF\u6761\u6D88\u606F\u6700\u5927\u5B57\u6570 \u2014 \u8D85\u51FA\u65F6\u81EA\u52A8\u5206\u591A\u6761\u53D1\u9001"),
-          React.createElement("input", {
-            style: { ...s.input, width: 120 },
-            type: "number",
-            min: 100,
-            max: 1e4,
-            value: cfgDraft.maxMessageChars,
-            onChange: (e) => setCfgDraft((d) => ({ ...d, maxMessageChars: e.target.value }))
-          })
-        ),
-        // 分块延迟
-        React.createElement(
-          "div",
-          null,
-          React.createElement("div", { style: { ...s.muted, marginBottom: 4 } }, "\u5206\u5757\u53D1\u9001\u5EF6\u8FDF\uFF08\u6BEB\u79D2\uFF09\u2014 \u591A\u6761\u6D88\u606F\u4E4B\u95F4\u7684\u95F4\u9694"),
-          React.createElement("input", {
-            style: { ...s.input, width: 120 },
-            type: "number",
-            min: 0,
-            max: 1e4,
-            value: cfgDraft.sendChunkDelayMs,
-            onChange: (e) => setCfgDraft((d) => ({ ...d, sendChunkDelayMs: e.target.value }))
-          })
+          {
+            style: {
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+              gap: 10
+            }
+          },
+          // 心跳间隔
+          React.createElement(
+            "div",
+            null,
+            React.createElement("div", { style: { ...s.muted, marginBottom: 4 } }, "\u5FC3\u8DF3\u8FDB\u5EA6\u95F4\u9694 (\u79D2)"),
+            React.createElement("input", {
+              style: { ...s.input, width: "100%" },
+              type: "number",
+              min: 30,
+              max: 3600,
+              value: cfgDraft.digestIntervalSec,
+              onChange: (e) => setCfgDraft((d) => ({ ...d, digestIntervalSec: e.target.value }))
+            })
+          ),
+          // 审批超时
+          React.createElement(
+            "div",
+            null,
+            React.createElement("div", { style: { ...s.muted, marginBottom: 4 } }, "\u5BA1\u6279\u8D85\u65F6\u81EA\u52A8\u62D2\u7EDD (\u79D2)"),
+            React.createElement("input", {
+              style: { ...s.input, width: "100%" },
+              type: "number",
+              min: 30,
+              max: 86400,
+              value: cfgDraft.approvalTimeoutSec,
+              onChange: (e) => setCfgDraft((d) => ({ ...d, approvalTimeoutSec: e.target.value }))
+            })
+          ),
+          // 每气泡字数
+          React.createElement(
+            "div",
+            null,
+            React.createElement("div", { style: { ...s.muted, marginBottom: 4 } }, "\u5355\u6761\u6700\u5927\u5B57\u6570\u9650\u5236 (\u5B57)"),
+            React.createElement("input", {
+              style: { ...s.input, width: "100%" },
+              type: "number",
+              min: 100,
+              max: 1e4,
+              value: cfgDraft.maxMessageChars,
+              onChange: (e) => setCfgDraft((d) => ({ ...d, maxMessageChars: e.target.value }))
+            })
+          ),
+          // 分块延迟
+          React.createElement(
+            "div",
+            null,
+            React.createElement("div", { style: { ...s.muted, marginBottom: 4 } }, "\u5206\u5757\u53D1\u9001\u5EF6\u8FDF (\u6BEB\u79D2)"),
+            React.createElement("input", {
+              style: { ...s.input, width: "100%" },
+              type: "number",
+              min: 0,
+              max: 1e4,
+              value: cfgDraft.sendChunkDelayMs,
+              onChange: (e) => setCfgDraft((d) => ({ ...d, sendChunkDelayMs: e.target.value }))
+            })
+          )
         ),
         // QQ 平台凭证
         platformId === "qq" && React.createElement(
           "div",
-          { style: { display: "flex", flexDirection: "column", gap: 10 } },
+          { style: { display: "flex", flexDirection: "column", gap: 10, marginTop: 4 } },
           React.createElement(
             "div",
             null,
             React.createElement("div", { style: { ...s.muted, marginBottom: 4 } }, "AppID \u2014 QQ \u5F00\u653E\u5E73\u53F0\u673A\u5668\u4EBA\u5E94\u7528 ID"),
             React.createElement("input", {
-              style: { ...s.input, width: 220 },
+              style: { ...s.input, width: "100%" },
               placeholder: "\u8BF7\u8F93\u5165 AppID",
               value: cfgDraft.appId,
               onChange: (e) => setCfgDraft((d) => ({ ...d, appId: e.target.value }))
@@ -673,20 +828,40 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
           React.createElement(
             "div",
             null,
-            React.createElement("div", { style: { ...s.muted, marginBottom: 4 } }, "ClientSecret \u2014 QQ \u5F00\u653E\u5E73\u53F0\u673A\u5668\u4EBA\u5BC6\u94A5"),
-            React.createElement("input", {
-              style: { ...s.input, width: 220 },
-              placeholder: "\u8BF7\u8F93\u5165 ClientSecret",
-              value: cfgDraft.clientSecret,
-              onChange: (e) => setCfgDraft((d) => ({ ...d, clientSecret: e.target.value }))
-            })
+            React.createElement("div", { style: { ...s.muted, marginBottom: 4 } }, "ClientSecret \u2014 QQ \u5F00\u653E\u5E73\u53F0\u673A\u5668\u4EBA\u5BC6\u94A5\uFF08\u7559\u7A7A\u5219\u4FDD\u6301\u5DF2\u4FDD\u5B58\u5BC6\u94A5\uFF09"),
+            React.createElement(
+              "div",
+              { style: { display: "flex", gap: 6, alignItems: "center" } },
+              React.createElement("input", {
+                style: { ...s.input, flex: 1 },
+                type: showSecret ? "text" : "password",
+                placeholder: "\u7559\u7A7A\u4FDD\u6301\u5DF2\u4FDD\u5B58\u5BC6\u94A5",
+                value: cfgDraft.clientSecret,
+                onChange: (e) => setCfgDraft((d) => ({ ...d, clientSecret: e.target.value }))
+              }),
+              React.createElement("button", {
+                style: { ...s.btnGhost, height: 32, padding: "0 10px", fontSize: 13, flexShrink: 0 },
+                onClick: () => setShowSecret((v) => !v),
+                type: "button",
+                title: showSecret ? "\u9690\u85CF\u5BC6\u94A5" : "\u663E\u793A\u660E\u6587"
+              }, showSecret ? "\u{1F648} \u9690\u85CF" : "\u{1F441}\uFE0F \u663E\u793A")
+            )
           )
         ),
-        React.createElement("button", {
-          style: { ...s.btnPri, alignSelf: "flex-start", opacity: cfgDirty && !busy ? 1 : 0.5 },
-          disabled: !cfgDirty || busy,
-          onClick: saveConfig
-        }, busy ? "\u4FDD\u5B58\u4E2D\u2026" : "\u4FDD\u5B58\u8BBE\u7F6E")
+        React.createElement(
+          "div",
+          { style: { display: "flex", gap: 8, alignItems: "center", marginTop: 4 } },
+          React.createElement("button", {
+            style: { ...s.btnPri, opacity: cfgDirty && !busy ? 1 : 0.5 },
+            disabled: !cfgDirty || busy,
+            onClick: saveConfig
+          }, busy ? "\u4FDD\u5B58\u4E2D\u2026" : "\u4FDD\u5B58\u8BBE\u7F6E"),
+          React.createElement("button", {
+            style: { ...s.btnGhost, height: 32, fontSize: 12 },
+            onClick: resetDefaults,
+            title: "\u6062\u590D\u63A8\u8350\u9ED8\u8BA4\u914D\u7F6E"
+          }, "\u21BA \u6062\u590D\u63A8\u8350\u9ED8\u8BA4")
+        )
       )
     ),
     React.createElement(
@@ -832,9 +1007,9 @@ function VersionBanner({ rpcCall }) {
   );
 }
 var TABS = [
-  { id: "lan", label: "\u5C40\u57DF\u7F51" },
-  { id: "tunnel", label: "\u516C\u7F51\u96A7\u9053" },
-  { id: "im", label: "IM \u673A\u5668\u4EBA" }
+  { id: "lan", label: "\u5C40\u57DF\u7F51", icon: "\u{1F4F6}" },
+  { id: "tunnel", label: "\u516C\u7F51\u96A7\u9053", icon: "\u{1F310}" },
+  { id: "im", label: "IM \u673A\u5668\u4EBA", icon: "\u{1F916}" }
 ];
 function TabBar({ active, onChange, dots }) {
   return React.createElement(
@@ -842,12 +1017,12 @@ function TabBar({ active, onChange, dots }) {
     {
       style: {
         display: "flex",
-        gap: 0,
+        gap: 4,
         marginBottom: 20,
         borderBottom: "1px solid var(--dsw-alias-border-l2,#e5e7eb)"
       }
     },
-    TABS.map(({ id, label }) => {
+    TABS.map(({ id, label, icon }) => {
       const isActive = active === id;
       const hasDot = dots?.[id];
       return React.createElement(
@@ -873,6 +1048,7 @@ function TabBar({ active, onChange, dots }) {
             whiteSpace: "nowrap"
           }
         },
+        React.createElement("span", { style: { fontSize: 14 } }, icon),
         label,
         hasDot && React.createElement("span", {
           style: {
@@ -1011,9 +1187,9 @@ function BridgePanel({ rpcCall }) {
     );
   } else if (activeTab === "im") {
     const IM_PLATFORMS = [
-      { id: "wechat", label: "\u5FAE\u4FE1", desc: "iLink Bot API\uFF08ClawBot\uFF09" },
-      { id: "qq", label: "QQ", desc: "QQ Bot OpenAPI v2\uFF08\u79C1\u804A/\u7FA4\u804A/\u6309\u94AE\uFF09" },
-      { id: "feishu", label: "\u98DE\u4E66", desc: "\u5B98\u65B9\u4E8B\u4EF6\u56DE\u8C03 API" }
+      { id: "wechat", label: "\u5FAE\u4FE1", icon: "\u{1F4AC}", desc: "ClawBot \u626B\u7801\u76F4\u8FDE \xB7 \u65E0\u9700\u516C\u7F51" },
+      { id: "qq", label: "QQ", icon: "\u{1F427}", desc: "\u5B98\u65B9\u673A\u5668\u4EBA \xB7 \u79C1\u804A/\u7FA4\u804A/\u6309\u94AE" },
+      { id: "feishu", label: "\u98DE\u4E66", icon: "\u{1F54A}\uFE0F", desc: "\u5B98\u65B9\u4E8B\u4EF6\u56DE\u8C03 API" }
     ];
     tabContent = React.createElement(
       "div",
@@ -1024,7 +1200,7 @@ function BridgePanel({ rpcCall }) {
         {
           style: { display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }
         },
-        IM_PLATFORMS.map(({ id, label, desc }) => {
+        IM_PLATFORMS.map(({ id, label, icon, desc }) => {
           const platformData = platforms?.[id];
           const available = !!platformData;
           const active = platformData?.status === "connected" || platformData?.status === "starting" || platformData?.status === "reconnecting";
@@ -1033,21 +1209,27 @@ function BridgePanel({ rpcCall }) {
             {
               key: id,
               style: {
-                flex: "1 1 140px",
-                border: `1px solid ${selectedPlatform === id ? "var(--dsw-alias-state-info-primary,#3b82f6)" : active ? "var(--dsw-alias-state-success-primary,#10b981)" : "var(--dsw-alias-border-l2,#e5e7eb)"}`,
+                flex: "1 1 150px",
+                border: `1px solid ${selectedPlatform === id ? "var(--dsw-alias-brand-primary,#4f6ef7)" : active ? "var(--dsw-alias-state-success-primary,#10b981)" : "var(--dsw-alias-border-l2,#e5e7eb)"}`,
                 borderRadius: 10,
                 padding: "12px 14px",
-                opacity: available ? 1 : 0.45,
+                opacity: available ? 1 : 0.5,
                 cursor: available ? "pointer" : "not-allowed",
-                background: selectedPlatform === id ? "var(--dsw-alias-state-info-bg,#eff6ff)" : active ? "var(--dsw-alias-state-success-bg,#ecfdf5)" : available ? "var(--dsw-alias-bg-layer-2,#f9fafb)" : "var(--dsw-alias-bg-layer-2,#f9fafb)",
+                background: selectedPlatform === id ? "var(--dsw-alias-state-info-bg,#eff6ff)" : active ? "var(--dsw-alias-state-success-bg,#ecfdf5)" : "var(--dsw-alias-bg-layer-2,#f9fafb)",
+                boxShadow: selectedPlatform === id ? "0 0 0 1px var(--dsw-alias-brand-primary,#4f6ef7)" : "none",
                 transition: "all 0.15s ease"
               },
               onClick: available ? () => setSelectedPlatform(id) : void 0
             },
             React.createElement(
               "div",
-              { style: { ...s.label, fontSize: 13, display: "flex", alignItems: "center", gap: 6 } },
-              label,
+              { style: { ...s.label, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "space-between" } },
+              React.createElement(
+                "span",
+                { style: { display: "flex", alignItems: "center", gap: 6 } },
+                React.createElement("span", { style: { fontSize: 14 } }, icon),
+                label
+              ),
               active && React.createElement("span", {
                 style: { width: 6, height: 6, borderRadius: "50%", background: "var(--dsw-alias-state-success-primary,#10b981)", flexShrink: 0 }
               }),
@@ -1058,7 +1240,7 @@ function BridgePanel({ rpcCall }) {
                 style: { fontSize: 11, color: "var(--dsw-alias-label-tertiary,#9ca3af)", fontWeight: 400 }
               }, "\u5373\u5C06\u652F\u6301")
             ),
-            React.createElement("div", { style: { ...s.muted, marginTop: 3, fontSize: 11 } }, desc)
+            React.createElement("div", { style: { ...s.muted, marginTop: 4, fontSize: 11 } }, desc)
           );
         })
       ),
@@ -1076,7 +1258,7 @@ function BridgePanel({ rpcCall }) {
   }
   return React.createElement(
     "div",
-    { style: { maxWidth: 560 } },
+    { style: { maxWidth: 620 } },
     err && React.createElement("div", {
       style: { ...s.card, background: "var(--dsw-alias-state-error-bg,#fef2f2)", color: "var(--dsw-alias-state-error-primary,#dc2626)", fontSize: 13, marginBottom: 16 }
     }, err),

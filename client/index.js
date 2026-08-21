@@ -44,7 +44,7 @@ const s = {
   btnPri:   { font: 'inherit', cursor: 'pointer', border: 'none', background: 'var(--dsw-alias-brand-primary,#4f6ef7)', color: 'var(--dsw-alias-label-primary-foreground,#fff)', height: 32, padding: '0 14px', borderRadius: 999, fontSize: 13, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 },
   btnGhost: { font: 'inherit', cursor: 'pointer', border: '1px solid var(--dsw-alias-border-l2,#d1d5db)', background: 'var(--dsw-alias-bg-layer-2,#f9fafb)', color: 'var(--dsw-alias-label-primary,currentColor)', height: 32, padding: '0 14px', borderRadius: 999, fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 4, textDecoration: 'none' },
   btnLink:  { font: 'inherit', cursor: 'pointer', border: 'none', background: 'none', color: 'var(--dsw-alias-brand-primary,#4f6ef7)', fontSize: 12, padding: 0, display: 'inline-flex', alignItems: 'center', gap: 3, textDecoration: 'none' },
-  qr:       { width: 200, height: 200, borderRadius: 10, border: '1px solid var(--dsw-alias-border-l2,#e5e7eb)', margin: '8px 0', display: 'block' },
+  qr:       { width: 200, height: 200, borderRadius: 10, border: '1px solid var(--dsw-alias-border-l2,#e5e7eb)', margin: '8px 0', display: 'block', background: '#ffffff', padding: 6, boxSizing: 'border-box' },
   tag:      { display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 999, fontSize: 12, fontWeight: 500 },
   input:    { width: '100%', font: 'inherit', fontSize: 13, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--dsw-alias-border-l2,#d1d5db)', background: 'var(--dsw-alias-bg-layer-2,#f9fafb)', color: 'var(--dsw-alias-label-primary,currentColor)', outline: 'none', boxSizing: 'border-box' },
   warn:     { background: 'var(--dsw-alias-state-warn-bg,#fffbeb)', border: '1px solid var(--dsw-alias-state-warn-border,#fde68a)', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: 'var(--dsw-alias-state-warn-primary,#92400e)', lineHeight: 1.6 },
@@ -82,14 +82,40 @@ function useCopy() {
   return [copied, copy];
 }
 
-function StatusTag({ running }) {
+function StatusTag({ running, status }) {
+  let bg = 'var(--dsw-alias-bg-layer-2,#f3f4f6)';
+  let color = 'var(--dsw-alias-label-secondary,#6b7280)';
+  let text = running ? '运行中' : '未启动';
+
+  if (status === 'connected') {
+    bg = 'var(--dsw-alias-state-success-bg,#ecfdf5)';
+    color = 'var(--dsw-alias-state-success-primary,#059669)';
+    text = '已连接';
+  } else if (status === 'starting') {
+    bg = 'var(--dsw-alias-state-info-bg,#eff6ff)';
+    color = 'var(--dsw-alias-state-info-primary,#3b82f6)';
+    text = '连接中…';
+  } else if (status === 'reconnecting') {
+    bg = 'var(--dsw-alias-state-warn-bg,#fffbeb)';
+    color = 'var(--dsw-alias-state-warn-primary,#d97706)';
+    text = '重连中…';
+  } else if (status === 'paused') {
+    bg = 'var(--dsw-alias-state-warn-bg,#fffbeb)';
+    color = 'var(--dsw-alias-state-warn-primary,#d97706)';
+    text = '暂停中';
+  } else if (status === 'error') {
+    bg = 'var(--dsw-alias-state-error-bg,#fef2f2)';
+    color = 'var(--dsw-alias-state-error-primary,#dc2626)';
+    text = '异常';
+  } else if (running) {
+    bg = 'var(--dsw-alias-state-success-bg,#ecfdf5)';
+    color = 'var(--dsw-alias-state-success-primary,#059669)';
+    text = '运行中';
+  }
+
   return React.createElement('span', {
-    style: {
-      ...s.tag,
-      background: running ? 'var(--dsw-alias-state-success-bg,#ecfdf5)' : 'var(--dsw-alias-bg-layer-2,#f3f4f6)',
-      color: running ? 'var(--dsw-alias-state-success-primary,#059669)' : 'var(--dsw-alias-label-secondary,#6b7280)',
-    },
-  }, running ? '运行中' : '未启动');
+    style: { ...s.tag, background: bg, color },
+  }, text);
 }
 
 function QrBlock({ url, qr, onReset }) {
@@ -172,6 +198,7 @@ const CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm({ serv
   const [serverUrl, setServerUrl]     = React.useState(initUrl ?? '');
   const [accessToken, setAccessToken] = React.useState(initToken ?? '');
   const [saving, setSaving]           = React.useState(false);
+  const [saveSuccess, setSaveSuccess] = React.useState(false);
 
   const syncedRef = React.useRef(false);
   React.useEffect(() => {
@@ -185,11 +212,16 @@ const CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm({ serv
   const dirty = serverUrl !== (initUrl ?? '') || accessToken !== (initToken ?? '');
   const handleSave = React.useCallback(async () => {
     setSaving(true);
-    try { await onSave(serverUrl, accessToken); }
+    setSaveSuccess(false);
+    try {
+      await onSave(serverUrl, accessToken);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2500);
+    }
     finally { setSaving(false); }
   }, [onSave, serverUrl, accessToken]);
-  const handleUrlChange   = React.useCallback((e) => setServerUrl(e.target.value), []);
-  const handleTokenChange = React.useCallback((e) => setAccessToken(e.target.value), []);
+  const handleUrlChange   = React.useCallback((e) => { setServerUrl(e.target.value); setSaveSuccess(false); }, []);
+  const handleTokenChange = React.useCallback((e) => { setAccessToken(e.target.value); setSaveSuccess(false); }, []);
 
   return React.createElement('div', { style: s.block },
     React.createElement('div', { style: { ...s.muted, marginBottom: 8 } }, '服务器配置'),
@@ -199,6 +231,7 @@ const CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm({ serv
         placeholder: 'WebSocket 地址，例如 wss://tunnel.example.com/connect',
         value: serverUrl,
         onChange: handleUrlChange,
+        onKeyDown: (e) => { if (e.key === 'Enter' && dirty && !saving) handleSave(); },
         disabled: saving,
       }),
       React.createElement('input', {
@@ -207,13 +240,19 @@ const CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm({ serv
         placeholder: '访问令牌（Access Token）',
         value: accessToken,
         onChange: handleTokenChange,
+        onKeyDown: (e) => { if (e.key === 'Enter' && dirty && !saving) handleSave(); },
         disabled: saving,
       }),
       React.createElement('button', {
-        style: { ...s.btnPri, alignSelf: 'flex-start', opacity: (!dirty || saving) ? 0.5 : 1 },
-        disabled: !dirty || saving,
+        style: {
+          ...s.btnPri,
+          alignSelf: 'flex-start',
+          opacity: (!dirty || saving) ? (saveSuccess ? 1 : 0.5) : 1,
+          background: saveSuccess ? 'var(--dsw-alias-state-success-primary,#059669)' : undefined,
+        },
+        disabled: (!dirty && !saveSuccess) || saving,
         onClick: handleSave,
-      }, saving ? '保存中…' : '保存配置'),
+      }, saving ? '保存中…' : saveSuccess ? '✓ 已保存' : '保存配置'),
     ),
   );
 });
@@ -338,6 +377,20 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
   }, [act, platform?.allowFrom]);
   const handleNewId = React.useCallback((e) => setNewId(e.target.value), []);
 
+  // 密码明文/密文切换
+  const [showSecret, setShowSecret] = React.useState(false);
+
+  // 恢复推荐默认值
+  const resetDefaults = React.useCallback(() => {
+    setCfgDraft((d) => ({
+      ...d,
+      digestIntervalSec: '300',
+      approvalTimeoutSec: '600',
+      maxMessageChars: '2000',
+      sendChunkDelayMs: '1500',
+    }));
+  }, []);
+
   // 高级设置保存
   const saveConfig = React.useCallback(async () => {
     if (!cfgDraft) return;
@@ -388,16 +441,26 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
         React.createElement('div', { style: s.label }, platformName),
         React.createElement('div', { style: { ...s.muted, marginTop: 2 } }, platformDesc),
       ),
-      React.createElement(StatusTag, { running: connected }),
+      React.createElement(StatusTag, { status: platform?.status, running: connected }),
     ),
 
-    // 快捷入口：使用说明 / 命令
+    // 快捷入口：使用说明 / 开放平台 / 命令速查
     React.createElement('div', { style: { display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' } },
       platformId === 'wechat' && React.createElement('a', {
         href: 'https://github.com/wenbin-wb/dsh-bridge/blob/main/docs/wechat-usage.md',
         target: '_blank', rel: 'noopener noreferrer',
         style: s.btnGhost,
-      }, '📖 使用说明'),
+      }, '📖 微信使用说明'),
+      platformId === 'qq' && React.createElement('a', {
+        href: 'https://github.com/wenbin-wb/dsh-bridge/blob/main/docs/qq-usage.md',
+        target: '_blank', rel: 'noopener noreferrer',
+        style: s.btnGhost,
+      }, '📖 QQ 使用说明'),
+      platformId === 'qq' && React.createElement('a', {
+        href: 'https://bot.q.qq.com/wiki/develop/api-v2/',
+        target: '_blank', rel: 'noopener noreferrer',
+        style: s.btnGhost,
+      }, '🌐 QQ 开放平台'),
       React.createElement('button', {
         style: s.btnGhost,
         onClick: () => setShowHelp(v => !v),
@@ -406,28 +469,75 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
 
     // 命令速查
     showHelp && React.createElement('div', { style: { ...s.block, fontSize: 12, lineHeight: 1.8, fontFamily: 'monospace' } },
-      React.createElement('div', null, '/new <提示词> — 新建会话（当前工作区）'),
-      React.createElement('div', null, '/new <提示词> @N — 在指定工作区新建'),
-      React.createElement('div', null, '/sessions — 按工作区分组列会话'),
-      React.createElement('div', null, '/use N — 切换到会话 N'),
-      React.createElement('div', null, '/workspaces — 列出工作区'),
-      React.createElement('div', null, '/stop — 停止任务'),
-      React.createElement('div', null, '/status — 查看状态'),
-      React.createElement('div', null, '/yes 或 /no — 回应审批'),
-      React.createElement('div', null, '/help — 全部命令'),
+      React.createElement('div', null, '/new <提示词> — 新建会话并开始（当前工作区）'),
+      React.createElement('div', null, '/new <提示词> @N — 在指定工作区新建会话'),
+      React.createElement('div', null, '/sessions（或 /list）— 列出会话（按工作区分组，带标题）'),
+      React.createElement('div', null, '/use N（或 /resume N）— 切换到会话 N'),
+      React.createElement('div', null, '/workspaces — 列出所有可用工作区'),
+      React.createElement('div', null, '/end — 结束当前会话（回到无活动会话状态）'),
+      React.createElement('div', null, '/stop — 停止当前任务'),
+      React.createElement('div', null, '/status — 查看 Agent 状态与会话摘要'),
+      React.createElement('div', null, '/yes 或 /no（或 1/2）— 回应权限审批请求'),
+      React.createElement('div', null, '/help — 显示完整命令帮助'),
     ),
 
     err && React.createElement('div', { style: { ...s.warn, marginTop: 10 } }, err),
 
-    // 已配置：状态详情 + 白名单
+    // 已配置：结构化状态看板 + 白名单
     platform?.configured && React.createElement('div', { style: s.block },
-      React.createElement('div', { style: { fontSize: 12, lineHeight: 1.7 } },
-        React.createElement('div', null, `状态: ${statusLabel}`),
-        platform.accountId && React.createElement('div', null, `账号: ${platform.accountId}`),
-        platform.sessionId && React.createElement('div', null, `当前会话: ${platform.sessionId}`),
+      // 结构化状态卡片看板
+      React.createElement('div', {
+        style: {
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+          gap: 8,
+          marginBottom: 12,
+        },
+      },
+        React.createElement('div', {
+          style: {
+            background: 'var(--dsw-alias-bg-layer-1,#fff)',
+            border: '1px solid var(--dsw-alias-border-l2,#e5e7eb)',
+            borderRadius: 8,
+            padding: '8px 12px',
+          },
+        },
+          React.createElement('div', { style: { ...s.muted, fontSize: 11 } }, '连接状态'),
+          React.createElement('div', { style: { ...s.label, fontSize: 13, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 } },
+            React.createElement('span', {
+              style: {
+                width: 6, height: 6, borderRadius: '50%',
+                background: connected ? 'var(--dsw-alias-state-success-primary,#10b981)' : 'var(--dsw-alias-label-tertiary,#9ca3af)',
+              },
+            }),
+            statusLabel,
+          ),
+        ),
+        platform.accountId && React.createElement('div', {
+          style: {
+            background: 'var(--dsw-alias-bg-layer-1,#fff)',
+            border: '1px solid var(--dsw-alias-border-l2,#e5e7eb)',
+            borderRadius: 8,
+            padding: '8px 12px',
+          },
+        },
+          React.createElement('div', { style: { ...s.muted, fontSize: 11 } }, '登录账号'),
+          React.createElement('div', { style: { ...s.code, fontSize: 12, marginTop: 2, fontWeight: 500 } }, platform.accountId),
+        ),
+        platform.sessionId && React.createElement('div', {
+          style: {
+            background: 'var(--dsw-alias-bg-layer-1,#fff)',
+            border: '1px solid var(--dsw-alias-border-l2,#e5e7eb)',
+            borderRadius: 8,
+            padding: '8px 12px',
+          },
+        },
+          React.createElement('div', { style: { ...s.muted, fontSize: 11 } }, '活动会话'),
+          React.createElement('div', { style: { ...s.code, fontSize: 12, marginTop: 2 } }, platform.sessionId),
+        ),
       ),
       React.createElement('div', { style: { ...s.muted, fontSize: 12, marginTop: 8, lineHeight: 1.6 } },
-        '白名单（仅这些用户可驱动 agent）:'
+        `白名单 (已授权 ${platform.allowFrom?.length || 0} 个账号/群):`
       ),
       React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 } },
         (platform.allowFrom?.length
@@ -449,9 +559,10 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
       React.createElement('div', { style: { display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' } },
         React.createElement('input', {
           style: { ...s.input, flex: 1 },
-          placeholder: platformId === 'wechat' ? '添加允许的微信 ID（如 xxx@im.wechat）' : '添加允许的用户 ID',
+          placeholder: platformId === 'wechat' ? '添加允许的微信 ID（如 xxx@im.wechat），按 Enter 添加' : '添加允许的用户/群 ID，按 Enter 添加',
           value: newId,
           onChange: handleNewId,
+          onKeyDown: (e) => { if (e.key === 'Enter' && newId.trim() && !busy) addAllow(); },
         }),
         React.createElement('button', {
           style: { ...s.btnGhost, whiteSpace: 'nowrap', opacity: (newId.trim() && !busy) ? 1 : 0.5 },
@@ -493,16 +604,27 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
                   placeholder: '请输入 AppID',
                   value: cfgDraft?.appId ?? '',
                   onChange: (e) => setCfgDraft(d => ({ ...d, appId: e.target.value })),
+                  onKeyDown: (e) => { if (e.key === 'Enter' && cfgDraft?.appId?.trim() && cfgDraft?.clientSecret?.trim() && !busy) saveConfig(); },
                 }),
               ),
               React.createElement('div', null,
                 React.createElement('div', { style: { ...s.muted, marginBottom: 4 } }, 'ClientSecret — QQ 开放平台机器人密钥'),
-                React.createElement('input', {
-                  style: { ...s.input, width: '100%' },
-                  placeholder: '请输入 ClientSecret',
-                  value: cfgDraft?.clientSecret ?? '',
-                  onChange: (e) => setCfgDraft(d => ({ ...d, clientSecret: e.target.value })),
-                }),
+                React.createElement('div', { style: { display: 'flex', gap: 6, alignItems: 'center' } },
+                  React.createElement('input', {
+                    style: { ...s.input, flex: 1 },
+                    type: showSecret ? 'text' : 'password',
+                    placeholder: '请输入 ClientSecret',
+                    value: cfgDraft?.clientSecret ?? '',
+                    onChange: (e) => setCfgDraft(d => ({ ...d, clientSecret: e.target.value })),
+                    onKeyDown: (e) => { if (e.key === 'Enter' && cfgDraft?.appId?.trim() && cfgDraft?.clientSecret?.trim() && !busy) saveConfig(); },
+                  }),
+                  React.createElement('button', {
+                    style: { ...s.btnGhost, height: 32, padding: '0 10px', fontSize: 13, flexShrink: 0 },
+                    onClick: () => setShowSecret(v => !v),
+                    type: 'button',
+                    title: showSecret ? '隐藏密钥' : '显示明文',
+                  }, showSecret ? '🙈 隐藏' : '👁️ 显示'),
+                ),
               ),
               React.createElement('div', null,
                 React.createElement('a', {
@@ -528,79 +650,104 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
             ),
     ),
 
-    // 高级设置（可折叠）
+    // 高级设置（紧凑 2x2 网格 + 恢复默认值）
     cfgDraft && React.createElement('div', { style: s.block },
       React.createElement('button', {
         style: { ...s.btnLink, fontSize: 12, marginBottom: showAdvanced ? 10 : 0 },
         onClick: () => setShowAdvanced(v => !v),
       }, showAdvanced ? '▾ 高级设置' : '▸ 高级设置'),
       showAdvanced && React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10 } },
-        // 心跳间隔
-        React.createElement('div', null,
-          React.createElement('div', { style: { ...s.muted, marginBottom: 4 } }, '心跳间隔（秒）— 长任务处理中每隔多久发一次进度提示'),
-          React.createElement('input', {
-            style: { ...s.input, width: 120 },
-            type: 'number', min: 30, max: 3600,
-            value: cfgDraft.digestIntervalSec,
-            onChange: (e) => setCfgDraft(d => ({ ...d, digestIntervalSec: e.target.value })),
-          }),
-        ),
-        // 审批超时
-        React.createElement('div', null,
-          React.createElement('div', { style: { ...s.muted, marginBottom: 4 } }, '审批超时（秒）— 工具调用审批无响应后自动拒绝'),
-          React.createElement('input', {
-            style: { ...s.input, width: 120 },
-            type: 'number', min: 30, max: 86400,
-            value: cfgDraft.approvalTimeoutSec,
-            onChange: (e) => setCfgDraft(d => ({ ...d, approvalTimeoutSec: e.target.value })),
-          }),
-        ),
-        // 每气泡字数
-        React.createElement('div', null,
-          React.createElement('div', { style: { ...s.muted, marginBottom: 4 } }, '每条消息最大字数 — 超出时自动分多条发送'),
-          React.createElement('input', {
-            style: { ...s.input, width: 120 },
-            type: 'number', min: 100, max: 10000,
-            value: cfgDraft.maxMessageChars,
-            onChange: (e) => setCfgDraft(d => ({ ...d, maxMessageChars: e.target.value })),
-          }),
-        ),
-        // 分块延迟
-        React.createElement('div', null,
-          React.createElement('div', { style: { ...s.muted, marginBottom: 4 } }, '分块发送延迟（毫秒）— 多条消息之间的间隔'),
-          React.createElement('input', {
-            style: { ...s.input, width: 120 },
-            type: 'number', min: 0, max: 10000,
-            value: cfgDraft.sendChunkDelayMs,
-            onChange: (e) => setCfgDraft(d => ({ ...d, sendChunkDelayMs: e.target.value })),
-          }),
+        // 2x2 参数网格
+        React.createElement('div', {
+          style: {
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: 10,
+          },
+        },
+          // 心跳间隔
+          React.createElement('div', null,
+            React.createElement('div', { style: { ...s.muted, marginBottom: 4 } }, '心跳进度间隔 (秒)'),
+            React.createElement('input', {
+              style: { ...s.input, width: '100%' },
+              type: 'number', min: 30, max: 3600,
+              value: cfgDraft.digestIntervalSec,
+              onChange: (e) => setCfgDraft(d => ({ ...d, digestIntervalSec: e.target.value })),
+            }),
+          ),
+          // 审批超时
+          React.createElement('div', null,
+            React.createElement('div', { style: { ...s.muted, marginBottom: 4 } }, '审批超时自动拒绝 (秒)'),
+            React.createElement('input', {
+              style: { ...s.input, width: '100%' },
+              type: 'number', min: 30, max: 86400,
+              value: cfgDraft.approvalTimeoutSec,
+              onChange: (e) => setCfgDraft(d => ({ ...d, approvalTimeoutSec: e.target.value })),
+            }),
+          ),
+          // 每气泡字数
+          React.createElement('div', null,
+            React.createElement('div', { style: { ...s.muted, marginBottom: 4 } }, '单条最大字数限制 (字)'),
+            React.createElement('input', {
+              style: { ...s.input, width: '100%' },
+              type: 'number', min: 100, max: 10000,
+              value: cfgDraft.maxMessageChars,
+              onChange: (e) => setCfgDraft(d => ({ ...d, maxMessageChars: e.target.value })),
+            }),
+          ),
+          // 分块延迟
+          React.createElement('div', null,
+            React.createElement('div', { style: { ...s.muted, marginBottom: 4 } }, '分块发送延迟 (毫秒)'),
+            React.createElement('input', {
+              style: { ...s.input, width: '100%' },
+              type: 'number', min: 0, max: 10000,
+              value: cfgDraft.sendChunkDelayMs,
+              onChange: (e) => setCfgDraft(d => ({ ...d, sendChunkDelayMs: e.target.value })),
+            }),
+          ),
         ),
         // QQ 平台凭证
-        platformId === 'qq' && React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10 } },
+        platformId === 'qq' && React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 } },
           React.createElement('div', null,
             React.createElement('div', { style: { ...s.muted, marginBottom: 4 } }, 'AppID — QQ 开放平台机器人应用 ID'),
             React.createElement('input', {
-              style: { ...s.input, width: 220 },
+              style: { ...s.input, width: '100%' },
               placeholder: '请输入 AppID',
               value: cfgDraft.appId,
               onChange: (e) => setCfgDraft(d => ({ ...d, appId: e.target.value })),
             }),
           ),
           React.createElement('div', null,
-            React.createElement('div', { style: { ...s.muted, marginBottom: 4 } }, 'ClientSecret — QQ 开放平台机器人密钥'),
-            React.createElement('input', {
-              style: { ...s.input, width: 220 },
-              placeholder: '请输入 ClientSecret',
-              value: cfgDraft.clientSecret,
-              onChange: (e) => setCfgDraft(d => ({ ...d, clientSecret: e.target.value })),
-            }),
+            React.createElement('div', { style: { ...s.muted, marginBottom: 4 } }, 'ClientSecret — QQ 开放平台机器人密钥（留空则保持已保存密钥）'),
+            React.createElement('div', { style: { display: 'flex', gap: 6, alignItems: 'center' } },
+              React.createElement('input', {
+                style: { ...s.input, flex: 1 },
+                type: showSecret ? 'text' : 'password',
+                placeholder: '留空保持已保存密钥',
+                value: cfgDraft.clientSecret,
+                onChange: (e) => setCfgDraft(d => ({ ...d, clientSecret: e.target.value })),
+              }),
+              React.createElement('button', {
+                style: { ...s.btnGhost, height: 32, padding: '0 10px', fontSize: 13, flexShrink: 0 },
+                onClick: () => setShowSecret(v => !v),
+                type: 'button',
+                title: showSecret ? '隐藏密钥' : '显示明文',
+              }, showSecret ? '🙈 隐藏' : '👁️ 显示'),
+            ),
           ),
         ),
-        React.createElement('button', {
-          style: { ...s.btnPri, alignSelf: 'flex-start', opacity: (cfgDirty && !busy) ? 1 : 0.5 },
-          disabled: !cfgDirty || busy,
-          onClick: saveConfig,
-        }, busy ? '保存中…' : '保存设置'),
+        React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center', marginTop: 4 } },
+          React.createElement('button', {
+            style: { ...s.btnPri, opacity: (cfgDirty && !busy) ? 1 : 0.5 },
+            disabled: !cfgDirty || busy,
+            onClick: saveConfig,
+          }, busy ? '保存中…' : '保存设置'),
+          React.createElement('button', {
+            style: { ...s.btnGhost, height: 32, fontSize: 12 },
+            onClick: resetDefaults,
+            title: '恢复推荐默认配置',
+          }, '↺ 恢复推荐默认'),
+        ),
       ),
     ),
 
@@ -738,19 +885,19 @@ function VersionBanner({ rpcCall }) {
 // ---- Tab Bar ----
 
 const TABS = [
-  { id: 'lan',    label: '局域网' },
-  { id: 'tunnel', label: '公网隧道' },
-  { id: 'im',     label: 'IM 机器人' },
+  { id: 'lan',    label: '局域网',   icon: '📶' },
+  { id: 'tunnel', label: '公网隧道', icon: '🌐' },
+  { id: 'im',     label: 'IM 机器人', icon: '🤖' },
 ];
 
 function TabBar({ active, onChange, dots }) {
   return React.createElement('div', {
     style: {
-      display: 'flex', gap: 0, marginBottom: 20,
+      display: 'flex', gap: 4, marginBottom: 20,
       borderBottom: '1px solid var(--dsw-alias-border-l2,#e5e7eb)',
     },
   },
-    TABS.map(({ id, label }) => {
+    TABS.map(({ id, label, icon }) => {
       const isActive = active === id;
       const hasDot   = dots?.[id];
       return React.createElement('button', {
@@ -771,6 +918,7 @@ function TabBar({ active, onChange, dots }) {
           whiteSpace: 'nowrap',
         },
       },
+        React.createElement('span', { style: { fontSize: 14 } }, icon),
         label,
         hasDot && React.createElement('span', {
           style: {
@@ -914,9 +1062,9 @@ function BridgePanel({ rpcCall }) {
   } else if (activeTab === 'im') {
     // 从 listPlatforms 动态生成平台列表
     const IM_PLATFORMS = [
-      { id: 'wechat', label: '微信', desc: 'iLink Bot API（ClawBot）' },
-      { id: 'qq',     label: 'QQ',   desc: 'QQ Bot OpenAPI v2（私聊/群聊/按钮）' },
-      { id: 'feishu', label: '飞书', desc: '官方事件回调 API' },
+      { id: 'wechat', label: '微信', icon: '💬', desc: 'ClawBot 扫码直连 · 无需公网' },
+      { id: 'qq',     label: 'QQ',   icon: '🐧', desc: '官方机器人 · 私聊/群聊/按钮' },
+      { id: 'feishu', label: '飞书', icon: '🕊️', desc: '官方事件回调 API' },
     ];
     
     tabContent = React.createElement('div', null,
@@ -924,7 +1072,7 @@ function BridgePanel({ rpcCall }) {
       React.createElement('div', {
         style: { display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' },
       },
-        IM_PLATFORMS.map(({ id, label, desc }) => {
+        IM_PLATFORMS.map(({ id, label, icon, desc }) => {
           const platformData = platforms?.[id];
           const available = !!platformData;
           const active = platformData?.status === 'connected' || platformData?.status === 'starting' || platformData?.status === 'reconnecting';
@@ -932,19 +1080,23 @@ function BridgePanel({ rpcCall }) {
           return React.createElement('div', {
             key: id,
             style: {
-              flex: '1 1 140px',
-              border: `1px solid ${selectedPlatform === id ? 'var(--dsw-alias-state-info-primary,#3b82f6)' : active ? 'var(--dsw-alias-state-success-primary,#10b981)' : 'var(--dsw-alias-border-l2,#e5e7eb)'}`,
+              flex: '1 1 150px',
+              border: `1px solid ${selectedPlatform === id ? 'var(--dsw-alias-brand-primary,#4f6ef7)' : active ? 'var(--dsw-alias-state-success-primary,#10b981)' : 'var(--dsw-alias-border-l2,#e5e7eb)'}`,
               borderRadius: 10,
               padding: '12px 14px',
-              opacity: available ? 1 : 0.45,
+              opacity: available ? 1 : 0.5,
               cursor: available ? 'pointer' : 'not-allowed',
-              background: selectedPlatform === id ? 'var(--dsw-alias-state-info-bg,#eff6ff)' : active ? 'var(--dsw-alias-state-success-bg,#ecfdf5)' : available ? 'var(--dsw-alias-bg-layer-2,#f9fafb)' : 'var(--dsw-alias-bg-layer-2,#f9fafb)',
+              background: selectedPlatform === id ? 'var(--dsw-alias-state-info-bg,#eff6ff)' : active ? 'var(--dsw-alias-state-success-bg,#ecfdf5)' : 'var(--dsw-alias-bg-layer-2,#f9fafb)',
+              boxShadow: selectedPlatform === id ? '0 0 0 1px var(--dsw-alias-brand-primary,#4f6ef7)' : 'none',
               transition: 'all 0.15s ease',
             },
             onClick: available ? () => setSelectedPlatform(id) : undefined,
           },
-            React.createElement('div', { style: { ...s.label, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 } },
-              label,
+            React.createElement('div', { style: { ...s.label, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'space-between' } },
+              React.createElement('span', { style: { display: 'flex', alignItems: 'center', gap: 6 } },
+                React.createElement('span', { style: { fontSize: 14 } }, icon),
+                label,
+              ),
               active && React.createElement('span', {
                 style: { width: 6, height: 6, borderRadius: '50%', background: 'var(--dsw-alias-state-success-primary,#10b981)', flexShrink: 0 },
               }),
@@ -955,7 +1107,7 @@ function BridgePanel({ rpcCall }) {
                 style: { fontSize: 11, color: 'var(--dsw-alias-label-tertiary,#9ca3af)', fontWeight: 400 },
               }, '即将支持'),
             ),
-            React.createElement('div', { style: { ...s.muted, marginTop: 3, fontSize: 11 } }, desc),
+            React.createElement('div', { style: { ...s.muted, marginTop: 4, fontSize: 11 } }, desc),
           );
         }),
       ),
@@ -970,7 +1122,7 @@ function BridgePanel({ rpcCall }) {
     );
   }
 
-  return React.createElement('div', { style: { maxWidth: 560 } },
+  return React.createElement('div', { style: { maxWidth: 620 } },
     err && React.createElement('div', {
       style: { ...s.card, background: 'var(--dsw-alias-state-error-bg,#fef2f2)', color: 'var(--dsw-alias-state-error-primary,#dc2626)', fontSize: 13, marginBottom: 16 },
     }, err),
