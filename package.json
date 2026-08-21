@@ -1,6 +1,6 @@
 {
   "name": "@wenbin_wb/dsh-bridge",
-  "version": "2.2.6",
+  "version": "2.2.7",
   "description": "手机扫码即可在移动端/公网继续用 DeepSeek Harness，人不在电脑前也能接着干。一键局域网二维码、Cloudflare 公网隧道、自建隧道与微信 Bot（多工作区/会话持久化/媒体/审批），无需自己搭公网服务器。",
   "type": "module",
   "main": "lib/index.js",
