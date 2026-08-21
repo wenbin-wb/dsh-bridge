@@ -42,6 +42,7 @@ var BRIDGE_ENDPOINTS = {
   resetCloudflared: "resetCloudflared",
   saveCustomTunnelConfig: "saveCustomTunnelConfig",
   checkVersion: "checkVersion",
+  upgradePlugin: "upgradePlugin",
   // 平台管理器（多 IM 平台统一接口）
   listPlatforms: "listPlatforms",
   platformLogin: "platformLogin",
@@ -102,6 +103,59 @@ var s = {
   input: { width: "100%", font: "inherit", fontSize: 13, padding: "7px 10px", borderRadius: 8, border: "1px solid var(--dsw-alias-border-l2,#d1d5db)", background: "var(--dsw-alias-bg-layer-2,#f9fafb)", color: "var(--dsw-alias-label-primary,currentColor)", outline: "none", boxSizing: "border-box" },
   warn: { background: "var(--dsw-alias-state-warn-bg,#fffbeb)", border: "1px solid var(--dsw-alias-state-warn-border,#fde68a)", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "var(--dsw-alias-state-warn-primary,#92400e)", lineHeight: 1.6 },
   tip: { background: "var(--dsw-alias-bg-layer-2,#f9fafb)", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "var(--dsw-alias-label-secondary,#6b7280)", lineHeight: 1.6 }
+};
+var Icons = {
+  wechat: (props) => React.createElement(
+    "svg",
+    { viewBox: "0 0 24 24", width: 18, height: 18, fill: "currentColor", ...props },
+    React.createElement("path", { d: "M8.5 2C4.36 2 1 4.91 1 8.5c0 2.01 1.05 3.81 2.69 4.97l-.69 2.06 2.45-1.22c.94.43 1.98.69 3.05.69.21 0 .42-.01.62-.03-.23-.62-.37-1.28-.37-1.97 0-3.59 3.36-6.5 7.5-6.5.21 0 .41.01.62.03C15.87 4.54 12.44 2 8.5 2zM6 6.5a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5zm5 0a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5zm7.5 3.5c-3.59 0-6.5 2.46-6.5 5.5 0 1.66.86 3.14 2.21 4.1l-.56 1.69 2.01-1c.78.36 1.64.57 2.54.57 3.59 0 6.5-2.46 6.5-5.5s-2.91-5.5-6.5-5.5zm-2 4a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm4 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2z" })
+  ),
+  qq: (props) => React.createElement(
+    "svg",
+    { viewBox: "0 0 24 24", width: 18, height: 18, fill: "currentColor", ...props },
+    React.createElement("path", { d: "M12 2C7.58 2 4 5.37 4 9.53c0 1.95.78 3.73 2.07 5.07-.37 1.15-.99 2.19-1.8 3.08-.18.2-.04.52.23.52 2.22 0 3.99-1.07 4.9-1.86.8.25 1.66.39 2.6.39 4.42 0 8-3.37 8-7.53S16.42 2 12 2zm-3 8a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5zm6 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5z" })
+  ),
+  feishu: (props) => React.createElement(
+    "svg",
+    { viewBox: "0 0 24 24", width: 18, height: 18, fill: "currentColor", ...props },
+    React.createElement("path", { d: "M12 2.5L3.5 11.2l6.8 1.8 2.2 6.5 1.8-4.7 5.2-1.4L12 2.5zm-.8 11.1l-4.1-1.1 6.5-6.6-4.2 8.3 1.8-.6z" })
+  ),
+  telegram: (props) => React.createElement(
+    "svg",
+    { viewBox: "0 0 24 24", width: 18, height: 18, fill: "currentColor", ...props },
+    React.createElement("path", { d: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 0 0-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z" })
+  ),
+  lan: (props) => React.createElement(
+    "svg",
+    { viewBox: "0 0 24 24", width: 16, height: 16, fill: "currentColor", ...props },
+    React.createElement("path", { d: "M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.29 19.3a1 1 0 0 0 1.41 1.41l1.7-1.7C9.02 19.64 10.46 20 12 20c4.97 0 9-4.03 9-9s-4.03-9-9-9zm0 15c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6zm0-9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" })
+  ),
+  tunnel: (props) => React.createElement(
+    "svg",
+    { viewBox: "0 0 24 24", width: 16, height: 16, fill: "currentColor", ...props },
+    React.createElement("path", { d: "M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z" })
+  ),
+  bot: (props) => React.createElement(
+    "svg",
+    { viewBox: "0 0 24 24", width: 16, height: 16, fill: "currentColor", ...props },
+    React.createElement("path", { d: "M20 9V7c0-1.1-.9-2-2-2h-3c0-1.66-1.34-3-3-3S9 3.34 9 5H6c-1.1 0-2 .9-2 2v2c-1.66 0-3 1.34-3 3s1.34 3 3 3v4c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-4c1.66 0 3-1.34 3-3s-1.34-3-3-3zm-2 10H6V7h12v12zm-9-6c-.83 0-1.5-.67-1.5-1.5S8.17 10 9 10s1.5.67 1.5 1.5S9.83 13 9 13zm6 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" })
+  ),
+  github: (props) => React.createElement(
+    "svg",
+    { viewBox: "0 0 24 24", width: 13, height: 13, fill: "currentColor", ...props },
+    React.createElement("path", { d: "M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" })
+  ),
+  refresh: (props) => React.createElement(
+    "svg",
+    { viewBox: "0 0 24 24", width: 12, height: 12, fill: "none", stroke: "currentColor", strokeWidth: 2.2, strokeLinecap: "round", strokeLinejoin: "round", ...props },
+    React.createElement("path", { d: "M23 4v6h-6M1 20v-6h6" }),
+    React.createElement("path", { d: "M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" })
+  ),
+  check: (props) => React.createElement(
+    "svg",
+    { viewBox: "0 0 24 24", width: 12, height: 12, fill: "none", stroke: "currentColor", strokeWidth: 2.5, strokeLinecap: "round", strokeLinejoin: "round", ...props },
+    React.createElement("polyline", { points: "20 6 9 17 4 12" })
+  )
 };
 function useCopy() {
   const [copied, setCopied] = React.useState(false);
@@ -472,7 +526,15 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
       React.createElement(
         "div",
         null,
-        React.createElement("div", { style: s.label }, platformName),
+        React.createElement(
+          "div",
+          { style: { ...s.label, display: "flex", alignItems: "center", gap: 7 } },
+          platformId === "wechat" && React.createElement(Icons.wechat, { style: { color: "#07C160", width: 20, height: 20 } }),
+          platformId === "qq" && React.createElement(Icons.qq, { style: { color: "#12B7F5", width: 20, height: 20 } }),
+          platformId === "feishu" && React.createElement(Icons.feishu, { style: { color: "#00D6B9", width: 20, height: 20 } }),
+          platformId === "telegram" && React.createElement(Icons.telegram, { style: { color: "#24A1DE", width: 20, height: 20 } }),
+          platformName
+        ),
         React.createElement("div", { style: { ...s.muted, marginTop: 2 } }, platformDesc)
       ),
       React.createElement(StatusTag, { status: platform?.status, running: connected })
@@ -887,7 +949,11 @@ function UpgradeCommandRow({ cmd }) {
         color: "var(--dsw-alias-label-secondary,#6b7280)",
         flex: 1,
         minWidth: 0,
-        wordBreak: "break-all"
+        wordBreak: "break-all",
+        background: "var(--dsw-alias-bg-layer-1,#ffffff)",
+        padding: "4px 8px",
+        borderRadius: 6,
+        border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)"
       }
     }, cmd),
     React.createElement("button", {
@@ -900,6 +966,9 @@ function UpgradeCommandRow({ cmd }) {
 function VersionBanner({ rpcCall }) {
   const [info, setInfo] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
+  const [upgrading, setUpgrading] = React.useState(false);
+  const [upgradeResult, setUpgradeResult] = React.useState(null);
+  const [showManual, setShowManual] = React.useState(false);
   const check = React.useCallback(async () => {
     setLoading(true);
     try {
@@ -913,6 +982,27 @@ function VersionBanner({ rpcCall }) {
     check();
   }, [check]);
   const hasUpdate = info?.latest && info?.current && !info.error && semverGt(info.latest, info.current);
+  const isLatest = info?.latest && info?.current && !info.error && !semverGt(info.latest, info.current);
+  const handleUpgrade = React.useCallback(async () => {
+    if (!info?.latest || upgrading) return;
+    setUpgrading(true);
+    setUpgradeResult(null);
+    try {
+      const r = await rpcCall(BRIDGE_ENDPOINTS.upgradePlugin, { version: info.latest });
+      if (r?.ok && r.value?.ok) {
+        setUpgradeResult({ ok: true, message: `\u5DF2\u6210\u529F\u5347\u7EA7\u5230 v${info.latest}\uFF01\u8BF7\u91CD\u542F DSH \u670D\u52A1\u4F7F\u65B0\u7248\u672C\u751F\u6548\u3002` });
+        setTimeout(() => check(), 3e3);
+      } else {
+        setUpgradeResult({ ok: false, message: r?.value?.error || r?.error?.message || "\u5347\u7EA7\u5931\u8D25" });
+        setShowManual(true);
+      }
+    } catch (e) {
+      setUpgradeResult({ ok: false, message: e.message || "\u5347\u7EA7\u8BF7\u6C42\u5931\u8D25" });
+      setShowManual(true);
+    } finally {
+      setUpgrading(false);
+    }
+  }, [info?.latest, upgrading, rpcCall, check]);
   const links = React.createElement(
     "div",
     { style: { display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" } },
@@ -921,95 +1011,174 @@ function VersionBanner({ rpcCall }) {
       target: "_blank",
       rel: "noreferrer",
       style: s.btnLink
-    }, "\u2B50 GitHub"),
+    }, React.createElement(Icons.github), "GitHub"),
     React.createElement("a", {
       href: RELEASES_URL,
       target: "_blank",
       rel: "noreferrer",
       style: s.btnLink
-    }, "\u{1F4CB} \u66F4\u65B0\u65E5\u5FD7"),
+    }, "\u66F4\u65B0\u65E5\u5FD7"),
     React.createElement("a", {
       href: ISSUES_URL,
       target: "_blank",
       rel: "noreferrer",
       style: s.btnLink
-    }, "\u{1F41B} \u53CD\u9988 Bug")
+    }, "\u53CD\u9988 Issue")
   );
-  if (hasUpdate) {
-    const cmds = upgradeCommands(info.latest);
-    return React.createElement(
+  return React.createElement(
+    "div",
+    { style: { marginBottom: 16 } },
+    // 顶部状态行：版本徽标 + 刷新按钮 + 链接组
+    React.createElement(
       "div",
-      { style: { marginBottom: 16 } },
+      {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 8
+        }
+      },
       React.createElement(
         "div",
-        {
-          style: {
-            ...s.card,
-            background: "var(--dsw-alias-state-info-bg,#eff6ff)",
-            border: "1px solid var(--dsw-alias-state-info-border,#bfdbfe)",
-            padding: "12px 16px",
-            marginBottom: 8
-          }
-        },
+        { style: { display: "flex", alignItems: "center", gap: 8 } },
+        // 版本状态徽标
+        React.createElement(
+          "span",
+          {
+            style: {
+              ...s.tag,
+              background: hasUpdate ? "var(--dsw-alias-state-info-bg,#eff6ff)" : isLatest ? "var(--dsw-alias-state-success-bg,#ecfdf5)" : "var(--dsw-alias-bg-layer-2,#f3f4f6)",
+              color: hasUpdate ? "var(--dsw-alias-state-info-primary,#2563eb)" : isLatest ? "var(--dsw-alias-state-success-primary,#059669)" : "var(--dsw-alias-label-secondary,#6b7280)",
+              padding: "3px 10px",
+              fontSize: 12,
+              fontWeight: 500,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5
+            }
+          },
+          loading ? React.createElement("span", {
+            style: { display: "inline-flex", alignItems: "center" }
+          }, React.createElement(Icons.refresh)) : isLatest ? React.createElement(Icons.check) : null,
+          info ? `v${info.current}` : "\u7248\u672C\u68C0\u67E5\u4E2D\u2026",
+          isLatest && React.createElement("span", { style: { opacity: 0.85, fontSize: 11, fontWeight: 400 } }, "\xB7 \u5DF2\u662F\u6700\u65B0"),
+          hasUpdate && React.createElement("span", { style: { fontWeight: 600, fontSize: 11 } }, `\u2794 v${info.latest}`),
+          info?.error && React.createElement("span", { style: { color: "var(--dsw-alias-state-warn-primary,#d97706)", fontSize: 11 } }, "(\u7F51\u7EDC\u8D85\u65F6)")
+        ),
+        // 刷新检查按钮
+        React.createElement(
+          "button",
+          {
+            style: {
+              ...s.btnGhost,
+              height: 24,
+              padding: "0 8px",
+              fontSize: 11,
+              opacity: loading ? 0.5 : 1,
+              gap: 4
+            },
+            onClick: check,
+            disabled: loading || upgrading,
+            title: "\u91CD\u65B0\u68C0\u67E5 npm \u7EBF\u4E0A\u7248\u672C"
+          },
+          React.createElement(Icons.refresh),
+          loading ? "\u68C0\u67E5\u4E2D\u2026" : "\u68C0\u67E5\u66F4\u65B0"
+        )
+      ),
+      links
+    ),
+    // 发现新版本高亮卡片（支持一键直接升级）
+    hasUpdate && React.createElement(
+      "div",
+      {
+        style: {
+          ...s.card,
+          background: "var(--dsw-alias-state-info-bg,#eff6ff)",
+          border: "1px solid var(--dsw-alias-state-info-border,#bfdbfe)",
+          padding: "14px 16px",
+          marginTop: 10,
+          marginBottom: 0
+        }
+      },
+      React.createElement(
+        "div",
+        { style: { display: "flex", alignItems: "flex-start", gap: 12 } },
+        React.createElement("span", { style: { fontSize: 22 } }, "\u{1F680}"),
         React.createElement(
           "div",
-          { style: { display: "flex", alignItems: "center", gap: 12 } },
-          React.createElement("span", { style: { fontSize: 20 } }, "\u{1F389}"),
+          { style: { flex: 1, minWidth: 0 } },
           React.createElement(
             "div",
-            { style: { flex: 1, minWidth: 0 } },
+            { style: { display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 8 } },
             React.createElement("div", {
               style: {
                 fontSize: 13,
                 fontWeight: 600,
-                color: "var(--dsw-alias-state-info-primary,#1e40af)",
-                marginBottom: 8
+                color: "var(--dsw-alias-state-info-primary,#1e40af)"
               }
             }, `\u53D1\u73B0\u65B0\u7248\u672C v${info.latest}\uFF08\u5F53\u524D v${info.current}\uFF09`),
-            // 升级命令：dsh plugin 与 npx 两种，均带复制按钮
             React.createElement(
-              "div",
-              { style: { display: "flex", flexDirection: "column", gap: 6 } },
-              cmds.map(({ id, cmd }) => React.createElement(UpgradeCommandRow, { key: id, cmd }))
+              "button",
+              {
+                style: {
+                  ...s.btnPri,
+                  height: 28,
+                  fontSize: 12,
+                  padding: "0 14px",
+                  background: upgradeResult?.ok ? "var(--dsw-alias-state-success-primary,#059669)" : "var(--dsw-alias-brand-primary,#4f6ef7)",
+                  opacity: upgrading ? 0.6 : 1
+                },
+                onClick: handleUpgrade,
+                disabled: upgrading || upgradeResult?.ok
+              },
+              upgrading ? React.createElement(
+                "span",
+                { style: { display: "inline-flex", alignItems: "center", gap: 6 } },
+                React.createElement("span", { style: { animation: "spin 1s linear infinite", display: "inline-flex" } }, React.createElement(Icons.refresh)),
+                "\u6B63\u5728\u81EA\u52A8\u5347\u7EA7\u2026"
+              ) : upgradeResult?.ok ? "\u2713 \u5DF2\u5B8C\u6210\u5347\u7EA7" : `\u4E00\u952E\u5347\u7EA7\u5230 v${info.latest}`
             )
           ),
-          React.createElement("button", {
+          upgradeResult && React.createElement("div", {
             style: {
-              ...s.btnGhost,
-              height: 30,
-              padding: "0 12px",
+              background: upgradeResult.ok ? "var(--dsw-alias-state-success-bg,#ecfdf5)" : "var(--dsw-alias-state-error-bg,#fef2f2)",
+              border: `1px solid ${upgradeResult.ok ? "var(--dsw-alias-state-success-border,#a7f3d0)" : "var(--dsw-alias-state-error-border,#fecaca)"}`,
+              color: upgradeResult.ok ? "var(--dsw-alias-state-success-primary,#065f46)" : "var(--dsw-alias-state-error-primary,#991b1b)",
+              padding: "8px 12px",
+              borderRadius: 6,
               fontSize: 12,
-              opacity: loading ? 0.5 : 1,
-              flexShrink: 0
+              marginBottom: 8,
+              lineHeight: 1.5
+            }
+          }, upgradeResult.message),
+          React.createElement(
+            "div",
+            { style: { marginTop: 4 } },
+            React.createElement("button", {
+              style: { ...s.btnLink, fontSize: 11, color: "var(--dsw-alias-label-secondary,#6b7280)" },
+              onClick: () => setShowManual((v) => !v)
+            }, showManual ? "\u25B4 \u6298\u53E0\u624B\u52A8\u547D\u4EE4\u884C" : "\u25BE \u67E5\u770B\u624B\u52A8\u5347\u7EA7\u547D\u4EE4 (\u5982\u9700)")
+          ),
+          showManual && React.createElement(
+            "div",
+            {
+              style: { display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }
             },
-            onClick: check,
-            disabled: loading
-          }, loading ? "\u2026" : "\u5237\u65B0")
+            upgradeCommands(info.latest).map(
+              ({ id, cmd }) => React.createElement(UpgradeCommandRow, { key: id, cmd })
+            )
+          )
         )
-      ),
-      links
-    );
-  }
-  return React.createElement(
-    "div",
-    { style: { marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 } },
-    React.createElement(
-      "div",
-      { style: { ...s.muted, display: "flex", alignItems: "center", gap: 8 } },
-      loading && !info ? React.createElement("span", null, "\u68C0\u67E5\u66F4\u65B0\u4E2D\u2026") : info ? React.createElement("span", null, `v${info.current}${info.latest && !info.error ? " \xB7 \u5DF2\u662F\u6700\u65B0" : info.error ? " \xB7 \u68C0\u67E5\u5931\u8D25" : ""}`) : null,
-      info && React.createElement("button", {
-        style: { ...s.btnGhost, height: 22, padding: "0 8px", fontSize: 11, opacity: loading ? 0.5 : 1 },
-        onClick: check,
-        disabled: loading
-      }, loading ? "\u2026" : "\u91CD\u65B0\u68C0\u67E5")
-    ),
-    links
+      )
+    )
   );
 }
 var TABS = [
-  { id: "lan", label: "\u5C40\u57DF\u7F51", icon: "\u{1F4F6}" },
-  { id: "tunnel", label: "\u516C\u7F51\u96A7\u9053", icon: "\u{1F310}" },
-  { id: "im", label: "IM \u673A\u5668\u4EBA", icon: "\u{1F916}" }
+  { id: "lan", label: "\u5C40\u57DF\u7F51", icon: Icons.lan },
+  { id: "tunnel", label: "\u516C\u7F51\u96A7\u9053", icon: Icons.tunnel },
+  { id: "im", label: "IM \u673A\u5668\u4EBA", icon: Icons.bot }
 ];
 function TabBar({ active, onChange, dots }) {
   return React.createElement(
@@ -1022,7 +1191,7 @@ function TabBar({ active, onChange, dots }) {
         borderBottom: "1px solid var(--dsw-alias-border-l2,#e5e7eb)"
       }
     },
-    TABS.map(({ id, label, icon }) => {
+    TABS.map(({ id, label, icon: TabIcon }) => {
       const isActive = active === id;
       const hasDot = dots?.[id];
       return React.createElement(
@@ -1043,12 +1212,19 @@ function TabBar({ active, onChange, dots }) {
             marginBottom: -1,
             display: "inline-flex",
             alignItems: "center",
-            gap: 6,
+            gap: 7,
             transition: "color .15s, border-color .15s",
             whiteSpace: "nowrap"
           }
         },
-        React.createElement("span", { style: { fontSize: 14 } }, icon),
+        TabIcon && React.createElement(TabIcon, {
+          style: {
+            color: isActive ? "var(--dsw-alias-brand-primary,#4f6ef7)" : "var(--dsw-alias-label-tertiary,#9ca3af)",
+            width: 16,
+            height: 16,
+            flexShrink: 0
+          }
+        }),
         label,
         hasDot && React.createElement("span", {
           style: {
@@ -1187,9 +1363,10 @@ function BridgePanel({ rpcCall }) {
     );
   } else if (activeTab === "im") {
     const IM_PLATFORMS = [
-      { id: "wechat", label: "\u5FAE\u4FE1", icon: "\u{1F4AC}", desc: "ClawBot \u626B\u7801\u76F4\u8FDE \xB7 \u65E0\u9700\u516C\u7F51" },
-      { id: "qq", label: "QQ", icon: "\u{1F427}", desc: "\u5B98\u65B9\u673A\u5668\u4EBA \xB7 \u79C1\u804A/\u7FA4\u804A/\u6309\u94AE" },
-      { id: "feishu", label: "\u98DE\u4E66", icon: "\u{1F54A}\uFE0F", desc: "\u5B98\u65B9\u4E8B\u4EF6\u56DE\u8C03 API" }
+      { id: "wechat", label: "\u5FAE\u4FE1", icon: Icons.wechat, brandColor: "#07C160", desc: "ClawBot \u626B\u7801\u76F4\u8FDE \xB7 \u65E0\u9700\u516C\u7F51" },
+      { id: "qq", label: "QQ", icon: Icons.qq, brandColor: "#12B7F5", desc: "\u5B98\u65B9\u673A\u5668\u4EBA \xB7 \u79C1\u804A/\u7FA4\u804A/\u6309\u94AE" },
+      { id: "feishu", label: "\u98DE\u4E66", icon: Icons.feishu, brandColor: "#00D6B9", desc: "\u5B98\u65B9\u4E8B\u4EF6\u56DE\u8C03 API" },
+      { id: "telegram", label: "Telegram", icon: Icons.telegram, brandColor: "#24A1DE", desc: "\u5B98\u65B9 Bot API" }
     ];
     tabContent = React.createElement(
       "div",
@@ -1200,7 +1377,7 @@ function BridgePanel({ rpcCall }) {
         {
           style: { display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }
         },
-        IM_PLATFORMS.map(({ id, label, icon, desc }) => {
+        IM_PLATFORMS.map(({ id, label, icon: IconComponent, brandColor, desc }) => {
           const platformData = platforms?.[id];
           const available = !!platformData;
           const active = platformData?.status === "connected" || platformData?.status === "starting" || platformData?.status === "reconnecting";
@@ -1209,7 +1386,7 @@ function BridgePanel({ rpcCall }) {
             {
               key: id,
               style: {
-                flex: "1 1 150px",
+                flex: "1 1 135px",
                 border: `1px solid ${selectedPlatform === id ? "var(--dsw-alias-brand-primary,#4f6ef7)" : active ? "var(--dsw-alias-state-success-primary,#10b981)" : "var(--dsw-alias-border-l2,#e5e7eb)"}`,
                 borderRadius: 10,
                 padding: "12px 14px",
@@ -1226,8 +1403,8 @@ function BridgePanel({ rpcCall }) {
               { style: { ...s.label, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "space-between" } },
               React.createElement(
                 "span",
-                { style: { display: "flex", alignItems: "center", gap: 6 } },
-                React.createElement("span", { style: { fontSize: 14 } }, icon),
+                { style: { display: "flex", alignItems: "center", gap: 7 } },
+                IconComponent && React.createElement(IconComponent, { style: { color: brandColor, width: 18, height: 18, flexShrink: 0 } }),
                 label
               ),
               active && React.createElement("span", {
