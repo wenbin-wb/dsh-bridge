@@ -348,6 +348,8 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
         appId: platform.config.appId ?? '',
         // Secret 不由后端回传；空值表示沿用已保存密钥
         clientSecret: '',
+        appSecret: '',
+        domain: platform.config.domain ?? 'feishu',
       });
     }
   }, [platform?.config]);
@@ -436,10 +438,14 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
       maxMessageChars:    Number(cfgDraft.maxMessageChars),
       sendChunkDelayMs:   Number(cfgDraft.sendChunkDelayMs),
     };
-    // QQ 平台额外携带凭证
+    // QQ / 飞书 平台额外携带凭证
     if (platformId === 'qq') {
       payload.appId = cfgDraft.appId.trim();
       payload.clientSecret = cfgDraft.clientSecret.trim();
+    } else if (platformId === 'feishu') {
+      payload.appId = cfgDraft.appId.trim();
+      payload.appSecret = cfgDraft.appSecret.trim();
+      payload.domain = cfgDraft.domain || 'feishu';
     }
     await act(BRIDGE_ENDPOINTS.platformSetConfig, payload);
   }, [act, cfgDraft, platformId]);
@@ -451,6 +457,10 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
     (platformId === 'qq' && (
       cfgDraft.appId !== (platform.config.appId ?? '') ||
       cfgDraft.clientSecret !== (platform.config.clientSecret ?? '')
+    )) ||
+    (platformId === 'feishu' && (
+      cfgDraft.appId !== (platform.config.appId ?? '') ||
+      cfgDraft.appSecret !== (platform.config.appSecret ?? '')
     ))
   );
 
@@ -503,6 +513,16 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
         target: '_blank', rel: 'noopener noreferrer',
         style: s.btnGhost,
       }, '🌐 QQ 开放平台'),
+      platformId === 'feishu' && React.createElement('a', {
+        href: 'https://github.com/wenbin-wb/dsh-bridge/blob/main/docs/feishu-usage.md',
+        target: '_blank', rel: 'noopener noreferrer',
+        style: s.btnGhost,
+      }, '📖 飞书使用说明'),
+      platformId === 'feishu' && React.createElement('a', {
+        href: 'https://open.feishu.cn/app',
+        target: '_blank', rel: 'noopener noreferrer',
+        style: s.btnGhost,
+      }, '🌐 飞书开放平台'),
       React.createElement('button', {
         style: s.btnGhost,
         onClick: () => setShowHelp(v => !v),
@@ -613,19 +633,49 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
       ),
       React.createElement('div', { style: { display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' } },
         platform.status !== 'connected' && platform.status !== 'starting' &&
-          React.createElement('button', { style: s.btnPri, onClick: onLogin, disabled: busy }, '重新登录'),
+          React.createElement('button', { style: s.btnPri, onClick: onLogin, disabled: busy }, '重新连接'),
         (platform.status === 'connected' || platform.status === 'starting') &&
           React.createElement('button', { style: s.btnGhost, onClick: onStop, disabled: busy }, '断开'),
         React.createElement('button', {
           style: { ...s.btnGhost, color: 'var(--dsw-alias-state-error-primary,#dc2626)', borderColor: 'var(--dsw-alias-state-error-primary,#dc2626)', opacity: busy ? 0.5 : 1 },
           disabled: busy,
-          onClick: () => { if (window.confirm('确认解绑？这将清除登录凭证，下次需重新登录。')) act(BRIDGE_ENDPOINTS.platformUnbind, {}); },
-          title: '清除登录凭证，下次需重新登录',
+          onClick: () => { if (window.confirm('确认解绑？这将清除保存的凭证。')) act(BRIDGE_ENDPOINTS.platformUnbind, {}); },
+          title: '清除登录凭证，下次需重新配置',
         }, '解绑账号'),
+      ),
+      // 飞书专属：手机扫码直达 Bot 对话
+      platformId === 'feishu' && platform.botQr && React.createElement('div', {
+        style: {
+          marginTop: 12,
+          padding: 12,
+          background: 'var(--dsw-alias-bg-layer-1,#ffffff)',
+          border: '1px solid var(--dsw-alias-border-l2,#e5e7eb)',
+          borderRadius: 8,
+          display: 'flex',
+          gap: 14,
+          alignItems: 'center',
+          flexWrap: 'wrap',
+        },
+      },
+        React.createElement('img', { src: platform.botQr, alt: 'Feishu Bot QR', style: { width: 110, height: 110, borderRadius: 8, border: '1px solid var(--dsw-alias-border-l2,#e5e7eb)', padding: 4, background: '#fff' } }),
+        React.createElement('div', { style: { flex: 1, minWidth: 160 } },
+          React.createElement('div', { style: { ...s.label, fontSize: 13, fontWeight: 600 } }, '📱 手机飞书扫码直达对话'),
+          React.createElement('div', { style: { ...s.muted, fontSize: 12, marginTop: 4, lineHeight: 1.5 } },
+            '用飞书手机 App 扫描左侧二维码，立即打开与 Bot 对话；发送首条消息自动完成白名单授权。'
+          ),
+          platform.botLink && React.createElement('div', { style: { display: 'flex', gap: 8, marginTop: 8 } },
+            React.createElement('a', {
+              href: platform.botLink,
+              target: '_blank',
+              rel: 'noopener noreferrer',
+              style: { ...s.btnGhost, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', fontSize: 12 },
+            }, '在飞书客户端打开 ↗'),
+          ),
+        ),
       ),
     ),
 
-    // 未配置 / 登录中：二维码（QQ 无二维码，显示凭证表单）
+    // 未配置 / 登录中：表单（QQ / 飞书）或二维码（微信）
     (!platform?.configured || showQr) && React.createElement('div', { style: s.block },
       showQr && login.qr
         ? React.createElement('div', null,
@@ -637,28 +687,45 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
             ),
             login.error && React.createElement('div', { style: { ...s.muted, marginTop: 4, color: 'var(--dsw-alias-state-warn-primary,#92400e)' } }, login.error),
           )
-        : platformId === 'qq'
+        : (platformId === 'qq' || platformId === 'feishu')
           ? React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 } },
+              platformId === 'feishu' && React.createElement('div', {
+                style: {
+                  background: 'var(--dsw-alias-bg-layer-1,#ffffff)',
+                  border: '1px dashed var(--dsw-alias-border-l2,#e5e7eb)',
+                  borderRadius: 6,
+                  padding: '8px 10px',
+                  fontSize: 12,
+                  lineHeight: 1.5,
+                },
+              },
+                React.createElement('span', { style: s.label }, '💡 扫码自动创建引导：'),
+                React.createElement('span', { style: s.muted }, ' 可在终端运行 '),
+                React.createElement('code', { style: { ...s.code, fontSize: 11, background: 'var(--dsw-alias-bg-layer-2,#f3f4f6)', padding: '2px 4px', borderRadius: 4 } }, 'npx feishu-bot-bootstrap'),
+                React.createElement('span', { style: s.muted }, ' 手机扫码一键自动创建应用并输出凭证；或在下方手动填入凭证。')
+              ),
               React.createElement('div', null,
-                React.createElement('div', { style: { ...s.muted, marginBottom: 4 } }, 'AppID — QQ 开放平台机器人应用 ID'),
+                React.createElement('div', { style: { ...s.muted, marginBottom: 4 } },
+                  platformId === 'qq' ? 'AppID — QQ 开放平台机器人应用 ID' : 'App ID — 飞书开放平台自建应用 ID (cli_xxx)'
+                ),
                 React.createElement('input', {
                   style: { ...s.input, width: '100%' },
-                  placeholder: '请输入 AppID',
+                  placeholder: platformId === 'qq' ? '请输入 AppID' : '请输入 App ID (如 cli_a1b2c3d4...)',
                   value: cfgDraft?.appId ?? '',
                   onChange: (e) => setCfgDraft(d => ({ ...d, appId: e.target.value })),
-                  onKeyDown: (e) => { if (e.key === 'Enter' && cfgDraft?.appId?.trim() && cfgDraft?.clientSecret?.trim() && !busy) saveConfig(); },
                 }),
               ),
               React.createElement('div', null,
-                React.createElement('div', { style: { ...s.muted, marginBottom: 4 } }, 'ClientSecret — QQ 开放平台机器人密钥'),
+                React.createElement('div', { style: { ...s.muted, marginBottom: 4 } },
+                  platformId === 'qq' ? 'ClientSecret — QQ 开放平台机器人密钥' : 'App Secret — 飞书开放平台应用密钥'
+                ),
                 React.createElement('div', { style: { display: 'flex', gap: 6, alignItems: 'center' } },
                   React.createElement('input', {
                     style: { ...s.input, flex: 1 },
                     type: showSecret ? 'text' : 'password',
-                    placeholder: '请输入 ClientSecret',
-                    value: cfgDraft?.clientSecret ?? '',
-                    onChange: (e) => setCfgDraft(d => ({ ...d, clientSecret: e.target.value })),
-                    onKeyDown: (e) => { if (e.key === 'Enter' && cfgDraft?.appId?.trim() && cfgDraft?.clientSecret?.trim() && !busy) saveConfig(); },
+                    placeholder: platformId === 'qq' ? '请输入 ClientSecret' : '请输入 App Secret',
+                    value: platformId === 'qq' ? (cfgDraft?.clientSecret ?? '') : (cfgDraft?.appSecret ?? ''),
+                    onChange: (e) => setCfgDraft(d => platformId === 'qq' ? ({ ...d, clientSecret: e.target.value }) : ({ ...d, appSecret: e.target.value })),
                   }),
                   React.createElement('button', {
                     style: { ...s.btnGhost, height: 32, padding: '0 10px', fontSize: 13, flexShrink: 0 },
@@ -670,15 +737,16 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
               ),
               React.createElement('div', null,
                 React.createElement('a', {
-                  href: 'https://bot.q.qq.com/wiki/develop/api-v2/',
+                  href: platformId === 'qq' ? 'https://bot.q.qq.com/wiki/develop/api-v2/' : 'https://open.feishu.cn/app',
                   target: '_blank', rel: 'noopener noreferrer',
                   style: s.btnLink,
-                }, '📖 前往 QQ 开放平台申请机器人'),
+                }, platformId === 'qq' ? '📖 前往 QQ 开放平台申请机器人' : '📖 前往飞书开放平台创建企业自建应用'),
               ),
               React.createElement('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' } },
                 React.createElement('button', {
                   style: { ...s.btnPri, opacity: busy ? 0.5 : 1 },
-                  onClick: saveConfig, disabled: busy || !cfgDraft?.appId?.trim() || !cfgDraft?.clientSecret?.trim(),
+                  onClick: saveConfig,
+                  disabled: busy || !cfgDraft?.appId?.trim() || (platformId === 'qq' ? !cfgDraft?.clientSecret?.trim() : !cfgDraft?.appSecret?.trim()),
                 }, busy ? '保存中…' : '保存并连接'),
                 login.phase === 'error' && React.createElement('div', { style: { ...s.muted, fontSize: 12 } }, login.error ?? '连接失败'),
               ),
@@ -692,106 +760,7 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
             ),
     ),
 
-    // 高级设置（紧凑 2x2 网格 + 恢复默认值）
-    cfgDraft && React.createElement('div', { style: s.block },
-      React.createElement('button', {
-        style: { ...s.btnLink, fontSize: 12, marginBottom: showAdvanced ? 10 : 0 },
-        onClick: () => setShowAdvanced(v => !v),
-      }, showAdvanced ? '▾ 高级设置' : '▸ 高级设置'),
-      showAdvanced && React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10 } },
-        // 2x2 参数网格
-        React.createElement('div', {
-          style: {
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: 10,
-          },
-        },
-          // 心跳间隔
-          React.createElement('div', null,
-            React.createElement('div', { style: { ...s.muted, marginBottom: 4 } }, '心跳进度间隔 (秒)'),
-            React.createElement('input', {
-              style: { ...s.input, width: '100%' },
-              type: 'number', min: 30, max: 3600,
-              value: cfgDraft.digestIntervalSec,
-              onChange: (e) => setCfgDraft(d => ({ ...d, digestIntervalSec: e.target.value })),
-            }),
-          ),
-          // 审批超时
-          React.createElement('div', null,
-            React.createElement('div', { style: { ...s.muted, marginBottom: 4 } }, '审批超时自动拒绝 (秒)'),
-            React.createElement('input', {
-              style: { ...s.input, width: '100%' },
-              type: 'number', min: 30, max: 86400,
-              value: cfgDraft.approvalTimeoutSec,
-              onChange: (e) => setCfgDraft(d => ({ ...d, approvalTimeoutSec: e.target.value })),
-            }),
-          ),
-          // 每气泡字数
-          React.createElement('div', null,
-            React.createElement('div', { style: { ...s.muted, marginBottom: 4 } }, '单条最大字数限制 (字)'),
-            React.createElement('input', {
-              style: { ...s.input, width: '100%' },
-              type: 'number', min: 100, max: 10000,
-              value: cfgDraft.maxMessageChars,
-              onChange: (e) => setCfgDraft(d => ({ ...d, maxMessageChars: e.target.value })),
-            }),
-          ),
-          // 分块延迟
-          React.createElement('div', null,
-            React.createElement('div', { style: { ...s.muted, marginBottom: 4 } }, '分块发送延迟 (毫秒)'),
-            React.createElement('input', {
-              style: { ...s.input, width: '100%' },
-              type: 'number', min: 0, max: 10000,
-              value: cfgDraft.sendChunkDelayMs,
-              onChange: (e) => setCfgDraft(d => ({ ...d, sendChunkDelayMs: e.target.value })),
-            }),
-          ),
-        ),
-        // QQ 平台凭证
-        platformId === 'qq' && React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 } },
-          React.createElement('div', null,
-            React.createElement('div', { style: { ...s.muted, marginBottom: 4 } }, 'AppID — QQ 开放平台机器人应用 ID'),
-            React.createElement('input', {
-              style: { ...s.input, width: '100%' },
-              placeholder: '请输入 AppID',
-              value: cfgDraft.appId,
-              onChange: (e) => setCfgDraft(d => ({ ...d, appId: e.target.value })),
-            }),
-          ),
-          React.createElement('div', null,
-            React.createElement('div', { style: { ...s.muted, marginBottom: 4 } }, 'ClientSecret — QQ 开放平台机器人密钥（留空则保持已保存密钥）'),
-            React.createElement('div', { style: { display: 'flex', gap: 6, alignItems: 'center' } },
-              React.createElement('input', {
-                style: { ...s.input, flex: 1 },
-                type: showSecret ? 'text' : 'password',
-                placeholder: '留空保持已保存密钥',
-                value: cfgDraft.clientSecret,
-                onChange: (e) => setCfgDraft(d => ({ ...d, clientSecret: e.target.value })),
-              }),
-              React.createElement('button', {
-                style: { ...s.btnGhost, height: 32, padding: '0 10px', fontSize: 13, flexShrink: 0 },
-                onClick: () => setShowSecret(v => !v),
-                type: 'button',
-                title: showSecret ? '隐藏密钥' : '显示明文',
-              }, showSecret ? '🙈 隐藏' : '👁️ 显示'),
-            ),
-          ),
-        ),
-        React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center', marginTop: 4 } },
-          React.createElement('button', {
-            style: { ...s.btnPri, opacity: (cfgDirty && !busy) ? 1 : 0.5 },
-            disabled: !cfgDirty || busy,
-            onClick: saveConfig,
-          }, busy ? '保存中…' : '保存设置'),
-          React.createElement('button', {
-            style: { ...s.btnGhost, height: 32, fontSize: 12 },
-            onClick: resetDefaults,
-            title: '恢复推荐默认配置',
-          }, '↺ 恢复推荐默认'),
-        ),
-      ),
-    ),
+
 
     React.createElement('div', { style: s.block },
       React.createElement('div', { style: { ...s.tip, fontSize: 12 } },
@@ -1221,7 +1190,7 @@ function BridgePanel({ rpcCall }) {
     const IM_PLATFORMS = [
       { id: 'wechat',   label: '微信',     icon: Icons.wechat,   brandColor: '#07C160', desc: 'ClawBot 扫码直连 · 无需公网' },
       { id: 'qq',       label: 'QQ',       icon: Icons.qq,       brandColor: '#12B7F5', desc: '官方机器人 · 私聊/群聊/按钮' },
-      { id: 'feishu',   label: '飞书',     icon: Icons.feishu,   brandColor: '#00D6B9', desc: '官方事件回调 API' },
+      { id: 'feishu',   label: '飞书',     icon: Icons.feishu,   brandColor: '#00D6B9', desc: '官方 WebSocket 长连接 · 免公网' },
       { id: 'telegram', label: 'Telegram', icon: Icons.telegram, brandColor: '#24A1DE', desc: '官方 Bot API' },
     ];
     

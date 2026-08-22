@@ -19,6 +19,7 @@ Seamlessly extend your local DeepSeek Harness to mobile phones, tablets, public 
 - **Custom Tunnel**: Connect to your own tunnel server with a fixed domain ([Setup Guide](docs/custom-tunnel.md))
 - **WeChat Bot (ClawBot / iLink)**: Scan a QR code to log in a WeChat personal account, then chat with, control, and approve your DeepSeek Harness agents right inside WeChat. **Multi-workspace selection, restart-persistent sessions, grouped session listing with titles, media (image/file/voice) transfer, and permission approvals** — over Tencent's official iLink Bot API, no public server or tunnel required ([Usage Guide](docs/wechat-usage.md))
 - **QQ Bot (OpenAPI v2)**: Connect your QQ Bot to receive private/group messages, send Markdown, button keyboards, and rich media. **Full event coverage (C2C / GROUP_AT_MESSAGE_CREATE), auto token refresh, reconnection with backoff, message deduplication** — over Tencent's official QQ Bot OpenAPI v2 ([Usage Guide](docs/qq-usage.md))
+- **Feishu / Lark Bot (Official WebSocket)**: Connect enterprise self-built apps via Feishu's official WebSocket protocol. **No public IP / no Webhook required, Markdown table formatting, native interactive card permission approvals with 1-click button actions** ([Usage Guide](docs/feishu-usage.md))
 - **Official Brand SVG Icons**: Authentic vector brand icons for WeChat, QQ, Feishu, Telegram with real-time status indicators
 - **Fast Version Check & 1-Click Upgrade**: Dual-channel registry check (npmmirror + npmjs fallback in ~200ms) with seamless **1-click in-app upgrade**, no terminal copying required
 - **Dark Mode Support**: Deep integration with DeepSeek Harness Design Tokens (`--dsw-alias-*`), QR code background protection for safe dark mode scanning
@@ -38,7 +39,7 @@ Seamlessly extend your local DeepSeek Harness to mobile phones, tablets, public 
 | **Platform Abstraction** | Platform-agnostic core (sessions / approvals / commands / digest) shared across IM channels | ✅ **Completed** (v2.0.0) |
 | **WeChat** | Chat with your Agent directly in WeChat | ✅ Supported (workspaces / persisted sessions / media / approvals) |
 | **QQ Bot** | QQ bot integration for group/private chat | ✅ **Completed** (v2.1.0) — Markdown / buttons / rich media |
-| **Feishu** | Feishu message/bot integration for workplace scenarios | Planned |
+| **Feishu** | Feishu / Lark official persistent WebSocket bot | ✅ **Completed** (v2.3.0) — No-public-IP WS / Card Approvals |
 | **Telegram** | IM channel suited for self-hosting and overseas | Planned |
 | **OpenClaw** | Connect with the OpenClaw ecosystem | Planned |
 
@@ -242,6 +243,43 @@ Integrates Tencent's official QQ Bot platform. Supports private chat, group chat
 - **Custom menus, command panels, and interactive buttons require the latest QQ client**
 - If API configuration succeeds but buttons don't appear, update your QQ client to the latest version
 - Plain text commands (e.g. `/new`, `/sessions`, `/help`) work on all client versions
+
+---
+
+### Feishu / Lark Bot (Official WebSocket)
+
+Connect your enterprise self-built app via Feishu's official WebSocket protocol. Supports private chat and group mentions without public IP, domain name, or webhook configuration.
+
+**Key Highlights**
+
+- ⚡ **100% No Public IP Required**: Direct duplex WebSocket connection to Feishu Open Platform
+- 📜 **Card JSON 2.0 Streaming**: In-place single-card incremental streaming updates, eliminating message bubble fragmentation
+- 🛡️ **Card 2.0 Interactive Approvals**: Native orange approval card with `[✓ Approve]` / `[✕ Reject]` action buttons for 1-click execution
+- 📝 **Full Markdown Rendering**: Native support for headings, tables, syntax highlighting, blockquotes, and lists
+- 🔄 **Workspace & Session Management**: Table-formatted `/sessions`, `/use N` switching, and `/workspaces` listing
+
+**Setup Steps**
+
+1. Go to [Feishu Open Platform](https://open.feishu.cn/app) to create a self-built app, enable "Bot" capability, and publish a version ([Detailed Guide](docs/feishu-usage.md))
+2. Under "Events & Callbacks", select "Use WebSocket to receive events", and add `im.message.receive_v1` & `card.action.trigger`
+3. Open DSH Settings → "Remote Access" → "IM Bots" → select "Feishu"
+4. Fill in App ID and App Secret, then click "Save & Connect"
+
+**Feishu Bot Commands** (Full guide in [Feishu Bot Usage Guide](docs/feishu-usage.md))
+
+| Command | Description |
+|---------|-------------|
+| *(plain text)* | Send to current active agent |
+| `/new <prompt>` | Create and start a new session in current workspace |
+| `/new <prompt> @N` | Create a new session in workspace N |
+| `/sessions` (or `/list`) | List all sessions in a structured Markdown table |
+| `/use N` (or `/resume N`) | Switch to/resume session N |
+| `/workspaces` | List all available workspaces |
+| `/end` | End current session |
+| `/stop` | Stop currently executing task |
+| `/status` | View agent status dashboard |
+| `/yes` `/no` (or `1`/`2`) | Respond to permission approval requests (or click card buttons) |
+| `/help` | Display full command help |
 
 ---
 

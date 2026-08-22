@@ -425,7 +425,9 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
         sendChunkDelayMs: String(platform.config.sendChunkDelayMs ?? 1500),
         appId: platform.config.appId ?? "",
         // Secret 不由后端回传；空值表示沿用已保存密钥
-        clientSecret: ""
+        clientSecret: "",
+        appSecret: "",
+        domain: platform.config.domain ?? "feishu"
       });
     }
   }, [platform?.config]);
@@ -501,10 +503,14 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
     if (platformId === "qq") {
       payload.appId = cfgDraft.appId.trim();
       payload.clientSecret = cfgDraft.clientSecret.trim();
+    } else if (platformId === "feishu") {
+      payload.appId = cfgDraft.appId.trim();
+      payload.appSecret = cfgDraft.appSecret.trim();
+      payload.domain = cfgDraft.domain || "feishu";
     }
     await act(BRIDGE_ENDPOINTS.platformSetConfig, payload);
   }, [act, cfgDraft, platformId]);
-  const cfgDirty = cfgDraft && platform?.config && (Number(cfgDraft.digestIntervalSec) !== platform.config.digestIntervalSec || Number(cfgDraft.approvalTimeoutSec) !== platform.config.approvalTimeoutSec || Number(cfgDraft.maxMessageChars) !== platform.config.maxMessageChars || Number(cfgDraft.sendChunkDelayMs) !== platform.config.sendChunkDelayMs || platformId === "qq" && (cfgDraft.appId !== (platform.config.appId ?? "") || cfgDraft.clientSecret !== (platform.config.clientSecret ?? "")));
+  const cfgDirty = cfgDraft && platform?.config && (Number(cfgDraft.digestIntervalSec) !== platform.config.digestIntervalSec || Number(cfgDraft.approvalTimeoutSec) !== platform.config.approvalTimeoutSec || Number(cfgDraft.maxMessageChars) !== platform.config.maxMessageChars || Number(cfgDraft.sendChunkDelayMs) !== platform.config.sendChunkDelayMs || platformId === "qq" && (cfgDraft.appId !== (platform.config.appId ?? "") || cfgDraft.clientSecret !== (platform.config.clientSecret ?? "")) || platformId === "feishu" && (cfgDraft.appId !== (platform.config.appId ?? "") || cfgDraft.appSecret !== (platform.config.appSecret ?? "")));
   if (!platform && !err) {
     return React.createElement(
       "div",
@@ -561,6 +567,18 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
         rel: "noopener noreferrer",
         style: s.btnGhost
       }, "\u{1F310} QQ \u5F00\u653E\u5E73\u53F0"),
+      platformId === "feishu" && React.createElement("a", {
+        href: "https://github.com/wenbin-wb/dsh-bridge/blob/main/docs/feishu-usage.md",
+        target: "_blank",
+        rel: "noopener noreferrer",
+        style: s.btnGhost
+      }, "\u{1F4D6} \u98DE\u4E66\u4F7F\u7528\u8BF4\u660E"),
+      platformId === "feishu" && React.createElement("a", {
+        href: "https://open.feishu.cn/app",
+        target: "_blank",
+        rel: "noopener noreferrer",
+        style: s.btnGhost
+      }, "\u{1F310} \u98DE\u4E66\u5F00\u653E\u5E73\u53F0"),
       React.createElement("button", {
         style: s.btnGhost,
         onClick: () => setShowHelp((v) => !v)
@@ -695,19 +713,57 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
       React.createElement(
         "div",
         { style: { display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", alignItems: "center" } },
-        platform.status !== "connected" && platform.status !== "starting" && React.createElement("button", { style: s.btnPri, onClick: onLogin, disabled: busy }, "\u91CD\u65B0\u767B\u5F55"),
+        platform.status !== "connected" && platform.status !== "starting" && React.createElement("button", { style: s.btnPri, onClick: onLogin, disabled: busy }, "\u91CD\u65B0\u8FDE\u63A5"),
         (platform.status === "connected" || platform.status === "starting") && React.createElement("button", { style: s.btnGhost, onClick: onStop, disabled: busy }, "\u65AD\u5F00"),
         React.createElement("button", {
           style: { ...s.btnGhost, color: "var(--dsw-alias-state-error-primary,#dc2626)", borderColor: "var(--dsw-alias-state-error-primary,#dc2626)", opacity: busy ? 0.5 : 1 },
           disabled: busy,
           onClick: () => {
-            if (window.confirm("\u786E\u8BA4\u89E3\u7ED1\uFF1F\u8FD9\u5C06\u6E05\u9664\u767B\u5F55\u51ED\u8BC1\uFF0C\u4E0B\u6B21\u9700\u91CD\u65B0\u767B\u5F55\u3002")) act(BRIDGE_ENDPOINTS.platformUnbind, {});
+            if (window.confirm("\u786E\u8BA4\u89E3\u7ED1\uFF1F\u8FD9\u5C06\u6E05\u9664\u4FDD\u5B58\u7684\u51ED\u8BC1\u3002")) act(BRIDGE_ENDPOINTS.platformUnbind, {});
           },
-          title: "\u6E05\u9664\u767B\u5F55\u51ED\u8BC1\uFF0C\u4E0B\u6B21\u9700\u91CD\u65B0\u767B\u5F55"
+          title: "\u6E05\u9664\u767B\u5F55\u51ED\u8BC1\uFF0C\u4E0B\u6B21\u9700\u91CD\u65B0\u914D\u7F6E"
         }, "\u89E3\u7ED1\u8D26\u53F7")
+      ),
+      // 飞书专属：手机扫码直达 Bot 对话
+      platformId === "feishu" && platform.botQr && React.createElement(
+        "div",
+        {
+          style: {
+            marginTop: 12,
+            padding: 12,
+            background: "var(--dsw-alias-bg-layer-1,#ffffff)",
+            border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)",
+            borderRadius: 8,
+            display: "flex",
+            gap: 14,
+            alignItems: "center",
+            flexWrap: "wrap"
+          }
+        },
+        React.createElement("img", { src: platform.botQr, alt: "Feishu Bot QR", style: { width: 110, height: 110, borderRadius: 8, border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", padding: 4, background: "#fff" } }),
+        React.createElement(
+          "div",
+          { style: { flex: 1, minWidth: 160 } },
+          React.createElement("div", { style: { ...s.label, fontSize: 13, fontWeight: 600 } }, "\u{1F4F1} \u624B\u673A\u98DE\u4E66\u626B\u7801\u76F4\u8FBE\u5BF9\u8BDD"),
+          React.createElement(
+            "div",
+            { style: { ...s.muted, fontSize: 12, marginTop: 4, lineHeight: 1.5 } },
+            "\u7528\u98DE\u4E66\u624B\u673A App \u626B\u63CF\u5DE6\u4FA7\u4E8C\u7EF4\u7801\uFF0C\u7ACB\u5373\u6253\u5F00\u4E0E Bot \u5BF9\u8BDD\uFF1B\u53D1\u9001\u9996\u6761\u6D88\u606F\u81EA\u52A8\u5B8C\u6210\u767D\u540D\u5355\u6388\u6743\u3002"
+          ),
+          platform.botLink && React.createElement(
+            "div",
+            { style: { display: "flex", gap: 8, marginTop: 8 } },
+            React.createElement("a", {
+              href: platform.botLink,
+              target: "_blank",
+              rel: "noopener noreferrer",
+              style: { ...s.btnGhost, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px", fontSize: 12 }
+            }, "\u5728\u98DE\u4E66\u5BA2\u6237\u7AEF\u6253\u5F00 \u2197")
+          )
+        )
       )
     ),
-    // 未配置 / 登录中：二维码（QQ 无二维码，显示凭证表单）
+    // 未配置 / 登录中：表单（QQ / 飞书）或二维码（微信）
     (!platform?.configured || showQr) && React.createElement(
       "div",
       { style: s.block },
@@ -721,39 +777,58 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
           login.phase === "scaned" ? "\u5DF2\u626B\u7801\uFF0C\u8BF7\u5728\u624B\u673A\u4E0A\u786E\u8BA4\u2026" : platformId === "wechat" ? "\u8BF7\u4F7F\u7528\u5FAE\u4FE1\u626B\u7801\u767B\u5F55\uFF08ClawBot\uFF09" : "\u8BF7\u626B\u7801\u767B\u5F55"
         ),
         login.error && React.createElement("div", { style: { ...s.muted, marginTop: 4, color: "var(--dsw-alias-state-warn-primary,#92400e)" } }, login.error)
-      ) : platformId === "qq" ? React.createElement(
+      ) : platformId === "qq" || platformId === "feishu" ? React.createElement(
         "div",
         { style: { display: "flex", flexDirection: "column", gap: 10, marginTop: 4 } },
+        platformId === "feishu" && React.createElement(
+          "div",
+          {
+            style: {
+              background: "var(--dsw-alias-bg-layer-1,#ffffff)",
+              border: "1px dashed var(--dsw-alias-border-l2,#e5e7eb)",
+              borderRadius: 6,
+              padding: "8px 10px",
+              fontSize: 12,
+              lineHeight: 1.5
+            }
+          },
+          React.createElement("span", { style: s.label }, "\u{1F4A1} \u626B\u7801\u81EA\u52A8\u521B\u5EFA\u5F15\u5BFC\uFF1A"),
+          React.createElement("span", { style: s.muted }, " \u53EF\u5728\u7EC8\u7AEF\u8FD0\u884C "),
+          React.createElement("code", { style: { ...s.code, fontSize: 11, background: "var(--dsw-alias-bg-layer-2,#f3f4f6)", padding: "2px 4px", borderRadius: 4 } }, "npx feishu-bot-bootstrap"),
+          React.createElement("span", { style: s.muted }, " \u624B\u673A\u626B\u7801\u4E00\u952E\u81EA\u52A8\u521B\u5EFA\u5E94\u7528\u5E76\u8F93\u51FA\u51ED\u8BC1\uFF1B\u6216\u5728\u4E0B\u65B9\u624B\u52A8\u586B\u5165\u51ED\u8BC1\u3002")
+        ),
         React.createElement(
           "div",
           null,
-          React.createElement("div", { style: { ...s.muted, marginBottom: 4 } }, "AppID \u2014 QQ \u5F00\u653E\u5E73\u53F0\u673A\u5668\u4EBA\u5E94\u7528 ID"),
+          React.createElement(
+            "div",
+            { style: { ...s.muted, marginBottom: 4 } },
+            platformId === "qq" ? "AppID \u2014 QQ \u5F00\u653E\u5E73\u53F0\u673A\u5668\u4EBA\u5E94\u7528 ID" : "App ID \u2014 \u98DE\u4E66\u5F00\u653E\u5E73\u53F0\u81EA\u5EFA\u5E94\u7528 ID (cli_xxx)"
+          ),
           React.createElement("input", {
             style: { ...s.input, width: "100%" },
-            placeholder: "\u8BF7\u8F93\u5165 AppID",
+            placeholder: platformId === "qq" ? "\u8BF7\u8F93\u5165 AppID" : "\u8BF7\u8F93\u5165 App ID (\u5982 cli_a1b2c3d4...)",
             value: cfgDraft?.appId ?? "",
-            onChange: (e) => setCfgDraft((d) => ({ ...d, appId: e.target.value })),
-            onKeyDown: (e) => {
-              if (e.key === "Enter" && cfgDraft?.appId?.trim() && cfgDraft?.clientSecret?.trim() && !busy) saveConfig();
-            }
+            onChange: (e) => setCfgDraft((d) => ({ ...d, appId: e.target.value }))
           })
         ),
         React.createElement(
           "div",
           null,
-          React.createElement("div", { style: { ...s.muted, marginBottom: 4 } }, "ClientSecret \u2014 QQ \u5F00\u653E\u5E73\u53F0\u673A\u5668\u4EBA\u5BC6\u94A5"),
+          React.createElement(
+            "div",
+            { style: { ...s.muted, marginBottom: 4 } },
+            platformId === "qq" ? "ClientSecret \u2014 QQ \u5F00\u653E\u5E73\u53F0\u673A\u5668\u4EBA\u5BC6\u94A5" : "App Secret \u2014 \u98DE\u4E66\u5F00\u653E\u5E73\u53F0\u5E94\u7528\u5BC6\u94A5"
+          ),
           React.createElement(
             "div",
             { style: { display: "flex", gap: 6, alignItems: "center" } },
             React.createElement("input", {
               style: { ...s.input, flex: 1 },
               type: showSecret ? "text" : "password",
-              placeholder: "\u8BF7\u8F93\u5165 ClientSecret",
-              value: cfgDraft?.clientSecret ?? "",
-              onChange: (e) => setCfgDraft((d) => ({ ...d, clientSecret: e.target.value })),
-              onKeyDown: (e) => {
-                if (e.key === "Enter" && cfgDraft?.appId?.trim() && cfgDraft?.clientSecret?.trim() && !busy) saveConfig();
-              }
+              placeholder: platformId === "qq" ? "\u8BF7\u8F93\u5165 ClientSecret" : "\u8BF7\u8F93\u5165 App Secret",
+              value: platformId === "qq" ? cfgDraft?.clientSecret ?? "" : cfgDraft?.appSecret ?? "",
+              onChange: (e) => setCfgDraft((d) => platformId === "qq" ? { ...d, clientSecret: e.target.value } : { ...d, appSecret: e.target.value })
             }),
             React.createElement("button", {
               style: { ...s.btnGhost, height: 32, padding: "0 10px", fontSize: 13, flexShrink: 0 },
@@ -767,11 +842,11 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
           "div",
           null,
           React.createElement("a", {
-            href: "https://bot.q.qq.com/wiki/develop/api-v2/",
+            href: platformId === "qq" ? "https://bot.q.qq.com/wiki/develop/api-v2/" : "https://open.feishu.cn/app",
             target: "_blank",
             rel: "noopener noreferrer",
             style: s.btnLink
-          }, "\u{1F4D6} \u524D\u5F80 QQ \u5F00\u653E\u5E73\u53F0\u7533\u8BF7\u673A\u5668\u4EBA")
+          }, platformId === "qq" ? "\u{1F4D6} \u524D\u5F80 QQ \u5F00\u653E\u5E73\u53F0\u7533\u8BF7\u673A\u5668\u4EBA" : "\u{1F4D6} \u524D\u5F80\u98DE\u4E66\u5F00\u653E\u5E73\u53F0\u521B\u5EFA\u4F01\u4E1A\u81EA\u5EFA\u5E94\u7528")
         ),
         React.createElement(
           "div",
@@ -779,7 +854,7 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
           React.createElement("button", {
             style: { ...s.btnPri, opacity: busy ? 0.5 : 1 },
             onClick: saveConfig,
-            disabled: busy || !cfgDraft?.appId?.trim() || !cfgDraft?.clientSecret?.trim()
+            disabled: busy || !cfgDraft?.appId?.trim() || (platformId === "qq" ? !cfgDraft?.clientSecret?.trim() : !cfgDraft?.appSecret?.trim())
           }, busy ? "\u4FDD\u5B58\u4E2D\u2026" : "\u4FDD\u5B58\u5E76\u8FDE\u63A5"),
           login.phase === "error" && React.createElement("div", { style: { ...s.muted, fontSize: 12 } }, login.error ?? "\u8FDE\u63A5\u5931\u8D25")
         )
@@ -792,138 +867,6 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
           disabled: busy
         }, busy ? "\u5904\u7406\u4E2D\u2026" : "\u626B\u7801\u767B\u5F55"),
         login.phase === "error" && React.createElement("div", { style: { ...s.muted, fontSize: 12 } }, login.error ?? "\u767B\u5F55\u5931\u8D25")
-      )
-    ),
-    // 高级设置（紧凑 2x2 网格 + 恢复默认值）
-    cfgDraft && React.createElement(
-      "div",
-      { style: s.block },
-      React.createElement("button", {
-        style: { ...s.btnLink, fontSize: 12, marginBottom: showAdvanced ? 10 : 0 },
-        onClick: () => setShowAdvanced((v) => !v)
-      }, showAdvanced ? "\u25BE \u9AD8\u7EA7\u8BBE\u7F6E" : "\u25B8 \u9AD8\u7EA7\u8BBE\u7F6E"),
-      showAdvanced && React.createElement(
-        "div",
-        { style: { display: "flex", flexDirection: "column", gap: 10 } },
-        // 2x2 参数网格
-        React.createElement(
-          "div",
-          {
-            style: {
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-              gap: 10
-            }
-          },
-          // 心跳间隔
-          React.createElement(
-            "div",
-            null,
-            React.createElement("div", { style: { ...s.muted, marginBottom: 4 } }, "\u5FC3\u8DF3\u8FDB\u5EA6\u95F4\u9694 (\u79D2)"),
-            React.createElement("input", {
-              style: { ...s.input, width: "100%" },
-              type: "number",
-              min: 30,
-              max: 3600,
-              value: cfgDraft.digestIntervalSec,
-              onChange: (e) => setCfgDraft((d) => ({ ...d, digestIntervalSec: e.target.value }))
-            })
-          ),
-          // 审批超时
-          React.createElement(
-            "div",
-            null,
-            React.createElement("div", { style: { ...s.muted, marginBottom: 4 } }, "\u5BA1\u6279\u8D85\u65F6\u81EA\u52A8\u62D2\u7EDD (\u79D2)"),
-            React.createElement("input", {
-              style: { ...s.input, width: "100%" },
-              type: "number",
-              min: 30,
-              max: 86400,
-              value: cfgDraft.approvalTimeoutSec,
-              onChange: (e) => setCfgDraft((d) => ({ ...d, approvalTimeoutSec: e.target.value }))
-            })
-          ),
-          // 每气泡字数
-          React.createElement(
-            "div",
-            null,
-            React.createElement("div", { style: { ...s.muted, marginBottom: 4 } }, "\u5355\u6761\u6700\u5927\u5B57\u6570\u9650\u5236 (\u5B57)"),
-            React.createElement("input", {
-              style: { ...s.input, width: "100%" },
-              type: "number",
-              min: 100,
-              max: 1e4,
-              value: cfgDraft.maxMessageChars,
-              onChange: (e) => setCfgDraft((d) => ({ ...d, maxMessageChars: e.target.value }))
-            })
-          ),
-          // 分块延迟
-          React.createElement(
-            "div",
-            null,
-            React.createElement("div", { style: { ...s.muted, marginBottom: 4 } }, "\u5206\u5757\u53D1\u9001\u5EF6\u8FDF (\u6BEB\u79D2)"),
-            React.createElement("input", {
-              style: { ...s.input, width: "100%" },
-              type: "number",
-              min: 0,
-              max: 1e4,
-              value: cfgDraft.sendChunkDelayMs,
-              onChange: (e) => setCfgDraft((d) => ({ ...d, sendChunkDelayMs: e.target.value }))
-            })
-          )
-        ),
-        // QQ 平台凭证
-        platformId === "qq" && React.createElement(
-          "div",
-          { style: { display: "flex", flexDirection: "column", gap: 10, marginTop: 4 } },
-          React.createElement(
-            "div",
-            null,
-            React.createElement("div", { style: { ...s.muted, marginBottom: 4 } }, "AppID \u2014 QQ \u5F00\u653E\u5E73\u53F0\u673A\u5668\u4EBA\u5E94\u7528 ID"),
-            React.createElement("input", {
-              style: { ...s.input, width: "100%" },
-              placeholder: "\u8BF7\u8F93\u5165 AppID",
-              value: cfgDraft.appId,
-              onChange: (e) => setCfgDraft((d) => ({ ...d, appId: e.target.value }))
-            })
-          ),
-          React.createElement(
-            "div",
-            null,
-            React.createElement("div", { style: { ...s.muted, marginBottom: 4 } }, "ClientSecret \u2014 QQ \u5F00\u653E\u5E73\u53F0\u673A\u5668\u4EBA\u5BC6\u94A5\uFF08\u7559\u7A7A\u5219\u4FDD\u6301\u5DF2\u4FDD\u5B58\u5BC6\u94A5\uFF09"),
-            React.createElement(
-              "div",
-              { style: { display: "flex", gap: 6, alignItems: "center" } },
-              React.createElement("input", {
-                style: { ...s.input, flex: 1 },
-                type: showSecret ? "text" : "password",
-                placeholder: "\u7559\u7A7A\u4FDD\u6301\u5DF2\u4FDD\u5B58\u5BC6\u94A5",
-                value: cfgDraft.clientSecret,
-                onChange: (e) => setCfgDraft((d) => ({ ...d, clientSecret: e.target.value }))
-              }),
-              React.createElement("button", {
-                style: { ...s.btnGhost, height: 32, padding: "0 10px", fontSize: 13, flexShrink: 0 },
-                onClick: () => setShowSecret((v) => !v),
-                type: "button",
-                title: showSecret ? "\u9690\u85CF\u5BC6\u94A5" : "\u663E\u793A\u660E\u6587"
-              }, showSecret ? "\u{1F648} \u9690\u85CF" : "\u{1F441}\uFE0F \u663E\u793A")
-            )
-          )
-        ),
-        React.createElement(
-          "div",
-          { style: { display: "flex", gap: 8, alignItems: "center", marginTop: 4 } },
-          React.createElement("button", {
-            style: { ...s.btnPri, opacity: cfgDirty && !busy ? 1 : 0.5 },
-            disabled: !cfgDirty || busy,
-            onClick: saveConfig
-          }, busy ? "\u4FDD\u5B58\u4E2D\u2026" : "\u4FDD\u5B58\u8BBE\u7F6E"),
-          React.createElement("button", {
-            style: { ...s.btnGhost, height: 32, fontSize: 12 },
-            onClick: resetDefaults,
-            title: "\u6062\u590D\u63A8\u8350\u9ED8\u8BA4\u914D\u7F6E"
-          }, "\u21BA \u6062\u590D\u63A8\u8350\u9ED8\u8BA4")
-        )
       )
     ),
     React.createElement(
@@ -1365,7 +1308,7 @@ function BridgePanel({ rpcCall }) {
     const IM_PLATFORMS = [
       { id: "wechat", label: "\u5FAE\u4FE1", icon: Icons.wechat, brandColor: "#07C160", desc: "ClawBot \u626B\u7801\u76F4\u8FDE \xB7 \u65E0\u9700\u516C\u7F51" },
       { id: "qq", label: "QQ", icon: Icons.qq, brandColor: "#12B7F5", desc: "\u5B98\u65B9\u673A\u5668\u4EBA \xB7 \u79C1\u804A/\u7FA4\u804A/\u6309\u94AE" },
-      { id: "feishu", label: "\u98DE\u4E66", icon: Icons.feishu, brandColor: "#00D6B9", desc: "\u5B98\u65B9\u4E8B\u4EF6\u56DE\u8C03 API" },
+      { id: "feishu", label: "\u98DE\u4E66", icon: Icons.feishu, brandColor: "#00D6B9", desc: "\u5B98\u65B9 WebSocket \u957F\u8FDE\u63A5 \xB7 \u514D\u516C\u7F51" },
       { id: "telegram", label: "Telegram", icon: Icons.telegram, brandColor: "#24A1DE", desc: "\u5B98\u65B9 Bot API" }
     ];
     tabContent = React.createElement(
