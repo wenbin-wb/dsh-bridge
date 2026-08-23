@@ -246,3 +246,46 @@ test('TelegramConversationNode streams turn output incrementally with editMessag
   await ctx.emit('session/event', { id: 'sess_1' }, { type: 'turn/end' })
   assert.equal(node._streamMsgId, null)
 })
+
+test('TelegramConversationNode handles cmd:xxx callback query action button click', async () => {
+  const ctx = makeMockCordisCtx()
+  const answered = []
+  ctx.telegram = {
+    answerCallbackQuery: async (id, text) => { answered.push({ id, text }) },
+    sendText: async () => ({}),
+    sendKeyboard: async () => ({}),
+  }
+
+  const node = new TelegramConversationNode(ctx, { allowFrom: ['1005'] }, ctx.logger())
+  const handled = []
+  node.handleInbound = async (item) => { handled.push(item) }
+
+  await ctx.emit('telegram/action', {
+    queryId: 'query_cmd_1',
+    chatId: '1005',
+    operatorId: '1005',
+    data: 'cmd:sessions',
+  })
+
+  assert.equal(answered.length, 1)
+  assert.ok(answered[0].text.includes('执行: /sessions'))
+  assert.equal(handled.length, 1)
+  assert.equal(handled[0].text, '/sessions')
+})
+
+test('TelegramGateway registerCommands requests setMyCommands API', async () => {
+  const ctx = makeMockCordisCtx()
+  let setCommandsPayload = null
+  const gw = new TelegramGateway(ctx, { botToken: '12345:TOKEN' })
+  gw.request = async (method, params) => {
+    if (method === 'setMyCommands') {
+      setCommandsPayload = params
+      return true
+    }
+  }
+
+  await gw.registerCommands()
+  assert.ok(setCommandsPayload?.commands?.length >= 5)
+  assert.ok(setCommandsPayload.commands.some(c => c.command === 'new'))
+  assert.ok(setCommandsPayload.commands.some(c => c.command === 'sessions'))
+})
