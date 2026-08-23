@@ -179,7 +179,7 @@ Automatically active when the plugin starts, zero configuration needed. Open Set
 
 ### Custom Tunnel
 
-Requires a server with a public IP. See the [Custom Tunnel Setup Guide](docs/custom-tunnel.md) for detailed steps.
+Requires a server with a public IP (server environment requires Node.js >= 18, recommended Node.js 22 LTS). See the [Custom Tunnel Setup Guide](docs/custom-tunnel.md) for detailed steps.
 
 1. Deploy the tunnel server on your server following the guide
 2. Enter the WebSocket URL (`wss://...`) and access token in the "Custom Tunnel" card

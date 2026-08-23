@@ -346,13 +346,17 @@ var CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm2({ serve
     }
   }, [initUrl, initToken]);
   const dirty = serverUrl !== (initUrl ?? "") || accessToken !== (initToken ?? "");
+  const [saveErr, setSaveErr] = React.useState(null);
   const handleSave = React.useCallback(async () => {
     setSaving(true);
     setSaveSuccess(false);
+    setSaveErr(null);
     try {
       await onSave(serverUrl, accessToken);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2500);
+    } catch (e) {
+      setSaveErr(e.message || "\u4FDD\u5B58\u914D\u7F6E\u5931\u8D25");
     } finally {
       setSaving(false);
     }
@@ -360,10 +364,12 @@ var CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm2({ serve
   const handleUrlChange = React.useCallback((e) => {
     setServerUrl(e.target.value);
     setSaveSuccess(false);
+    setSaveErr(null);
   }, []);
   const handleTokenChange = React.useCallback((e) => {
     setAccessToken(e.target.value);
     setSaveSuccess(false);
+    setSaveErr(null);
   }, []);
   return React.createElement(
     "div",
@@ -393,6 +399,7 @@ var CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm2({ serve
         },
         disabled: saving
       }),
+      saveErr && React.createElement("div", { style: s.err }, `\u274C ${saveErr}`),
       React.createElement(
         "div",
         { style: { ...s.muted, fontSize: 11 } },
@@ -477,43 +484,55 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
     }
   }, [auth]);
   const handleToggleEnabled = async () => {
+    const prev = enabled;
     const next = !enabled;
     setEnabled(next);
     try {
-      await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { enabled: next });
+      const res = await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { enabled: next });
+      if (!res?.ok) throw new Error(res?.error?.message || "\u66F4\u65B0\u5931\u8D25");
       setTopMsg({ ok: true, text: next ? "\u2713 \u8BBF\u95EE\u5B89\u5168\u8BA4\u8BC1\u5DF2\u5F00\u542F\uFF08\u73B0\u6709\u767B\u5F55\u6001\u5DF2\u5237\u65B0\uFF09" : "\u2713 \u8BBF\u95EE\u5B89\u5168\u8BA4\u8BC1\u5DF2\u5173\u95ED" });
       onUpdate?.();
     } catch (e) {
+      setEnabled(prev);
       setTopMsg({ ok: false, text: e.message || "\u66F4\u65B0\u5931\u8D25" });
     }
   };
   const handleChangeMode = async (m) => {
+    const prev = mode;
     setMode(m);
     try {
-      await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { mode: m });
+      const res = await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { mode: m });
+      if (!res?.ok) throw new Error(res?.error?.message || "\u66F4\u65B0\u5931\u8D25");
       setTopMsg({ ok: true, text: "\u2713 \u5916\u90E8\u9A8C\u8BC1\u6A21\u5F0F\u5DF2\u5207\u6362\uFF0C\u5DF2\u5237\u65B0\u5168\u57DF\u767B\u5F55\u6001" });
       onUpdate?.();
     } catch (e) {
+      setMode(prev);
       setTopMsg({ ok: false, text: e.message || "\u66F4\u65B0\u5931\u8D25" });
     }
   };
   const handleChangeScope = async (sc) => {
+    const prev = scope;
     setScope(sc);
     try {
-      await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { scope: sc });
+      const res = await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { scope: sc });
+      if (!res?.ok) throw new Error(res?.error?.message || "\u66F4\u65B0\u5931\u8D25");
       setTopMsg({ ok: true, text: "\u2713 \u9632\u62A4\u751F\u6548\u8303\u56F4\u5DF2\u66F4\u65B0" });
       onUpdate?.();
     } catch (e) {
+      setScope(prev);
       setTopMsg({ ok: false, text: e.message || "\u66F4\u65B0\u5931\u8D25" });
     }
   };
   const handleChangeAdminPolicy = async (pol) => {
+    const prev = adminPolicy;
     setAdminPolicy(pol);
     try {
-      await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { adminPolicy: pol });
+      const res = await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { adminPolicy: pol });
+      if (!res?.ok) throw new Error(res?.error?.message || "\u66F4\u65B0\u5931\u8D25");
       setTopMsg({ ok: true, text: "\u2713 \u8FDC\u7A0B\u7BA1\u7406\u9632\u7BE1\u6539\u7B56\u7565\u5DF2\u66F4\u65B0" });
       onUpdate?.();
     } catch (e) {
+      setAdminPolicy(prev);
       setTopMsg({ ok: false, text: e.message || "\u66F4\u65B0\u5931\u8D25" });
     }
   };
@@ -560,7 +579,8 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
   const handleRegenerateToken = async () => {
     if (!confirm("\u91CD\u7F6E\u540E\uFF0C\u4E4B\u524D\u5305\u542B\u65E7 Token \u7684\u4E8C\u7EF4\u7801\u548C\u5206\u4EAB\u94FE\u63A5\u5C06\u7ACB\u5373\u5931\u6548\u3002\u662F\u5426\u786E\u8BA4\u91CD\u7F6E\uFF1F")) return;
     try {
-      await rpcCall(BRIDGE_ENDPOINTS.authRegenerateToken, {});
+      const res = await rpcCall(BRIDGE_ENDPOINTS.authRegenerateToken, {});
+      if (!res?.ok) throw new Error(res?.error?.message || "\u91CD\u7F6E\u5931\u8D25");
       setTopMsg({ ok: true, text: "\u2713 \u5B89\u5168 Token \u5DF2\u91CD\u7F6E\uFF0C\u4E8C\u7EF4\u7801\u4E0E\u4E13\u5C5E\u94FE\u63A5\u5DF2\u5237\u65B0" });
       onUpdate?.();
     } catch (e) {
@@ -975,15 +995,23 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
     const connected2 = platform?.status === "connected" || platform?.status === "starting" || platform?.status === "reconnecting";
     onStatusChange?.(connected2);
   }, [platform?.status, onStatusChange]);
+  const loadInFlightRef = React.useRef(false);
+  const seqRef = React.useRef(0);
   const load = React.useCallback(async (quiet = false) => {
+    if (loadInFlightRef.current) return;
+    loadInFlightRef.current = true;
+    const currentSeq = ++seqRef.current;
     try {
       const r = await rpcCall(BRIDGE_ENDPOINTS.listPlatforms, {});
+      if (currentSeq !== seqRef.current) return;
       if (!r?.ok) throw new Error(r?.error?.message ?? "RPC failed");
       const allPlatforms = r.value ?? {};
       setPlatform(allPlatforms[platformId] ?? null);
       if (!quiet) setErr(null);
     } catch (e) {
-      if (!quiet) setErr(e.message);
+      if (currentSeq === seqRef.current && !quiet) setErr(e.message);
+    } finally {
+      loadInFlightRef.current = false;
     }
   }, [rpcCall, platformId]);
   React.useEffect(() => {
@@ -1014,9 +1042,20 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
     const id = newId.trim();
     if (!id) return;
     const list = [...platform?.allowFrom ?? [], id];
-    await act(BRIDGE_ENDPOINTS.platformSetAllowFrom, { allowFrom: list });
-    setNewId("");
-  }, [act, newId, platform?.allowFrom]);
+    setBusy(true);
+    try {
+      const r = await rpcCall(BRIDGE_ENDPOINTS.platformSetAllowFrom, { platformId, allowFrom: list });
+      if (!r?.ok) throw new Error(r?.error?.message ?? "\u6DFB\u52A0\u767D\u540D\u5355\u5931\u8D25");
+      setPlatform(r.value);
+      setNewId("");
+      setErr(null);
+      await load(true);
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }, [rpcCall, platformId, newId, platform?.allowFrom, load]);
   const removeAllow = React.useCallback(async (id) => {
     const list = (platform?.allowFrom ?? []).filter((x) => x !== id);
     await act(BRIDGE_ENDPOINTS.platformSetAllowFrom, { allowFrom: list });
@@ -1062,7 +1101,7 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
       React.createElement("div", { style: { ...s.muted, marginTop: 6 } }, "\u52A0\u8F7D\u4E2D\u2026")
     );
   }
-  const connected = platform?.status === "connected" || platform?.status === "starting";
+  const connected = platform?.status === "connected" || platform?.status === "starting" || platform?.status === "reconnecting";
   const login = platform?.login ?? {};
   const showQr = login.phase === "qr" || login.phase === "scaned";
   const statusLabel = platform?.status === "connected" ? "\u5DF2\u8FDE\u63A5" : platform?.status === "starting" ? "\u8FDE\u63A5\u4E2D\u2026" : platform?.status === "reconnecting" ? "\u91CD\u8FDE\u4E2D\u2026" : platform?.status === "paused" ? "\u6682\u505C\uFF08\u4F1A\u8BDD\u8FC7\u671F\uFF09" : platform?.status === "error" ? "\u9519\u8BEF" : "\u672A\u8FDE\u63A5";
@@ -1785,11 +1824,20 @@ function BridgePanel({ rpcCall }) {
   const [platforms, setPlatforms] = React.useState(null);
   const [selectedPlatform, setSelectedPlatform] = React.useState("wechat");
   const isLocalhost = typeof window === "undefined" || (!window.location.hostname || window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost" || window.location.hostname === "::1" || window.location.hostname === "" || window.location.protocol === "file:" || window.location.protocol === "vscode-webview:" || window.location.protocol === "app:" || window.location.hostname.endsWith(".local"));
+  const [adminToken, setAdminToken] = React.useState("");
   const [adminUnlocked, setAdminUnlocked] = React.useState(false);
   const [unlockPassword, setUnlockPassword] = React.useState("");
   const [unlockErr, setUnlockErr] = React.useState(null);
   const [unlocking, setUnlocking] = React.useState(false);
   const [showForgotGuide, setShowForgotGuide] = React.useState(false);
+  const authRpcCall = React.useCallback((endpoint, payload = {}, signal) => {
+    const enriched = {
+      ...payload,
+      ...adminToken ? { adminToken } : {},
+      ...isLocalhost ? { isLocalhost: true } : {}
+    };
+    return rpcCall(endpoint, enriched, signal);
+  }, [rpcCall, adminToken, isLocalhost]);
   const handleUnlockAdmin = React.useCallback(async (e) => {
     e?.preventDefault?.();
     setUnlocking(true);
@@ -1797,6 +1845,7 @@ function BridgePanel({ rpcCall }) {
     try {
       const res = await rpcCall(BRIDGE_ENDPOINTS.authAdminUnlock, { password: unlockPassword });
       if (res?.ok) {
+        setAdminToken(res.value?.adminToken || "");
         setAdminUnlocked(true);
         setUnlockPassword("");
       } else {
@@ -1808,25 +1857,50 @@ function BridgePanel({ rpcCall }) {
       setUnlocking(false);
     }
   }, [rpcCall, unlockPassword]);
-  const load = React.useCallback(async (quiet = false) => {
+  const handleLockAdmin = React.useCallback(async () => {
     try {
-      const r = await rpcCall(BRIDGE_ENDPOINTS.getStatus, {});
+      if (adminToken) {
+        await rpcCall(BRIDGE_ENDPOINTS.authAdminLock, { adminToken });
+      }
+    } catch {
+    }
+    setAdminToken("");
+    setAdminUnlocked(false);
+  }, [rpcCall, adminToken]);
+  const loadInFlightRef = React.useRef(false);
+  const loadSeqRef = React.useRef(0);
+  const load = React.useCallback(async (quiet = false) => {
+    if (loadInFlightRef.current) return;
+    loadInFlightRef.current = true;
+    const currentSeq = ++loadSeqRef.current;
+    try {
+      const r = await authRpcCall(BRIDGE_ENDPOINTS.getStatus, {});
+      if (currentSeq !== loadSeqRef.current) return;
       if (!r?.ok) throw new Error(r?.error?.message ?? "RPC failed");
       setStatus(r.value);
       if (!quiet) setErr(null);
     } catch (e) {
-      setErr(e.message);
+      if (currentSeq === loadSeqRef.current) setErr(e.message);
+    } finally {
+      loadInFlightRef.current = false;
     }
-  }, [rpcCall]);
+  }, [authRpcCall]);
+  const pollPlatformsSeqRef = React.useRef(0);
   React.useEffect(() => {
     let alive = true;
+    let inFlight = false;
     const poll = async () => {
+      if (inFlight || !alive) return;
+      inFlight = true;
+      const currentSeq = ++pollPlatformsSeqRef.current;
       try {
-        const r = await rpcCall(BRIDGE_ENDPOINTS.listPlatforms, {});
-        if (alive && r?.ok) {
+        const r = await authRpcCall(BRIDGE_ENDPOINTS.listPlatforms, {});
+        if (alive && currentSeq === pollPlatformsSeqRef.current && r?.ok) {
           setPlatforms(r.value ?? {});
         }
       } catch {
+      } finally {
+        inFlight = false;
       }
     };
     poll();
@@ -1835,7 +1909,7 @@ function BridgePanel({ rpcCall }) {
       alive = false;
       clearInterval(t);
     };
-  }, [rpcCall]);
+  }, [authRpcCall]);
   React.useEffect(() => {
     load();
     const t = setInterval(() => load(true), 3e3);
@@ -1843,14 +1917,14 @@ function BridgePanel({ rpcCall }) {
   }, [load]);
   const act = React.useCallback(async (endpoint, payload) => {
     try {
-      const r = await rpcCall(endpoint, payload ?? {});
+      const r = await authRpcCall(endpoint, payload ?? {});
       if (!r?.ok) throw new Error(r?.error?.message ?? "RPC failed");
       setStatus(r.value);
       setErr(null);
     } catch (e) {
       setErr(e.message);
     }
-  }, [rpcCall]);
+  }, [authRpcCall]);
   const onStartCloudflared = React.useCallback(() => act(BRIDGE_ENDPOINTS.startCloudflared), [act]);
   const onStopCloudflared = React.useCallback(() => act(BRIDGE_ENDPOINTS.stopCloudflared), [act]);
   const onResetCloudflared = React.useCallback(
@@ -1935,7 +2009,7 @@ function BridgePanel({ rpcCall }) {
   } else if (activeTab === "security") {
     tabContent = React.createElement(AccessAuthCard, {
       auth: status?.auth,
-      rpcCall,
+      rpcCall: authRpcCall,
       onUpdate: () => load(true)
     });
   } else if (activeTab === "im") {
@@ -1998,12 +2072,13 @@ function BridgePanel({ rpcCall }) {
           );
         })
       ),
-      // 显示选中的平台卡片
+      // 显示选中的平台卡片（带有 key 保证切换时重置表单状态）
       selectedPlatform && platforms?.[selectedPlatform] && React.createElement(PlatformCard, {
+        key: selectedPlatform,
         platformId: selectedPlatform,
         platformName: IM_PLATFORMS.find((p) => p.id === selectedPlatform)?.label ?? selectedPlatform,
         platformDesc: IM_PLATFORMS.find((p) => p.id === selectedPlatform)?.desc ?? "",
-        rpcCall,
+        rpcCall: authRpcCall,
         onStatusChange: () => {
         }
         // 状态变化已由 listPlatforms 轮询处理，不需要回调
@@ -2154,10 +2229,10 @@ function BridgePanel({ rpcCall }) {
       React.createElement("span", null, "\u{1F513} \u7BA1\u7406\u5458\u6743\u9650\u5DF2\u89E3\u9501\uFF08\u5F53\u524D\u4E34\u65F6\u4F1A\u8BDD\u6709\u6548\uFF09"),
       React.createElement("button", {
         style: { ...s.btnGhost, height: 24, fontSize: 11, padding: "0 8px" },
-        onClick: () => setAdminUnlocked(false)
+        onClick: handleLockAdmin
       }, "\u{1F512} \u91CD\u65B0\u9501\u5B9A\u540E\u53F0")
     ),
-    React.createElement(VersionBanner, { rpcCall }),
+    React.createElement(VersionBanner, { rpcCall: authRpcCall }),
     React.createElement(TabBar, { active: activeTab, onChange: setActiveTab, dots }),
     tabContent
   );

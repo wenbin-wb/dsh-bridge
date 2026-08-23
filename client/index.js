@@ -270,18 +270,23 @@ const CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm({ serv
   }, [initUrl, initToken]);
 
   const dirty = serverUrl !== (initUrl ?? '') || accessToken !== (initToken ?? '');
+  const [saveErr, setSaveErr] = React.useState(null);
   const handleSave = React.useCallback(async () => {
     setSaving(true);
     setSaveSuccess(false);
+    setSaveErr(null);
     try {
       await onSave(serverUrl, accessToken);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2500);
+    } catch (e) {
+      setSaveErr(e.message || '保存配置失败');
+    } finally {
+      setSaving(false);
     }
-    finally { setSaving(false); }
   }, [onSave, serverUrl, accessToken]);
-  const handleUrlChange   = React.useCallback((e) => { setServerUrl(e.target.value); setSaveSuccess(false); }, []);
-  const handleTokenChange = React.useCallback((e) => { setAccessToken(e.target.value); setSaveSuccess(false); }, []);
+  const handleUrlChange   = React.useCallback((e) => { setServerUrl(e.target.value); setSaveSuccess(false); setSaveErr(null); }, []);
+  const handleTokenChange = React.useCallback((e) => { setAccessToken(e.target.value); setSaveSuccess(false); setSaveErr(null); }, []);
 
   return React.createElement('div', { style: s.block },
     React.createElement('div', { style: { ...s.muted, marginBottom: 8 } }, '隧道服务器配置'),
@@ -303,6 +308,7 @@ const CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm({ serv
         onKeyDown: (e) => { if (e.key === 'Enter' && dirty && !saving) handleSave(); },
         disabled: saving,
       }),
+      saveErr && React.createElement('div', { style: s.err }, `❌ ${saveErr}`),
       React.createElement('div', { style: { ...s.muted, fontSize: 11 } },
         '💡 用于与您的 VPS 隧道服务端建立反向通道（与 Web 网页访客访问密码互相独立）。'
       ),
@@ -388,46 +394,58 @@ const AccessAuthCard = React.memo(function AccessAuthCard({ auth, rpcCall, onUpd
   }, [auth]);
 
   const handleToggleEnabled = async () => {
+    const prev = enabled;
     const next = !enabled;
     setEnabled(next);
     try {
-      await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { enabled: next });
+      const res = await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { enabled: next });
+      if (!res?.ok) throw new Error(res?.error?.message || '更新失败');
       setTopMsg({ ok: true, text: next ? '✓ 访问安全认证已开启（现有登录态已刷新）' : '✓ 访问安全认证已关闭' });
       onUpdate?.();
     } catch (e) {
+      setEnabled(prev);
       setTopMsg({ ok: false, text: e.message || '更新失败' });
     }
   };
 
   const handleChangeMode = async (m) => {
+    const prev = mode;
     setMode(m);
     try {
-      await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { mode: m });
+      const res = await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { mode: m });
+      if (!res?.ok) throw new Error(res?.error?.message || '更新失败');
       setTopMsg({ ok: true, text: '✓ 外部验证模式已切换，已刷新全域登录态' });
       onUpdate?.();
     } catch (e) {
+      setMode(prev);
       setTopMsg({ ok: false, text: e.message || '更新失败' });
     }
   };
 
   const handleChangeScope = async (sc) => {
+    const prev = scope;
     setScope(sc);
     try {
-      await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { scope: sc });
+      const res = await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { scope: sc });
+      if (!res?.ok) throw new Error(res?.error?.message || '更新失败');
       setTopMsg({ ok: true, text: '✓ 防护生效范围已更新' });
       onUpdate?.();
     } catch (e) {
+      setScope(prev);
       setTopMsg({ ok: false, text: e.message || '更新失败' });
     }
   };
 
   const handleChangeAdminPolicy = async (pol) => {
+    const prev = adminPolicy;
     setAdminPolicy(pol);
     try {
-      await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { adminPolicy: pol });
+      const res = await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { adminPolicy: pol });
+      if (!res?.ok) throw new Error(res?.error?.message || '更新失败');
       setTopMsg({ ok: true, text: '✓ 远程管理防篡改策略已更新' });
       onUpdate?.();
     } catch (e) {
+      setAdminPolicy(prev);
       setTopMsg({ ok: false, text: e.message || '更新失败' });
     }
   };
@@ -479,7 +497,8 @@ const AccessAuthCard = React.memo(function AccessAuthCard({ auth, rpcCall, onUpd
   const handleRegenerateToken = async () => {
     if (!confirm('重置后，之前包含旧 Token 的二维码和分享链接将立即失效。是否确认重置？')) return;
     try {
-      await rpcCall(BRIDGE_ENDPOINTS.authRegenerateToken, {});
+      const res = await rpcCall(BRIDGE_ENDPOINTS.authRegenerateToken, {});
+      if (!res?.ok) throw new Error(res?.error?.message || '重置失败');
       setTopMsg({ ok: true, text: '✓ 安全 Token 已重置，二维码与专属链接已刷新' });
       onUpdate?.();
     } catch (e) {
@@ -804,16 +823,24 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
     onStatusChange?.(connected);
   }, [platform?.status, onStatusChange]);
 
+  const loadInFlightRef = React.useRef(false);
+  const seqRef = React.useRef(0);
   const load = React.useCallback(async (quiet = false) => {
+    if (loadInFlightRef.current) return;
+    loadInFlightRef.current = true;
+    const currentSeq = ++seqRef.current;
     try {
       // 用通用端点读取平台状态（不执行登录操作，只获取状态）
       const r = await rpcCall(BRIDGE_ENDPOINTS.listPlatforms, {});
+      if (currentSeq !== seqRef.current) return; // 丢弃过时响应
       if (!r?.ok) throw new Error(r?.error?.message ?? 'RPC failed');
       const allPlatforms = r.value ?? {};
       setPlatform(allPlatforms[platformId] ?? null);
       if (!quiet) setErr(null);
     } catch (e) {
-      if (!quiet) setErr(e.message);
+      if (currentSeq === seqRef.current && !quiet) setErr(e.message);
+    } finally {
+      loadInFlightRef.current = false;
     }
   }, [rpcCall, platformId]);
 
@@ -850,9 +877,20 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
     const id = newId.trim();
     if (!id) return;
     const list = [...(platform?.allowFrom ?? []), id];
-    await act(BRIDGE_ENDPOINTS.platformSetAllowFrom, { allowFrom: list });
-    setNewId('');
-  }, [act, newId, platform?.allowFrom]);
+    setBusy(true);
+    try {
+      const r = await rpcCall(BRIDGE_ENDPOINTS.platformSetAllowFrom, { platformId, allowFrom: list });
+      if (!r?.ok) throw new Error(r?.error?.message ?? '添加白名单失败');
+      setPlatform(r.value);
+      setNewId('');
+      setErr(null);
+      await load(true);
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }, [rpcCall, platformId, newId, platform?.allowFrom, load]);
   const removeAllow = React.useCallback(async (id) => {
     const list = (platform?.allowFrom ?? []).filter((x) => x !== id);
     await act(BRIDGE_ENDPOINTS.platformSetAllowFrom, { allowFrom: list });
@@ -922,7 +960,7 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
     );
   }
 
-  const connected = platform?.status === 'connected' || platform?.status === 'starting';
+  const connected = platform?.status === 'connected' || platform?.status === 'starting' || platform?.status === 'reconnecting';
   const login = platform?.login ?? {};
   const showQr = login.phase === 'qr' || login.phase === 'scaned';
   const statusLabel = platform?.status === 'connected' ? '已连接'
@@ -1580,11 +1618,21 @@ function BridgePanel({ rpcCall }) {
     window.location.protocol === 'app:' ||
     window.location.hostname.endsWith('.local')
   );
+  const [adminToken, setAdminToken]       = React.useState('');
   const [adminUnlocked, setAdminUnlocked] = React.useState(false);
   const [unlockPassword, setUnlockPassword] = React.useState('');
-  const [unlockErr, setUnlockErr] = React.useState(null);
-  const [unlocking, setUnlocking] = React.useState(false);
+  const [unlockErr, setUnlockErr]         = React.useState(null);
+  const [unlocking, setUnlocking]         = React.useState(false);
   const [showForgotGuide, setShowForgotGuide] = React.useState(false);
+
+  const authRpcCall = React.useCallback((endpoint, payload = {}, signal) => {
+    const enriched = {
+      ...payload,
+      ...(adminToken ? { adminToken } : {}),
+      ...(isLocalhost ? { isLocalhost: true } : {}),
+    };
+    return rpcCall(endpoint, enriched, signal);
+  }, [rpcCall, adminToken, isLocalhost]);
 
   const handleUnlockAdmin = React.useCallback(async (e) => {
     e?.preventDefault?.();
@@ -1593,6 +1641,7 @@ function BridgePanel({ rpcCall }) {
     try {
       const res = await rpcCall(BRIDGE_ENDPOINTS.authAdminUnlock, { password: unlockPassword });
       if (res?.ok) {
+        setAdminToken(res.value?.adminToken || '');
         setAdminUnlocked(true);
         setUnlockPassword('');
       } else {
@@ -1605,32 +1654,58 @@ function BridgePanel({ rpcCall }) {
     }
   }, [rpcCall, unlockPassword]);
 
-  const load = React.useCallback(async (quiet = false) => {
+  const handleLockAdmin = React.useCallback(async () => {
     try {
-      const r = await rpcCall(BRIDGE_ENDPOINTS.getStatus, {});
+      if (adminToken) {
+        await rpcCall(BRIDGE_ENDPOINTS.authAdminLock, { adminToken });
+      }
+    } catch {}
+    setAdminToken('');
+    setAdminUnlocked(false);
+  }, [rpcCall, adminToken]);
+
+  const loadInFlightRef = React.useRef(false);
+  const loadSeqRef = React.useRef(0);
+  const load = React.useCallback(async (quiet = false) => {
+    if (loadInFlightRef.current) return;
+    loadInFlightRef.current = true;
+    const currentSeq = ++loadSeqRef.current;
+    try {
+      const r = await authRpcCall(BRIDGE_ENDPOINTS.getStatus, {});
+      if (currentSeq !== loadSeqRef.current) return;
       if (!r?.ok) throw new Error(r?.error?.message ?? 'RPC failed');
       setStatus(r.value);
       if (!quiet) setErr(null);
     } catch (e) {
-      setErr(e.message);
+      if (currentSeq === loadSeqRef.current) setErr(e.message);
+    } finally {
+      loadInFlightRef.current = false;
     }
-  }, [rpcCall]);
+  }, [authRpcCall]);
 
-  // 独立轮询所有平台状态（Tab 未选中时也能更新）
+  // 独立轮询所有平台状态（Tab 未选中时也能更新），带 in-flight 锁与序列号防乱序
+  const pollPlatformsSeqRef = React.useRef(0);
   React.useEffect(() => {
     let alive = true;
+    let inFlight = false;
     const poll = async () => {
+      if (inFlight || !alive) return;
+      inFlight = true;
+      const currentSeq = ++pollPlatformsSeqRef.current;
       try {
-        const r = await rpcCall(BRIDGE_ENDPOINTS.listPlatforms, {});
-        if (alive && r?.ok) {
+        const r = await authRpcCall(BRIDGE_ENDPOINTS.listPlatforms, {});
+        if (alive && currentSeq === pollPlatformsSeqRef.current && r?.ok) {
           setPlatforms(r.value ?? {});
         }
       } catch { /* 忽略，不影响主面板 */ }
+      finally {
+        inFlight = false;
+      }
     };
     poll();
     const t = setInterval(poll, 4000);
     return () => { alive = false; clearInterval(t); };
-  }, [rpcCall]);
+  }, [authRpcCall]);
 
   React.useEffect(() => {
     load();
@@ -1640,14 +1715,14 @@ function BridgePanel({ rpcCall }) {
 
   const act = React.useCallback(async (endpoint, payload) => {
     try {
-      const r = await rpcCall(endpoint, payload ?? {});
+      const r = await authRpcCall(endpoint, payload ?? {});
       if (!r?.ok) throw new Error(r?.error?.message ?? 'RPC failed');
       setStatus(r.value);
       setErr(null);
     } catch (e) {
       setErr(e.message);
     }
-  }, [rpcCall]);
+  }, [authRpcCall]);
 
   const onStartCloudflared = React.useCallback(() => act(BRIDGE_ENDPOINTS.startCloudflared), [act]);
   const onStopCloudflared  = React.useCallback(() => act(BRIDGE_ENDPOINTS.stopCloudflared), [act]);
@@ -1734,7 +1809,7 @@ function BridgePanel({ rpcCall }) {
   } else if (activeTab === 'security') {
     tabContent = React.createElement(AccessAuthCard, {
       auth: status?.auth,
-      rpcCall,
+      rpcCall: authRpcCall,
       onUpdate: () => load(true),
     });
   } else if (activeTab === 'im') {
@@ -1790,12 +1865,13 @@ function BridgePanel({ rpcCall }) {
           );
         }),
       ),
-      // 显示选中的平台卡片
+      // 显示选中的平台卡片（带有 key 保证切换时重置表单状态）
       selectedPlatform && platforms?.[selectedPlatform] && React.createElement(PlatformCard, {
+        key: selectedPlatform,
         platformId: selectedPlatform,
         platformName: IM_PLATFORMS.find(p => p.id === selectedPlatform)?.label ?? selectedPlatform,
         platformDesc: IM_PLATFORMS.find(p => p.id === selectedPlatform)?.desc ?? '',
-        rpcCall,
+        rpcCall: authRpcCall,
         onStatusChange: () => {}, // 状态变化已由 listPlatforms 轮询处理，不需要回调
       }),
     );
@@ -1907,11 +1983,11 @@ function BridgePanel({ rpcCall }) {
       React.createElement('span', null, '🔓 管理员权限已解锁（当前临时会话有效）'),
       React.createElement('button', {
         style: { ...s.btnGhost, height: 24, fontSize: 11, padding: '0 8px' },
-        onClick: () => setAdminUnlocked(false),
+        onClick: handleLockAdmin,
       }, '🔒 重新锁定后台'),
     ),
 
-    React.createElement(VersionBanner, { rpcCall }),
+    React.createElement(VersionBanner, { rpcCall: authRpcCall }),
 
     React.createElement(TabBar, { active: activeTab, onChange: setActiveTab, dots }),
 

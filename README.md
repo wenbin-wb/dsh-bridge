@@ -179,7 +179,7 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 
 ### 自建隧道
 
-需要一台有公网 IP 的服务器。详细搭建步骤见 [自建隧道教程](docs/custom-tunnel.md)。
+需要一台有公网 IP 的服务器（服务端环境要求 Node.js >= 18，推荐 Node.js 22 LTS）。详细搭建步骤见 [自建隧道教程](docs/custom-tunnel.md)。
 
 1. 按教程在服务器上部署隧道服务端
 2. 在「自建隧道」卡片中填写 WebSocket 地址（`wss://...`）和访问令牌
