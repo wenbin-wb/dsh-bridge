@@ -421,16 +421,18 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
       setCfgDraft({
         digestIntervalSec: String(platform.config.digestIntervalSec ?? 300),
         approvalTimeoutSec: String(platform.config.approvalTimeoutSec ?? 600),
-        maxMessageChars: String(platform.config.maxMessageChars ?? 2e3),
+        maxMessageChars: String(platform.config.maxMessageChars ?? (platformId === "telegram" ? 4096 : 2e3)),
         sendChunkDelayMs: String(platform.config.sendChunkDelayMs ?? 1500),
         appId: platform.config.appId ?? "",
         // Secret 不由后端回传；空值表示沿用已保存密钥
         clientSecret: "",
         appSecret: "",
-        domain: platform.config.domain ?? "feishu"
+        domain: platform.config.domain ?? "feishu",
+        botToken: "",
+        proxy: platform.config.proxy ?? ""
       });
     }
-  }, [platform?.config]);
+  }, [platform?.config, platformId]);
   React.useEffect(() => {
     const connected2 = platform?.status === "connected" || platform?.status === "starting" || platform?.status === "reconnecting";
     onStatusChange?.(connected2);
@@ -488,10 +490,10 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
       ...d,
       digestIntervalSec: "300",
       approvalTimeoutSec: "600",
-      maxMessageChars: "2000",
+      maxMessageChars: platformId === "telegram" ? "4096" : "2000",
       sendChunkDelayMs: "1500"
     }));
-  }, []);
+  }, [platformId]);
   const saveConfig = React.useCallback(async () => {
     if (!cfgDraft) return;
     const payload = {
@@ -507,10 +509,13 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
       payload.appId = cfgDraft.appId.trim();
       payload.appSecret = cfgDraft.appSecret.trim();
       payload.domain = cfgDraft.domain || "feishu";
+    } else if (platformId === "telegram") {
+      payload.botToken = cfgDraft.botToken.trim();
+      payload.proxy = cfgDraft.proxy.trim();
     }
     await act(BRIDGE_ENDPOINTS.platformSetConfig, payload);
   }, [act, cfgDraft, platformId]);
-  const cfgDirty = cfgDraft && platform?.config && (Number(cfgDraft.digestIntervalSec) !== platform.config.digestIntervalSec || Number(cfgDraft.approvalTimeoutSec) !== platform.config.approvalTimeoutSec || Number(cfgDraft.maxMessageChars) !== platform.config.maxMessageChars || Number(cfgDraft.sendChunkDelayMs) !== platform.config.sendChunkDelayMs || platformId === "qq" && (cfgDraft.appId !== (platform.config.appId ?? "") || cfgDraft.clientSecret !== (platform.config.clientSecret ?? "")) || platformId === "feishu" && (cfgDraft.appId !== (platform.config.appId ?? "") || cfgDraft.appSecret !== (platform.config.appSecret ?? "")));
+  const cfgDirty = cfgDraft && platform?.config && (Number(cfgDraft.digestIntervalSec) !== platform.config.digestIntervalSec || Number(cfgDraft.approvalTimeoutSec) !== platform.config.approvalTimeoutSec || Number(cfgDraft.maxMessageChars) !== platform.config.maxMessageChars || Number(cfgDraft.sendChunkDelayMs) !== platform.config.sendChunkDelayMs || platformId === "qq" && (cfgDraft.appId !== (platform.config.appId ?? "") || cfgDraft.clientSecret !== (platform.config.clientSecret ?? "")) || platformId === "feishu" && (cfgDraft.appId !== (platform.config.appId ?? "") || cfgDraft.appSecret !== (platform.config.appSecret ?? "")) || platformId === "telegram" && (cfgDraft.botToken !== "" || cfgDraft.proxy !== (platform.config.proxy ?? "")));
   if (!platform && !err) {
     return React.createElement(
       "div",
@@ -579,6 +584,18 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
         rel: "noopener noreferrer",
         style: s.btnGhost
       }, "\u{1F310} \u98DE\u4E66\u5F00\u653E\u5E73\u53F0"),
+      platformId === "telegram" && React.createElement("a", {
+        href: "https://github.com/wenbin-wb/dsh-bridge/blob/main/docs/telegram-usage.md",
+        target: "_blank",
+        rel: "noopener noreferrer",
+        style: s.btnGhost
+      }, "\u{1F4D6} Telegram \u4F7F\u7528\u8BF4\u660E"),
+      platformId === "telegram" && React.createElement("a", {
+        href: "https://t.me/BotFather",
+        target: "_blank",
+        rel: "noopener noreferrer",
+        style: s.btnGhost
+      }, "\u{1F310} @BotFather \u7533\u8BF7 Bot"),
       React.createElement("button", {
         style: s.btnGhost,
         onClick: () => setShowHelp((v) => !v)
@@ -724,8 +741,8 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
           title: "\u6E05\u9664\u767B\u5F55\u51ED\u8BC1\uFF0C\u4E0B\u6B21\u9700\u91CD\u65B0\u914D\u7F6E"
         }, "\u89E3\u7ED1\u8D26\u53F7")
       ),
-      // 飞书专属：手机扫码直达 Bot 对话
-      platformId === "feishu" && platform.botQr && React.createElement(
+      // 飞书 / Telegram 扫码直达对话引导卡片
+      (platformId === "feishu" || platformId === "telegram") && platform.botQr && React.createElement(
         "div",
         {
           style: {
@@ -740,15 +757,15 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
             flexWrap: "wrap"
           }
         },
-        React.createElement("img", { src: platform.botQr, alt: "Feishu Bot QR", style: { width: 110, height: 110, borderRadius: 8, border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", padding: 4, background: "#fff" } }),
+        React.createElement("img", { src: platform.botQr, alt: `${platformName} Bot QR`, style: { width: 110, height: 110, borderRadius: 8, border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", padding: 4, background: "#fff" } }),
         React.createElement(
           "div",
           { style: { flex: 1, minWidth: 160 } },
-          React.createElement("div", { style: { ...s.label, fontSize: 13, fontWeight: 600 } }, "\u{1F4F1} \u624B\u673A\u98DE\u4E66\u626B\u7801\u76F4\u8FBE\u5BF9\u8BDD"),
+          React.createElement("div", { style: { ...s.label, fontSize: 13, fontWeight: 600 } }, `\u{1F4F1} \u624B\u673A ${platformName} \u626B\u7801\u76F4\u8FBE\u5BF9\u8BDD`),
           React.createElement(
             "div",
             { style: { ...s.muted, fontSize: 12, marginTop: 4, lineHeight: 1.5 } },
-            "\u7528\u98DE\u4E66\u624B\u673A App \u626B\u63CF\u5DE6\u4FA7\u4E8C\u7EF4\u7801\uFF0C\u7ACB\u5373\u6253\u5F00\u4E0E Bot \u5BF9\u8BDD\uFF1B\u53D1\u9001\u9996\u6761\u6D88\u606F\u81EA\u52A8\u5B8C\u6210\u767D\u540D\u5355\u6388\u6743\u3002"
+            `\u7528 ${platformName} \u626B\u63CF\u5DE6\u4FA7\u4E8C\u7EF4\u7801\uFF0C\u7ACB\u5373\u6253\u5F00\u4E0E Bot \u5BF9\u8BDD\uFF1B\u53D1\u9001\u9996\u6761\u6D88\u606F\u81EA\u52A8\u5B8C\u6210\u767D\u540D\u5355\u6388\u6743\u3002`
           ),
           platform.botLink && React.createElement(
             "div",
@@ -758,12 +775,12 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
               target: "_blank",
               rel: "noopener noreferrer",
               style: { ...s.btnGhost, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px", fontSize: 12 }
-            }, "\u5728\u98DE\u4E66\u5BA2\u6237\u7AEF\u6253\u5F00 \u2197")
+            }, `\u5728 ${platformName} \u5BA2\u6237\u7AEF\u6253\u5F00 \u2197`)
           )
         )
       )
     ),
-    // 未配置 / 登录中：表单（QQ / 飞书）或二维码（微信）
+    // 未配置 / 登录中：表单（QQ / 飞书 / Telegram）或二维码（微信）
     (!platform?.configured || showQr) && React.createElement(
       "div",
       { style: s.block },
@@ -777,7 +794,7 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
           login.phase === "scaned" ? "\u5DF2\u626B\u7801\uFF0C\u8BF7\u5728\u624B\u673A\u4E0A\u786E\u8BA4\u2026" : platformId === "wechat" ? "\u8BF7\u4F7F\u7528\u5FAE\u4FE1\u626B\u7801\u767B\u5F55\uFF08ClawBot\uFF09" : "\u8BF7\u626B\u7801\u767B\u5F55"
         ),
         login.error && React.createElement("div", { style: { ...s.muted, marginTop: 4, color: "var(--dsw-alias-state-warn-primary,#92400e)" } }, login.error)
-      ) : platformId === "qq" || platformId === "feishu" ? React.createElement(
+      ) : platformId === "qq" || platformId === "feishu" || platformId === "telegram" ? React.createElement(
         "div",
         { style: { display: "flex", flexDirection: "column", gap: 10, marginTop: 4 } },
         platformId === "feishu" && React.createElement(
@@ -797,52 +814,92 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
           React.createElement("code", { style: { ...s.code, fontSize: 11, background: "var(--dsw-alias-bg-layer-2,#f3f4f6)", padding: "2px 4px", borderRadius: 4 } }, "npx feishu-bot-bootstrap"),
           React.createElement("span", { style: s.muted }, " \u624B\u673A\u626B\u7801\u4E00\u952E\u81EA\u52A8\u521B\u5EFA\u5E94\u7528\u5E76\u8F93\u51FA\u51ED\u8BC1\uFF1B\u6216\u5728\u4E0B\u65B9\u624B\u52A8\u586B\u5165\u51ED\u8BC1\u3002")
         ),
-        React.createElement(
-          "div",
+        platformId === "telegram" ? React.createElement(
+          React.Fragment,
           null,
           React.createElement(
             "div",
-            { style: { ...s.muted, marginBottom: 4 } },
-            platformId === "qq" ? "AppID \u2014 QQ \u5F00\u653E\u5E73\u53F0\u673A\u5668\u4EBA\u5E94\u7528 ID" : "App ID \u2014 \u98DE\u4E66\u5F00\u653E\u5E73\u53F0\u81EA\u5EFA\u5E94\u7528 ID (cli_xxx)"
+            null,
+            React.createElement("div", { style: { ...s.muted, marginBottom: 4 } }, "Bot Token \u2014 Telegram @BotFather \u4E0B\u53D1\u7684\u673A\u5668\u4EBA Token"),
+            React.createElement(
+              "div",
+              { style: { display: "flex", gap: 6, alignItems: "center" } },
+              React.createElement("input", {
+                style: { ...s.input, flex: 1 },
+                type: showSecret ? "text" : "password",
+                placeholder: "\u8BF7\u8F93\u5165 Telegram Bot Token (\u5982 123456789:ABCdef...)",
+                value: cfgDraft?.botToken ?? "",
+                onChange: (e) => setCfgDraft((d) => ({ ...d, botToken: e.target.value }))
+              }),
+              React.createElement("button", {
+                style: { ...s.btnGhost, height: 32, padding: "0 10px", fontSize: 13, flexShrink: 0 },
+                onClick: () => setShowSecret((v) => !v),
+                type: "button",
+                title: showSecret ? "\u9690\u85CF\u5BC6\u94A5" : "\u663E\u793A\u660E\u6587"
+              }, showSecret ? "\u{1F648} \u9690\u85CF" : "\u{1F441}\uFE0F \u663E\u793A")
+            )
           ),
-          React.createElement("input", {
-            style: { ...s.input, width: "100%" },
-            placeholder: platformId === "qq" ? "\u8BF7\u8F93\u5165 AppID" : "\u8BF7\u8F93\u5165 App ID (\u5982 cli_a1b2c3d4...)",
-            value: cfgDraft?.appId ?? "",
-            onChange: (e) => setCfgDraft((d) => ({ ...d, appId: e.target.value }))
-          })
-        ),
-        React.createElement(
-          "div",
-          null,
           React.createElement(
             "div",
-            { style: { ...s.muted, marginBottom: 4 } },
-            platformId === "qq" ? "ClientSecret \u2014 QQ \u5F00\u653E\u5E73\u53F0\u673A\u5668\u4EBA\u5BC6\u94A5" : "App Secret \u2014 \u98DE\u4E66\u5F00\u653E\u5E73\u53F0\u5E94\u7528\u5BC6\u94A5"
-          ),
-          React.createElement(
-            "div",
-            { style: { display: "flex", gap: 6, alignItems: "center" } },
+            null,
+            React.createElement("div", { style: { ...s.muted, marginBottom: 4 } }, "\u7F51\u7EDC\u4EE3\u7406 (\u53EF\u9009) \u2014 \u652F\u6301\u56FD\u5185 HTTP / HTTPS \u4EE3\u7406"),
             React.createElement("input", {
-              style: { ...s.input, flex: 1 },
-              type: showSecret ? "text" : "password",
-              placeholder: platformId === "qq" ? "\u8BF7\u8F93\u5165 ClientSecret" : "\u8BF7\u8F93\u5165 App Secret",
-              value: platformId === "qq" ? cfgDraft?.clientSecret ?? "" : cfgDraft?.appSecret ?? "",
-              onChange: (e) => setCfgDraft((d) => platformId === "qq" ? { ...d, clientSecret: e.target.value } : { ...d, appSecret: e.target.value })
-            }),
-            React.createElement("button", {
-              style: { ...s.btnGhost, height: 32, padding: "0 10px", fontSize: 13, flexShrink: 0 },
-              onClick: () => setShowSecret((v) => !v),
-              type: "button",
-              title: showSecret ? "\u9690\u85CF\u5BC6\u94A5" : "\u663E\u793A\u660E\u6587"
-            }, showSecret ? "\u{1F648} \u9690\u85CF" : "\u{1F441}\uFE0F \u663E\u793A")
+              style: { ...s.input, width: "100%" },
+              placeholder: "\u53EF\u9009\uFF0C\u4F8B\u5982 http://127.0.0.1:7890\uFF08\u4E3A\u7A7A\u5219\u76F4\u8FDE\u6216\u8BFB\u53D6\u73AF\u5883\u53D8\u91CF\uFF09",
+              value: cfgDraft?.proxy ?? "",
+              onChange: (e) => setCfgDraft((d) => ({ ...d, proxy: e.target.value }))
+            })
+          )
+        ) : React.createElement(
+          React.Fragment,
+          null,
+          React.createElement(
+            "div",
+            null,
+            React.createElement(
+              "div",
+              { style: { ...s.muted, marginBottom: 4 } },
+              platformId === "qq" ? "AppID \u2014 QQ \u5F00\u653E\u5E73\u53F0\u673A\u5668\u4EBA\u5E94\u7528 ID" : "App ID \u2014 \u98DE\u4E66\u5F00\u653E\u5E73\u53F0\u81EA\u5EFA\u5E94\u7528 ID (cli_xxx)"
+            ),
+            React.createElement("input", {
+              style: { ...s.input, width: "100%" },
+              placeholder: platformId === "qq" ? "\u8BF7\u8F93\u5165 AppID" : "\u8BF7\u8F93\u5165 App ID (\u5982 cli_a1b2c3d4...)",
+              value: cfgDraft?.appId ?? "",
+              onChange: (e) => setCfgDraft((d) => ({ ...d, appId: e.target.value }))
+            })
+          ),
+          React.createElement(
+            "div",
+            null,
+            React.createElement(
+              "div",
+              { style: { ...s.muted, marginBottom: 4 } },
+              platformId === "qq" ? "ClientSecret \u2014 QQ \u5F00\u653E\u5E73\u53F0\u673A\u5668\u4EBA\u5BC6\u94A5" : "App Secret \u2014 \u98DE\u4E66\u5F00\u653E\u5E73\u53F0\u5E94\u7528\u5BC6\u94A5"
+            ),
+            React.createElement(
+              "div",
+              { style: { display: "flex", gap: 6, alignItems: "center" } },
+              React.createElement("input", {
+                style: { ...s.input, flex: 1 },
+                type: showSecret ? "text" : "password",
+                placeholder: platformId === "qq" ? "\u8BF7\u8F93\u5165 ClientSecret" : "\u8BF7\u8F93\u5165 App Secret",
+                value: platformId === "qq" ? cfgDraft?.clientSecret ?? "" : cfgDraft?.appSecret ?? "",
+                onChange: (e) => setCfgDraft((d) => platformId === "qq" ? { ...d, clientSecret: e.target.value } : { ...d, appSecret: e.target.value })
+              }),
+              React.createElement("button", {
+                style: { ...s.btnGhost, height: 32, padding: "0 10px", fontSize: 13, flexShrink: 0 },
+                onClick: () => setShowSecret((v) => !v),
+                type: "button",
+                title: showSecret ? "\u9690\u85CF\u5BC6\u94A5" : "\u663E\u793A\u660E\u6587"
+              }, showSecret ? "\u{1F648} \u9690\u85CF" : "\u{1F441}\uFE0F \u663E\u793A")
+            )
           )
         ),
         React.createElement(
           "div",
           null,
           React.createElement("a", {
-            href: platformId === "qq" ? "https://bot.q.qq.com/wiki/develop/api-v2/" : "https://open.feishu.cn/app",
+            href: platformId === "qq" ? "https://bot.q.qq.com/wiki/develop/api-v2/" : platformId === "feishu" ? "https://open.feishu.cn/app" : "https://t.me/BotFather",
             target: "_blank",
             rel: "noopener noreferrer",
             style: s.btnLink
@@ -854,7 +911,7 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
           React.createElement("button", {
             style: { ...s.btnPri, opacity: busy ? 0.5 : 1 },
             onClick: saveConfig,
-            disabled: busy || !cfgDraft?.appId?.trim() || (platformId === "qq" ? !cfgDraft?.clientSecret?.trim() : !cfgDraft?.appSecret?.trim())
+            disabled: busy || (platformId === "telegram" ? !cfgDraft?.botToken?.trim() : !cfgDraft?.appId?.trim() || (platformId === "qq" ? !cfgDraft?.clientSecret?.trim() : !cfgDraft?.appSecret?.trim()))
           }, busy ? "\u4FDD\u5B58\u4E2D\u2026" : "\u4FDD\u5B58\u5E76\u8FDE\u63A5"),
           login.phase === "error" && React.createElement("div", { style: { ...s.muted, fontSize: 12 } }, login.error ?? "\u8FDE\u63A5\u5931\u8D25")
         )
