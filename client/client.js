@@ -1784,11 +1784,12 @@ function BridgePanel({ rpcCall }) {
   const [activeTab, setActiveTab] = React.useState("lan");
   const [platforms, setPlatforms] = React.useState(null);
   const [selectedPlatform, setSelectedPlatform] = React.useState("wechat");
-  const isLocalhost = typeof window !== "undefined" && (window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost" || window.location.hostname === "::1");
+  const isLocalhost = typeof window === "undefined" || (!window.location.hostname || window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost" || window.location.hostname === "::1" || window.location.hostname === "" || window.location.protocol === "file:" || window.location.protocol === "vscode-webview:" || window.location.protocol === "app:" || window.location.hostname.endsWith(".local"));
   const [adminUnlocked, setAdminUnlocked] = React.useState(false);
   const [unlockPassword, setUnlockPassword] = React.useState("");
   const [unlockErr, setUnlockErr] = React.useState(null);
   const [unlocking, setUnlocking] = React.useState(false);
+  const [showForgotGuide, setShowForgotGuide] = React.useState(false);
   const handleUnlockAdmin = React.useCallback(async (e) => {
     e?.preventDefault?.();
     setUnlocking(true);
@@ -2012,7 +2013,6 @@ function BridgePanel({ rpcCall }) {
   const auth = status?.auth;
   const policy = auth?.adminPolicy ?? "password_unlock";
   const isLocked = !isLocalhost && auth?.enabled && policy !== "open" && !adminUnlocked;
-  const [showForgotGuide, setShowForgotGuide] = React.useState(false);
   if (isLocked) {
     return React.createElement(
       "div",
