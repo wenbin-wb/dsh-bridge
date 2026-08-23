@@ -162,7 +162,11 @@ Go to Settings -> "Remote Access" -> "**Security**" tab to enable enterprise-gra
   The plugin instantly detects the marker, wipes all passwords and locks, deletes the marker, and restores default passwordless access;
 - **Built-in Recovery Guides**: Both visitor login pages and admin lock screens provide expandable `❓ Forgot Password?` help cards.
 
-![Access Auth Security Settings](docs/screenshots/security-auth-config.jpg)
+<details>
+  <summary>📸 Click to expand Access Auth security settings screenshot</summary>
+  <br/>
+  <img src="docs/screenshots/security-auth-config.jpg" width="100%" alt="Access Auth Security Settings" />
+</details>
 
 ---
 
@@ -170,7 +174,11 @@ Go to Settings -> "Remote Access" -> "**Security**" tab to enable enterprise-gra
 
 Automatically active when the plugin starts, zero configuration needed. Open Settings -> "Remote Access", and scan the QR code with your phone.
 
-![LAN Access QR Scan](docs/screenshots/lan-access.jpg)
+<details>
+  <summary>📸 Click to expand LAN access panel screenshot</summary>
+  <br/>
+  <img src="docs/screenshots/lan-access.jpg" width="100%" alt="LAN Access QR Scan" />
+</details>
 
 ### Cloudflare Tunnel
 
@@ -179,7 +187,11 @@ Automatically active when the plugin starts, zero configuration needed. Open Set
 3. Once downloaded, it starts automatically and displays a public URL and QR code within seconds
 4. The URL changes on each restart; click "Reset URL" to request a new URL
 
-![Public Tunnel Settings](docs/screenshots/tunnel-access.jpg)
+<details>
+  <summary>📸 Click to expand Public Tunnel settings screenshot</summary>
+  <br/>
+  <img src="docs/screenshots/tunnel-access.jpg" width="100%" alt="Public Tunnel Settings" />
+</details>
 
 ### Custom Tunnel
 
@@ -195,9 +207,14 @@ Configurations persist across restarts.
 
 Powered by Tencent's official WeChat ClawBot feature (iLink Bot API). Log in with your personal WeChat account by scanning a QR code, then chat with, control, and approve your DeepSeek Harness agents directly in WeChat — fully routed through Tencent's official servers, no public server or tunnel needed.
 
-![WeChat Bot Configuration](docs/screenshots/wechat-bot-config.jpg)
-
-![WeChat Chat Example](docs/screenshots/wechat-chat.jpg)
+<details>
+  <summary>📸 Click to expand WeChat configuration and mobile chat screenshots</summary>
+  <br/>
+  <p align="center">
+    <img src="docs/screenshots/wechat-bot-config.jpg" width="58%" alt="WeChat Bot Configuration" />
+    <img src="docs/screenshots/wechat-chat.jpg" width="38%" alt="WeChat Chat Example" />
+  </p>
+</details>
 
 **Key Highlights**
 
@@ -247,11 +264,17 @@ Powered by Tencent's official WeChat ClawBot feature (iLink Bot API). Log in wit
 
 Integrates Tencent's official QQ Bot platform. Supports private chat, group chat (@bot trigger), streaming output, Markdown rendering, message buttons, and rich media (images/files). Driven by Tencent's official QQ Bot OpenAPI v2 with real-time WebSocket push, automatic token refresh, and auto-reconnection.
 
-![QQ Bot Configuration](docs/screenshots/qq-bot-config.jpg)
-
-![QQ Private Chat](docs/screenshots/qq-chat.jpg)
-
-![QQ Group Chat](docs/screenshots/qq-group.jpg)
+<details>
+  <summary>📸 Click to expand QQ bot configuration and chat screenshots</summary>
+  <br/>
+  <p align="center">
+    <img src="docs/screenshots/qq-bot-config.jpg" width="98%" alt="QQ Bot Configuration" />
+  </p>
+  <p align="center">
+    <img src="docs/screenshots/qq-chat.jpg" width="48%" alt="QQ Private Chat" />
+    <img src="docs/screenshots/qq-group.jpg" width="48%" alt="QQ Group Chat" />
+  </p>
+</details>
 
 **Key Highlights**
 
@@ -296,7 +319,11 @@ Integrates Tencent's official QQ Bot platform. Supports private chat, group chat
 
 Connect your enterprise self-built app via Feishu's official WebSocket protocol. Supports private chat and group mentions without public IP, domain name, or webhook configuration.
 
-![Feishu Bot Configuration](docs/screenshots/feishu-bot-config.jpg)
+<details>
+  <summary>📸 Click to expand Feishu Bot configuration screenshot</summary>
+  <br/>
+  <img src="docs/screenshots/feishu-bot-config.jpg" width="100%" alt="Feishu Bot Configuration" />
+</details>
 
 **Key Highlights**
 
@@ -335,7 +362,11 @@ Connect your enterprise self-built app via Feishu's official WebSocket protocol.
 
 Connect official Telegram Bot API for real-time private and group interactions. Powered by official Long Polling (`getUpdates`), **no public IP / no Webhook required**, built-in **zero-dependency HTTP/HTTPS CONNECT proxy tunnel**, ready to use in any network environment.
 
-![Telegram Bot Configuration](docs/screenshots/telegram-bot-config.jpg)
+<details>
+  <summary>📸 Click to expand Telegram Bot configuration screenshot</summary>
+  <br/>
+  <img src="docs/screenshots/telegram-bot-config.jpg" width="100%" alt="Telegram Bot Configuration" />
+</details>
 
 **Key Features**
 
