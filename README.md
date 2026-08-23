@@ -162,13 +162,15 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
   插件将在毫秒级自动清空密码与策略并删除标记，瞬间恢复初始免密状态；
 - **全界面忘记密码指引**：访客登录页与锁屏页均提供 `❓ 忘记密码？` 救助展开卡片。
 
+![安全认证配置](docs/screenshots/security-auth-config.jpg)
+
 ---
 
 ### 局域网访问
 
 插件启动后自动开启，无需任何配置。打开设置页「远程访问」，用手机扫描二维码即可访问。
 
-![扫码访问](docs/screenshots/qr-scan.jpg)
+![局域网扫码访问](docs/screenshots/lan-access.jpg)
 
 ### Cloudflare 隧道
 
@@ -176,6 +178,8 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 2. 首次使用会自动从 GitHub 下载 cloudflared（约 30MB）
 3. 下载完成后自动启动，几秒内显示公网 URL 和二维码
 4. 每次重启后 URL 会变化；点「重置链接」可主动获取新 URL
+
+![公网隧道配置](docs/screenshots/tunnel-access.jpg)
 
 ### 自建隧道
 
@@ -190,6 +194,8 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 ### 微信 Bot（ClawBot / iLink）
 
 基于腾讯官方开放的微信 ClawBot 插件功能（底层 iLink Bot API），扫码登录微信个人号后，即可在微信里直接与你的 DeepSeek Harness agent 对话、控制和审批，全程走腾讯官方服务器，无需公网与隧道。
+
+![微信 Bot 配置](docs/screenshots/wechat-bot-config.jpg)
 
 ![微信对话示例](docs/screenshots/wechat-chat.jpg)
 
@@ -241,6 +247,8 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 
 接入 QQ 官方机器人，支持单聊/群聊（群聊需 @机器人）、流式输出、Markdown 渲染、消息按钮、富媒体消息（图片/文件）。走腾讯官方 QQ Bot OpenAPI v2，WebSocket 实时推送，Token 自动刷新，断线自动重连。
 
+![QQ Bot 配置](docs/screenshots/qq-bot-config.jpg)
+
 ![QQ 单聊对话](docs/screenshots/qq-chat.jpg)
 
 ![QQ 群聊对话](docs/screenshots/qq-group.jpg)
@@ -288,6 +296,8 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 
 接入飞书开放平台企业自建应用，支持单聊与群聊（群聊需 @机器人）。走飞书官方最新 WebSocket 长连接协议，无需公网 IP、无需域名、免配置 Webhook。
 
+![飞书 Bot 配置](docs/screenshots/feishu-bot-config.jpg)
+
 **功能亮点**
 
 - ⚡ **100% 免公网 IP**：官方 WebSocket 全双工长连接，本地电脑即可直连飞书开放平台
@@ -324,6 +334,8 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 ### Telegram Bot（官方 Bot API + 代理支持）
 
 接入 Telegram 官方 Bot API，单聊与群聊实时交互。采用官方 Long Polling（长轮询）机制，**无需公网 IP / 免 Webhook**，内置**零依赖 HTTP/HTTPS CONNECT 代理隧道**，国内网络即开即连。
+
+![Telegram Bot 配置](docs/screenshots/telegram-bot-config.jpg)
 
 **功能亮点**
 

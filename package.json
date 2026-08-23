@@ -26,13 +26,14 @@
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
+    "@deepseek-ai/dsh-llm": "0.1.0-rc.6",
     "@larksuiteoapi/node-sdk": "^1.73.0",
     "qrcode": "^1.5.3",
-    "ws": "^8.18.0",
-    "@deepseek-ai/dsh-llm": "0.1.0-rc.6"
+    "ws": "^8.18.0"
   },
   "devDependencies": {
-    "esbuild": "^0.25.9"
+    "esbuild": "^0.25.9",
+    "puppeteer-core": "^25.8.0"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1"
