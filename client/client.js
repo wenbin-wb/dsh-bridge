@@ -43,6 +43,12 @@ var BRIDGE_ENDPOINTS = {
   saveCustomTunnelConfig: "saveCustomTunnelConfig",
   checkVersion: "checkVersion",
   upgradePlugin: "upgradePlugin",
+  // 访问安全认证（密码保护 / 扫码免密 Token）
+  authGetStatus: "authGetStatus",
+  authUpdateConfig: "authUpdateConfig",
+  authRegenerateToken: "authRegenerateToken",
+  authAdminUnlock: "authAdminUnlock",
+  authAdminLock: "authAdminLock",
   // 平台管理器（多 IM 平台统一接口）
   listPlatforms: "listPlatforms",
   platformLogin: "platformLogin",
@@ -135,6 +141,11 @@ var Icons = {
     { viewBox: "0 0 24 24", width: 16, height: 16, fill: "currentColor", ...props },
     React.createElement("path", { d: "M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z" })
   ),
+  security: (props) => React.createElement(
+    "svg",
+    { viewBox: "0 0 24 24", width: 16, height: 16, fill: "currentColor", ...props },
+    React.createElement("path", { d: "M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z" })
+  ),
   bot: (props) => React.createElement(
     "svg",
     { viewBox: "0 0 24 24", width: 16, height: 16, fill: "currentColor", ...props },
@@ -216,7 +227,7 @@ function StatusTag({ running, status }) {
     style: { ...s.tag, background: bg, color }
   }, text);
 }
-function QrBlock({ url, qr, onReset }) {
+function QrBlock({ url, qr, onReset, auth, onNavigateSecurity }) {
   const [copied, setCopied] = React.useState(false);
   const [showQr, setShowQr] = React.useState(true);
   const copy = React.useCallback(() => {
@@ -247,14 +258,41 @@ function QrBlock({ url, qr, onReset }) {
   return React.createElement(
     "div",
     { style: { marginTop: 10 } },
-    React.createElement(
+    auth?.enabled ? React.createElement(
       "div",
-      { style: s.warn },
-      "\u26A0\uFE0F \u8BF7\u52FF\u5C06\u6B64\u94FE\u63A5\u6216\u4E8C\u7EF4\u7801\u5206\u4EAB\u7ED9\u4ED6\u4EBA\uFF0C\u4EFB\u4F55\u4EBA\u626B\u7801\u540E\u90FD\u53EF\u76F4\u63A5\u8BBF\u95EE\u60A8\u7684 DSH\u3002"
+      {
+        style: {
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "4px 10px",
+          background: "var(--dsw-alias-state-success-bg,#ecfdf5)",
+          border: "1px solid var(--dsw-alias-state-success-primary,#10b981)",
+          borderRadius: 8,
+          fontSize: 12,
+          color: "var(--dsw-alias-state-success-primary,#059669)",
+          marginBottom: 8,
+          fontWeight: 500,
+          cursor: onNavigateSecurity ? "pointer" : "default"
+        },
+        onClick: onNavigateSecurity,
+        title: onNavigateSecurity ? "\u70B9\u51FB\u524D\u5F80\u300C\u5B89\u5168\u8BA4\u8BC1\u300D\u914D\u7F6E" : void 0
+      },
+      "\u{1F6E1}\uFE0F \u8BBF\u95EE\u5B89\u5168\u8BA4\u8BC1\u5DF2\u751F\u6548 \xB7 \u626B\u7801\u8BBE\u5907\u81EA\u52A8\u5B8C\u6210\u514D\u5BC6\u6388\u6743",
+      onNavigateSecurity && React.createElement("span", { style: { textDecoration: "underline", fontSize: 11, marginLeft: 4 } }, "\u8BBE\u7F6E \u2794")
+    ) : React.createElement(
+      "div",
+      {
+        style: { ...s.warn, cursor: onNavigateSecurity ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 6 },
+        onClick: onNavigateSecurity,
+        title: onNavigateSecurity ? "\u70B9\u51FB\u524D\u5F80\u300C\u5B89\u5168\u8BA4\u8BC1\u300D\u5F00\u542F\u8BBF\u95EE\u4FDD\u62A4" : void 0
+      },
+      React.createElement("span", null, "\u26A0\uFE0F \u5F53\u524D\u672A\u5F00\u542F\u8BBF\u95EE\u8BA4\u8BC1\uFF0C\u5EFA\u8BAE\u5728\u300C\u5B89\u5168\u8BA4\u8BC1\u300D\u5F00\u542F\u5BC6\u7801\u6216\u626B\u7801\u4FDD\u62A4\u3002"),
+      onNavigateSecurity && React.createElement("span", { style: { fontWeight: 600, textDecoration: "underline", fontSize: 12, color: "var(--dsw-alias-brand-primary,#4f6ef7)" } }, "\u53BB\u5F00\u542F \u2794")
     ),
     React.createElement(
       "div",
-      { style: { display: "flex", alignItems: "center", gap: 8, marginTop: 10 } },
+      { style: { display: "flex", alignItems: "center", gap: 8, marginTop: 6 } },
       React.createElement("code", { style: { ...s.code, flex: 1 } }, url),
       React.createElement("button", {
         style: { ...s.btnGhost, height: 26, padding: "0 10px", fontSize: 12, flexShrink: 0 },
@@ -330,7 +368,7 @@ var CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm2({ serve
   return React.createElement(
     "div",
     { style: s.block },
-    React.createElement("div", { style: { ...s.muted, marginBottom: 8 } }, "\u670D\u52A1\u5668\u914D\u7F6E"),
+    React.createElement("div", { style: { ...s.muted, marginBottom: 8 } }, "\u96A7\u9053\u670D\u52A1\u5668\u914D\u7F6E"),
     React.createElement(
       "div",
       { style: { display: "flex", flexDirection: "column", gap: 8 } },
@@ -347,7 +385,7 @@ var CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm2({ serve
       React.createElement("input", {
         style: s.input,
         type: "password",
-        placeholder: "\u8BBF\u95EE\u4EE4\u724C\uFF08Access Token\uFF09",
+        placeholder: "\u96A7\u9053\u670D\u52A1\u7AEF\u8FDE\u63A5\u4EE4\u724C\uFF08Tunnel Access Token\uFF09",
         value: accessToken,
         onChange: handleTokenChange,
         onKeyDown: (e) => {
@@ -355,6 +393,11 @@ var CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm2({ serve
         },
         disabled: saving
       }),
+      React.createElement(
+        "div",
+        { style: { ...s.muted, fontSize: 11 } },
+        "\u{1F4A1} \u7528\u4E8E\u4E0E\u60A8\u7684 VPS \u96A7\u9053\u670D\u52A1\u7AEF\u5EFA\u7ACB\u53CD\u5411\u901A\u9053\uFF08\u4E0E Web \u7F51\u9875\u8BBF\u5BA2\u8BBF\u95EE\u5BC6\u7801\u4E92\u76F8\u72EC\u7ACB\uFF09\u3002"
+      ),
       React.createElement("button", {
         style: {
           ...s.btnPri,
@@ -368,7 +411,7 @@ var CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm2({ serve
     )
   );
 });
-var TunnelCard = React.memo(function TunnelCard2({ title, desc, data, onStart, onStop, onReset, children }) {
+var TunnelCard = React.memo(function TunnelCard2({ title, desc, data, onStart, onStop, onReset, auth, onNavigateSecurity, children }) {
   const { running, configured, url, qr, state } = data ?? {};
   const phase = state?.phase ?? "idle";
   return React.createElement(
@@ -393,7 +436,7 @@ var TunnelCard = React.memo(function TunnelCard2({ title, desc, data, onStart, o
         color: phase === "error" ? "var(--dsw-alias-state-error-primary,#dc2626)" : "var(--dsw-alias-label-secondary,#6b7280)"
       }
     }, state?.detail ?? phase),
-    url && React.createElement(QrBlock, { url, qr, onReset }),
+    url && React.createElement(QrBlock, { url, qr, onReset, auth, onNavigateSecurity }),
     (onStart || onStop) && React.createElement(
       "div",
       {
@@ -406,6 +449,295 @@ var TunnelCard = React.memo(function TunnelCard2({ title, desc, data, onStart, o
         title: configured === false ? "\u8BF7\u5148\u4FDD\u5B58\u670D\u52A1\u5668\u914D\u7F6E" : ""
       }, phase === "connecting" ? "\u8FDE\u63A5\u4E2D\u2026" : phase === "downloading" ? "\u4E0B\u8F7D\u4E2D\u2026" : "\u5F00\u542F"),
       running && onStop && React.createElement("button", { style: s.btnGhost, onClick: onStop }, "\u5173\u95ED")
+    )
+  );
+});
+var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpdate }) {
+  const [enabled, setEnabled] = React.useState(auth?.enabled ?? false);
+  const [mode, setMode] = React.useState(auth?.mode ?? "token_and_password");
+  const [scope, setScope] = React.useState(auth?.scope ?? "all");
+  const [adminPolicy, setAdminPolicy] = React.useState(auth?.adminPolicy ?? "password_unlock");
+  const [password, setPassword] = React.useState("");
+  const [showPassword, setShowPassword] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const [msg, setMsg] = React.useState(null);
+  React.useEffect(() => {
+    if (auth) {
+      setEnabled(auth.enabled ?? false);
+      setMode(auth.mode ?? "token_and_password");
+      setScope(auth.scope ?? "all");
+      setAdminPolicy(auth.adminPolicy ?? "password_unlock");
+    }
+  }, [auth]);
+  const handleToggleEnabled = async () => {
+    const next = !enabled;
+    setEnabled(next);
+    try {
+      await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { enabled: next });
+      setMsg({ ok: true, text: next ? "\u2713 \u8BBF\u95EE\u8BA4\u8BC1\u5DF2\u5F00\u542F\uFF08\u73B0\u6709\u767B\u5F55\u6001\u5DF2\u5237\u65B0\uFF09" : "\u2713 \u8BBF\u95EE\u8BA4\u8BC1\u5DF2\u5173\u95ED" });
+      onUpdate?.();
+    } catch (e) {
+      setMsg({ ok: false, text: e.message || "\u66F4\u65B0\u5931\u8D25" });
+    }
+  };
+  const handleChangeMode = async (m) => {
+    setMode(m);
+    try {
+      await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { mode: m });
+      setMsg({ ok: true, text: "\u2713 \u8BA4\u8BC1\u6A21\u5F0F\u5DF2\u5207\u6362\uFF0C\u5DF2\u91CD\u7F6E\u6240\u6709\u8BBE\u5907\u7684\u767B\u5F55\u6001" });
+      onUpdate?.();
+    } catch (e) {
+      setMsg({ ok: false, text: e.message || "\u66F4\u65B0\u5931\u8D25" });
+    }
+  };
+  const handleChangeScope = async (sc) => {
+    setScope(sc);
+    try {
+      await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { scope: sc });
+      setMsg({ ok: true, text: "\u2713 \u9632\u62A4\u8303\u56F4\u5DF2\u66F4\u65B0" });
+      onUpdate?.();
+    } catch (e) {
+      setMsg({ ok: false, text: e.message || "\u66F4\u65B0\u5931\u8D25" });
+    }
+  };
+  const handleChangeAdminPolicy = async (pol) => {
+    setAdminPolicy(pol);
+    try {
+      await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { adminPolicy: pol });
+      setMsg({ ok: true, text: "\u2713 \u8FDC\u7A0B\u7BA1\u7406\u6743\u9650\u7B56\u7565\u5DF2\u66F4\u65B0" });
+      onUpdate?.();
+    } catch (e) {
+      setMsg({ ok: false, text: e.message || "\u66F4\u65B0\u5931\u8D25" });
+    }
+  };
+  const handleSavePassword = async () => {
+    setSaving(true);
+    setMsg(null);
+    try {
+      const res = await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { password });
+      if (res?.ok) {
+        setMsg({ ok: true, text: "\u2713 \u8BBF\u95EE\u5BC6\u7801\u5DF2\u66F4\u65B0\u4FDD\u5B58\uFF0C\u5DF2\u91CD\u7F6E\u6240\u6709\u8BBE\u5907\u7684\u767B\u5F55\u6001" });
+        setPassword("");
+        onUpdate?.();
+      } else {
+        setMsg({ ok: false, text: res?.error?.message || "\u4FDD\u5B58\u5931\u8D25" });
+      }
+    } catch (e) {
+      setMsg({ ok: false, text: e.message || "\u4FDD\u5B58\u5931\u8D25" });
+    } finally {
+      setSaving(false);
+    }
+  };
+  const handleRegenerateToken = async () => {
+    if (!confirm("\u91CD\u7F6E\u540E\uFF0C\u4E4B\u524D\u5305\u542B\u65E7 Token \u7684\u4E8C\u7EF4\u7801\u548C\u5206\u4EAB\u94FE\u63A5\u5C06\u7ACB\u5373\u5931\u6548\u3002\u662F\u5426\u786E\u8BA4\u91CD\u7F6E\uFF1F")) return;
+    try {
+      await rpcCall(BRIDGE_ENDPOINTS.authRegenerateToken, {});
+      setMsg({ ok: true, text: "\u2713 \u5B89\u5168 Token \u5DF2\u91CD\u7F6E\uFF0C\u4E8C\u7EF4\u7801\u4E0E\u94FE\u63A5\u5DF2\u5237\u65B0" });
+      onUpdate?.();
+    } catch (e) {
+      setMsg({ ok: false, text: e.message || "\u91CD\u7F6E\u5931\u8D25" });
+    }
+  };
+  return React.createElement(
+    "div",
+    { style: { ...s.card, marginTop: 16 } },
+    React.createElement(
+      "div",
+      {
+        style: { display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 6 }
+      },
+      React.createElement(
+        "div",
+        { style: { flex: "1 1 240px" } },
+        React.createElement(
+          "div",
+          { style: { ...s.label, fontSize: 14, display: "flex", alignItems: "center", gap: 6 } },
+          "\u{1F510} \u8BBF\u95EE\u5B89\u5168\u8BA4\u8BC1\uFF08\u5C40\u57DF\u7F51 / \u516C\u7F51\u9632\u62A4\uFF09"
+        ),
+        React.createElement(
+          "div",
+          { style: { ...s.muted, marginTop: 3 } },
+          "\u5F00\u542F\u540E\uFF0C\u5C40\u57DF\u7F51\u4E0E\u516C\u7F51\u8BBF\u95EE\u9700\u901A\u8FC7\u5B89\u5168 Token \u6216\u8BBF\u95EE\u5BC6\u7801\u8BA4\u8BC1\uFF0C\u9632\u6B62\u672A\u6388\u6743\u8BBE\u5907\u63A5\u5165"
+        )
+      ),
+      React.createElement("button", {
+        style: { ...enabled ? s.btnPri : s.btnGhost, whiteSpace: "nowrap", flexShrink: 0 },
+        onClick: handleToggleEnabled
+      }, enabled ? "\u2713 \u5DF2\u542F\u7528\u8BA4\u8BC1" : "\u672A\u5F00\u542F\u8BA4\u8BC1")
+    ),
+    enabled && React.createElement(
+      "div",
+      { style: s.block },
+      // 防护范围选择
+      React.createElement(
+        "div",
+        { style: { marginBottom: 16 } },
+        React.createElement("label", { style: { ...s.label, display: "block", marginBottom: 8 } }, "\u9632\u62A4\u751F\u6548\u8303\u56F4"),
+        React.createElement(
+          "div",
+          { style: { display: "flex", gap: 8, flexWrap: "wrap" } },
+          [
+            { id: "all", title: "\u5168\u90E8\u9632\u62A4 (\u63A8\u8350)", desc: "\u5C40\u57DF\u7F51\u8BBF\u95EE\u4E0E\u516C\u7F51\u96A7\u9053\u5168\u90E8\u53D7\u5B89\u5168\u8BA4\u8BC1\u4FDD\u62A4" },
+            { id: "public_only", title: "\u4EC5\u516C\u7F51\u96A7\u9053\u5F00\u542F\u8BA4\u8BC1", desc: "\u5C40\u57DF\u7F51\u5185\u8BBE\u5907\u76F4\u63A5\u514D\u5BC6\u76F4\u8FDE\uFF0C\u516C\u7F51\u96A7\u9053\u5F3A\u5236\u8BA4\u8BC1" },
+            { id: "lan_only", title: "\u4EC5\u5C40\u57DF\u7F51\u5F00\u542F\u8BA4\u8BC1", desc: "\u4EC5\u5C40\u57DF\u7F51\u8BBF\u95EE\u9700\u8BA4\u8BC1\uFF0C\u516C\u7F51\u96A7\u9053\u4E0D\u5F00\u542F" }
+          ].map((opt) => {
+            const isSel = scope === opt.id;
+            return React.createElement(
+              "div",
+              {
+                key: opt.id,
+                onClick: () => handleChangeScope(opt.id),
+                style: {
+                  flex: "1 1 180px",
+                  padding: "9px 12px",
+                  borderRadius: 8,
+                  border: `1px solid ${isSel ? "var(--dsw-alias-brand-primary,#4f6ef7)" : "var(--dsw-alias-border-l2,#e5e7eb)"}`,
+                  background: isSel ? "var(--dsw-alias-state-info-bg,#eff6ff)" : "var(--dsw-alias-bg-layer-2,#f9fafb)",
+                  cursor: "pointer",
+                  transition: "all 0.15s ease"
+                }
+              },
+              React.createElement("div", { style: { fontSize: 13, fontWeight: isSel ? 600 : 500, color: isSel ? "var(--dsw-alias-brand-primary,#4f6ef7)" : "var(--dsw-alias-label-primary,currentColor)" } }, opt.title),
+              React.createElement("div", { style: { ...s.muted, fontSize: 11, marginTop: 3 } }, opt.desc)
+            );
+          })
+        )
+      ),
+      // 认证模式切换
+      React.createElement(
+        "div",
+        { style: { marginBottom: 16 } },
+        React.createElement("label", { style: { ...s.label, display: "block", marginBottom: 8 } }, "\u8BA4\u8BC1\u9A8C\u8BC1\u6A21\u5F0F"),
+        React.createElement(
+          "div",
+          { style: { display: "flex", gap: 8, flexWrap: "wrap" } },
+          [
+            { id: "token_and_password", title: "\u626B\u7801\u514D\u5BC6 + \u5BC6\u7801\u8BA4\u8BC1 (\u63A8\u8350)", desc: "\u4E8C\u7EF4\u7801\u81EA\u5E26 Token \u626B\u7801\u79D2\u8FDB\uFF0C\u624B\u52A8\u8F93\u5165 IP \u9700\u8F93\u5BC6\u7801" },
+            { id: "password_only", title: "\u4EC5\u5BC6\u7801 / PIN \u7801", desc: "\u6240\u6709\u8BBF\u95EE\u5747\u9700\u624B\u52A8\u8F93\u5165\u8BBF\u95EE\u5BC6\u7801" },
+            { id: "token_only", title: "\u4EC5\u5B89\u5168 Token \u514D\u5BC6", desc: "\u4EC5\u6301\u6709\u5E26\u5B89\u5168 Token \u7684\u94FE\u63A5\u6216\u4E8C\u7EF4\u7801\u65B9\u53EF\u8BBF\u95EE" }
+          ].map((opt) => {
+            const isSel = mode === opt.id;
+            return React.createElement(
+              "div",
+              {
+                key: opt.id,
+                onClick: () => handleChangeMode(opt.id),
+                style: {
+                  flex: "1 1 180px",
+                  padding: "9px 12px",
+                  borderRadius: 8,
+                  border: `1px solid ${isSel ? "var(--dsw-alias-brand-primary,#4f6ef7)" : "var(--dsw-alias-border-l2,#e5e7eb)"}`,
+                  background: isSel ? "var(--dsw-alias-state-info-bg,#eff6ff)" : "var(--dsw-alias-bg-layer-2,#f9fafb)",
+                  cursor: "pointer",
+                  transition: "all 0.15s ease"
+                }
+              },
+              React.createElement("div", { style: { fontSize: 13, fontWeight: isSel ? 600 : 500, color: isSel ? "var(--dsw-alias-brand-primary,#4f6ef7)" : "var(--dsw-alias-label-primary,currentColor)" } }, opt.title),
+              React.createElement("div", { style: { ...s.muted, fontSize: 11, marginTop: 3 } }, opt.desc)
+            );
+          })
+        )
+      ),
+      // 密码设置区域 (当非 token_only 时展示)
+      mode !== "token_only" && React.createElement(
+        "div",
+        { style: { marginBottom: 16 } },
+        React.createElement(
+          "label",
+          { style: { ...s.label, display: "block", marginBottom: 6 } },
+          `\u8BBF\u95EE\u5BC6\u7801 / PIN \u7801 ${auth?.hasPassword ? "(\u5DF2\u8BBE\u7F6E\u5BC6\u7801)" : "(\u5C1A\u672A\u8BBE\u7F6E\u5BC6\u7801\uFF0C\u76F4\u63A5\u8BBF\u95EE\u5C06\u514D\u5BC6)"}`
+        ),
+        React.createElement(
+          "div",
+          { style: { display: "flex", gap: 8, alignItems: "center" } },
+          React.createElement("input", {
+            type: showPassword ? "text" : "password",
+            style: { ...s.input, flex: 1 },
+            placeholder: auth?.hasPassword ? "\u8F93\u5165\u65B0\u5BC6\u7801\u4EE5\u4FEE\u6539\uFF08\u7559\u7A7A\u4FDD\u5B58\u53EF\u6E05\u9664\u5BC6\u7801\uFF09" : "\u8BBE\u7F6E\u8BBF\u95EE\u5BC6\u7801 / PIN \u7801",
+            value: password,
+            onChange: (e) => setPassword(e.target.value)
+          }),
+          React.createElement("button", {
+            style: { ...s.btnGhost, height: 32, fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 },
+            onClick: () => setShowPassword((v) => !v)
+          }, showPassword ? "\u9690\u85CF" : "\u663E\u793A"),
+          React.createElement("button", {
+            style: { ...s.btnPri, height: 32, fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 },
+            onClick: handleSavePassword,
+            disabled: saving
+          }, saving ? "\u4FDD\u5B58\u4E2D\u2026" : "\u4FDD\u5B58\u5BC6\u7801")
+        )
+      ),
+      // 远程设备管理权限控制 (防篡改设置)
+      React.createElement(
+        "div",
+        { style: { marginBottom: 16 } },
+        React.createElement("label", { style: { ...s.label, display: "block", marginBottom: 8 } }, "\u2699\uFE0F \u8FDC\u7A0B\u8BBE\u5907\u7BA1\u7406\u6743\u9650\uFF08\u9632\u7BE1\u6539\u63A7\u5236\uFF09"),
+        React.createElement(
+          "div",
+          { style: { display: "flex", gap: 8, flexWrap: "wrap" } },
+          [
+            { id: "password_unlock", title: "\u9700\u5BC6\u7801\u89E3\u9501 (\u63A8\u8350)", desc: "\u8FDC\u7A0B\u624B\u673A/\u6D4F\u89C8\u5668\u8FDB\u5165\u8BBE\u7F6E\u9700\u8F93\u5165\u4E3B\u5BC6\u7801\u89E3\u9501" },
+            { id: "local_only", title: "\u4EC5\u9650\u7535\u8111\u672C\u673A\u7BA1\u7406 (\u6700\u4E25\u683C)", desc: "\u8FDC\u7A0B\u8BBE\u5907\u9501\u5B9A\u5E76\u7981\u6B62\u4FEE\u6539\u4EFB\u4F55\u914D\u7F6E\uFF0C\u4EC5\u9650 127.0.0.1 \u7BA1\u7406" },
+            { id: "open", title: "\u5BBD\u677E\u6A21\u5F0F", desc: "\u4EFB\u4F55\u5DF2\u767B\u5F55\u8BBE\u5907\u5747\u53EF\u76F4\u63A5\u4FEE\u6539\u914D\u7F6E" }
+          ].map((opt) => {
+            const isSel = adminPolicy === opt.id;
+            return React.createElement(
+              "div",
+              {
+                key: opt.id,
+                onClick: () => handleChangeAdminPolicy(opt.id),
+                style: {
+                  flex: "1 1 180px",
+                  padding: "9px 12px",
+                  borderRadius: 8,
+                  border: `1px solid ${isSel ? "var(--dsw-alias-brand-primary,#4f6ef7)" : "var(--dsw-alias-border-l2,#e5e7eb)"}`,
+                  background: isSel ? "var(--dsw-alias-state-info-bg,#eff6ff)" : "var(--dsw-alias-bg-layer-2,#f9fafb)",
+                  cursor: "pointer",
+                  transition: "all 0.15s ease"
+                }
+              },
+              React.createElement("div", { style: { fontSize: 13, fontWeight: isSel ? 600 : 500, color: isSel ? "var(--dsw-alias-brand-primary,#4f6ef7)" : "var(--dsw-alias-label-primary,currentColor)" } }, opt.title),
+              React.createElement("div", { style: { ...s.muted, fontSize: 11, marginTop: 3 } }, opt.desc)
+            );
+          })
+        )
+      ),
+      // 安全 Token 管理
+      mode !== "password_only" && React.createElement(
+        "div",
+        { style: { marginBottom: 12 } },
+        React.createElement("label", { style: { ...s.label, display: "block", marginBottom: 6 } }, "\u5B89\u5168 Token (\u514D\u5BC6\u626B\u7801\u51ED\u636E)"),
+        React.createElement(
+          "div",
+          { style: { display: "flex", gap: 8, alignItems: "center" } },
+          React.createElement(
+            "code",
+            { style: { ...s.code, flex: 1, padding: "6px 10px", background: "var(--dsw-alias-bg-layer-1,#fff)", borderRadius: 6, border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)" } },
+            auth?.secretToken ? `${auth.secretToken.slice(0, 10)}****************` : "\u672A\u751F\u6210"
+          ),
+          React.createElement("button", {
+            style: { ...s.btnGhost, height: 32, fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 },
+            onClick: handleRegenerateToken,
+            title: "\u91CD\u65B0\u751F\u6210 Token\uFF0C\u4F7F\u4E4B\u524D\u5206\u4EAB\u7684\u65E7\u4E8C\u7EF4\u7801\u548C\u94FE\u63A5\u7ACB\u5373\u5931\u6548"
+          }, "\u{1F504} \u91CD\u7F6E\u5B89\u5168 Token")
+        ),
+        React.createElement(
+          "div",
+          { style: { ...s.muted, fontSize: 11, marginTop: 4 } },
+          "\u{1F4A1} \u751F\u6210\u7684\u5C40\u57DF\u7F51\u4E0E\u516C\u7F51\u4E8C\u7EF4\u7801\u5DF2\u81EA\u52A8\u5D4C\u5165\u8BE5\u5B89\u5168 Token\uFF0C\u626B\u7801\u8BBE\u5907\u4E00\u79D2\u514D\u5BC6\u8FDB\u5165\uFF0C\u65E0\u9700\u624B\u52A8\u8F93\u5165\u5BC6\u7801\u3002"
+        )
+      ),
+      msg && React.createElement("div", {
+        style: {
+          marginTop: 10,
+          padding: "6px 12px",
+          borderRadius: 6,
+          fontSize: 12,
+          background: msg.ok ? "var(--dsw-alias-state-success-bg,#ecfdf5)" : "var(--dsw-alias-state-error-bg,#fef2f2)",
+          color: msg.ok ? "var(--dsw-alias-state-success-primary,#059669)" : "var(--dsw-alias-state-error-primary,#dc2626)"
+        }
+      }, msg.text)
     )
   );
 });
@@ -1178,7 +1510,8 @@ function VersionBanner({ rpcCall }) {
 var TABS = [
   { id: "lan", label: "\u5C40\u57DF\u7F51", icon: Icons.lan },
   { id: "tunnel", label: "\u516C\u7F51\u96A7\u9053", icon: Icons.tunnel },
-  { id: "im", label: "IM \u673A\u5668\u4EBA", icon: Icons.bot }
+  { id: "im", label: "IM \u673A\u5668\u4EBA", icon: Icons.bot },
+  { id: "security", label: "\u5B89\u5168\u8BA4\u8BC1", icon: Icons.security }
 ];
 function TabBar({ active, onChange, dots }) {
   return React.createElement(
@@ -1245,6 +1578,29 @@ function BridgePanel({ rpcCall }) {
   const [activeTab, setActiveTab] = React.useState("lan");
   const [platforms, setPlatforms] = React.useState(null);
   const [selectedPlatform, setSelectedPlatform] = React.useState("wechat");
+  const isLocalhost = typeof window !== "undefined" && (window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost" || window.location.hostname === "::1");
+  const [adminUnlocked, setAdminUnlocked] = React.useState(false);
+  const [unlockPassword, setUnlockPassword] = React.useState("");
+  const [unlockErr, setUnlockErr] = React.useState(null);
+  const [unlocking, setUnlocking] = React.useState(false);
+  const handleUnlockAdmin = React.useCallback(async (e) => {
+    e?.preventDefault?.();
+    setUnlocking(true);
+    setUnlockErr(null);
+    try {
+      const res = await rpcCall(BRIDGE_ENDPOINTS.authAdminUnlock, { password: unlockPassword });
+      if (res?.ok) {
+        setAdminUnlocked(true);
+        setUnlockPassword("");
+      } else {
+        setUnlockErr(res?.error?.message || "\u7BA1\u7406\u5458\u5BC6\u7801\u9519\u8BEF");
+      }
+    } catch (err2) {
+      setUnlockErr(err2.message || "\u89E3\u9501\u8BF7\u6C42\u5931\u8D25");
+    } finally {
+      setUnlocking(false);
+    }
+  }, [rpcCall, unlockPassword]);
   const load = React.useCallback(async (quiet = false) => {
     try {
       const r = await rpcCall(BRIDGE_ENDPOINTS.getStatus, {});
@@ -1300,6 +1656,7 @@ function BridgePanel({ rpcCall }) {
     (serverUrl, accessToken) => act(BRIDGE_ENDPOINTS.saveCustomTunnelConfig, { serverUrl, accessToken }),
     [act]
   );
+  const navSecurity = React.useCallback(() => setActiveTab("security"), []);
   if (!status && !err) {
     return React.createElement("div", {
       style: { padding: 32, color: "var(--dsw-alias-label-tertiary,#9ca3af)", fontSize: 13 }
@@ -1312,14 +1669,17 @@ function BridgePanel({ rpcCall }) {
   const dots = {
     lan: !!status?.proxy?.running,
     tunnel: !!(status?.cloudflared?.running || ct?.running),
-    im: !!imConnected
+    im: !!imConnected,
+    security: !!status?.auth?.enabled
   };
   let tabContent;
   if (activeTab === "lan") {
     tabContent = React.createElement(TunnelCard, {
       title: "\u5C40\u57DF\u7F51\u8BBF\u95EE",
       desc: "\u540C\u4E00 Wi-Fi \u4E0B\u7684\u8BBE\u5907\u53EF\u76F4\u63A5\u626B\u7801\u8BBF\u95EE",
-      data: { running: status?.proxy?.running, url: status?.lan?.url, qr: status?.lan?.qr }
+      data: { running: status?.proxy?.running, url: status?.lan?.url, qr: status?.lan?.qr },
+      auth: status?.auth,
+      onNavigateSecurity: navSecurity
     });
   } else if (activeTab === "tunnel") {
     tabContent = React.createElement(
@@ -1334,6 +1694,8 @@ function BridgePanel({ rpcCall }) {
           qr: status?.cloudflared?.qr,
           state: status?.cloudflared?.state
         },
+        auth: status?.auth,
+        onNavigateSecurity: navSecurity,
         onStart: onStartCloudflared,
         onStop: onStopCloudflared,
         onReset: status?.cloudflared?.running ? onResetCloudflared : null
@@ -1350,6 +1712,8 @@ function BridgePanel({ rpcCall }) {
             qr: ct?.qr,
             state: ct?.state
           },
+          auth: status?.auth,
+          onNavigateSecurity: navSecurity,
           onStart: onStartCustom,
           onStop: onStopCustom
         },
@@ -1361,6 +1725,100 @@ function BridgePanel({ rpcCall }) {
         })
       )
     );
+  } else if (activeTab === "security") {
+    const auth = status?.auth;
+    const policy = auth?.adminPolicy ?? "password_unlock";
+    const isLocked = !isLocalhost && auth?.enabled && policy !== "open" && !adminUnlocked;
+    if (isLocked) {
+      if (policy === "local_only") {
+        tabContent = React.createElement(
+          "div",
+          {
+            style: { ...s.card, textAlign: "center", padding: "36px 20px", marginTop: 10 }
+          },
+          React.createElement("div", { style: { fontSize: 36, marginBottom: 12 } }, "\u{1F6E1}\uFE0F"),
+          React.createElement("div", { style: { ...s.label, fontSize: 16, marginBottom: 8 } }, "\u5DF2\u5F00\u542F\u300C\u4EC5\u9650\u7535\u8111\u672C\u673A\u7BA1\u7406\u300D\u5B89\u5168\u4FDD\u62A4"),
+          React.createElement(
+            "div",
+            { style: { ...s.muted, maxWidth: 380, margin: "0 auto", lineHeight: 1.6 } },
+            "\u5F53\u524D\u8BBE\u5907\u4E3A\u8FDC\u7A0B\u63A5\u5165\u3002\u4E3A\u4E86\u4FDD\u62A4\u60A8\u7684\u7CFB\u7EDF\u5B89\u5168\uFF0C\u8BBE\u7F6E\u9762\u677F\u5DF2\u88AB\u9501\u5B9A\uFF0C\u5982\u9700\u4FEE\u6539\u5BC6\u7801\u6216\u901A\u9053\u8BBE\u7F6E\u8BF7\u5728\u7535\u8111\u672C\u673A\uFF08127.0.0.1\uFF09\u4E0A\u64CD\u4F5C\u3002"
+          )
+        );
+      } else {
+        tabContent = React.createElement(
+          "div",
+          {
+            style: { ...s.card, maxWidth: 440, margin: "16px auto", padding: "28px 24px" }
+          },
+          React.createElement(
+            "div",
+            { style: { textAlign: "center", marginBottom: 20 } },
+            React.createElement("div", { style: { fontSize: 36, marginBottom: 10 } }, "\u{1F512}"),
+            React.createElement("div", { style: { ...s.label, fontSize: 16, fontWeight: 600 } }, "\u7BA1\u7406\u8BBE\u7F6E\u9762\u677F\u5DF2\u9501\u5B9A"),
+            React.createElement(
+              "div",
+              { style: { ...s.muted, fontSize: 12, marginTop: 4 } },
+              "\u5F53\u524D\u8BBE\u5907\u4E3A\u8FDC\u7A0B\u8BBF\u95EE\uFF0C\u8BF7\u8F93\u5165\u7BA1\u7406\u5458\u5BC6\u7801\u4EE5\u89E3\u9501\u914D\u7F6E\u7BA1\u7406\u6743\u9650"
+            )
+          ),
+          React.createElement(
+            "form",
+            {
+              onSubmit: handleUnlockAdmin,
+              style: { display: "flex", flexDirection: "column", gap: 12 }
+            },
+            React.createElement("input", {
+              type: "password",
+              style: s.input,
+              placeholder: "\u8F93\u5165\u7BA1\u7406\u5458\u8BBF\u95EE\u5BC6\u7801",
+              value: unlockPassword,
+              onChange: (e) => setUnlockPassword(e.target.value),
+              autoFocus: true
+            }),
+            unlockErr && React.createElement("div", {
+              style: { fontSize: 12, color: "var(--dsw-alias-state-error-primary,#dc2626)" }
+            }, unlockErr),
+            React.createElement("button", {
+              type: "submit",
+              style: { ...s.btnPri, width: "100%", justifyContent: "center", height: 36 },
+              disabled: unlocking
+            }, unlocking ? "\u9A8C\u8BC1\u4E2D\u2026" : "\u89E3\u9501\u7BA1\u7406\u6743\u9650")
+          )
+        );
+      }
+    } else {
+      tabContent = React.createElement(
+        React.Fragment,
+        null,
+        !isLocalhost && adminUnlocked && React.createElement(
+          "div",
+          {
+            style: {
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "8px 12px",
+              background: "var(--dsw-alias-state-info-bg,#eff6ff)",
+              border: "1px solid var(--dsw-alias-brand-primary,#4f6ef7)",
+              borderRadius: 8,
+              marginBottom: 12,
+              fontSize: 12,
+              color: "var(--dsw-alias-brand-primary,#4f6ef7)"
+            }
+          },
+          React.createElement("span", null, "\u{1F513} \u8FDC\u7A0B\u7BA1\u7406\u6743\u9650\u5DF2\u89E3\u9501\uFF08\u5F53\u524D\u4E34\u65F6\u4F1A\u8BDD\u6709\u6548\uFF09"),
+          React.createElement("button", {
+            style: { ...s.btnGhost, height: 24, fontSize: 11, padding: "0 8px" },
+            onClick: () => setAdminUnlocked(false)
+          }, "\u{1F512} \u91CD\u65B0\u9501\u5B9A")
+        ),
+        React.createElement(AccessAuthCard, {
+          auth: status?.auth,
+          rpcCall,
+          onUpdate: () => load(true)
+        })
+      );
+    }
   } else if (activeTab === "im") {
     const IM_PLATFORMS = [
       { id: "wechat", label: "\u5FAE\u4FE1", icon: Icons.wechat, brandColor: "#07C160", desc: "ClawBot \u626B\u7801\u76F4\u8FDE \xB7 \u65E0\u9700\u516C\u7F51" },
