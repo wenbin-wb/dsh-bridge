@@ -20,6 +20,7 @@
 - **微信 Bot（ClawBot / iLink）**：扫码登录微信个人号后，直接在微信里对话、控制 DeepSeek Harness 的 agent。**支持多工作区选择、会话跨重启持久化、按工作区分组查看、媒体（图片/文件/语音）收发、权限审批**——走腾讯官方 iLink Bot API，无需公网（[使用说明](docs/wechat-usage.md)）
 - **QQ Bot（OpenAPI v2）**：接入 QQ 机器人，私聊/群聊接收消息，发送 Markdown、按钮键盘和富媒体。**完整事件覆盖（C2C / GROUP_AT_MESSAGE_CREATE）、Token 自动刷新、断线重连、消息去重**——走腾讯官方 QQ Bot OpenAPI v2（[使用说明](docs/qq-usage.md)）
 - **飞书 Bot（官方 WebSocket 长连接）**：接入飞书开放平台企业自建应用，私聊/群聊实时交互。**无需公网 IP / 无需 Webhook、支持飞书 Markdown 表格排版、原生交互卡片权限审批一键点击确认**——走飞书官方最新 WebSocket 长连接协议（[使用说明](docs/feishu-usage.md)）
+- **Telegram Bot（官方 Bot API + 代理支持）**：接入官方 Telegram 机器人，单聊/群聊实时交互。**无需公网 IP（长轮询 getUpdates）、内置零依赖 HTTP/HTTPS 代理隧道、打字机平滑流式输出、原生快捷指令菜单（Menu 按钮）与 Inline 交互卡片审批**（[使用说明](docs/telegram-usage.md)）
 - **IM 官方品牌矢量图标**：微信、QQ、飞书、Telegram 官方矢量图标与状态展示，直接在聊天软件里呼唤你的 Agent
 - **极速版本检查与一键升级**：国内高速镜像（npmmirror）优先 + 官方源毫秒级双通道检查，检测到新版本支持**界面一键直接升级**，无需手动打开终端
 - **深色模式深度适配**：完美适配 DeepSeek Harness 设计系统明暗主题切换，二维码自带白底安全垫，暗光下手机扫码 100% 极速识别
@@ -40,7 +41,7 @@
 | **微信** | 在微信里直接与你的 Agent 对话 | ✅ 已支持（多工作区 / 会话持久化 / 媒体 / 审批） |
 | **QQ Bot** | 接入 QQ 机器人，群聊/私聊唤起 Agent | ✅ **已完成**（v2.1.0）— Markdown / 按钮 / 富媒体 |
 | **飞书** | 飞书开放平台长连接机器人，办公场景直接调用 | ✅ **已完成**（v2.3.0）— 免公网 WS / 卡片审批 |
-| **Telegram** | 适合自托管与海外的 IM 渠道 | 规划中 |
+| **Telegram** | 适合自托管与海外的 IM 渠道 | ✅ **已完成**（v2.4.0）— 免公网长轮询 / 代理支持 / 原生菜单 / Inline 卡片 / 流式打字机 |
 | **OpenClaw** | 与 OpenClaw 生态打通 | 规划中 |
 
 ---
@@ -280,6 +281,45 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 | `/status` | 查看 agent 状态看板 |
 | `/yes` `/no`（或 `1`/`2`） | 响应权限审批请求（或直接点击卡片按钮） |
 | `/help` | 查看全部命令 |
+
+---
+
+### Telegram Bot（官方 Bot API + 代理支持）
+
+接入 Telegram 官方 Bot API，单聊与群聊实时交互。采用官方 Long Polling（长轮询）机制，**无需公网 IP / 免 Webhook**，内置**零依赖 HTTP/HTTPS CONNECT 代理隧道**，国内网络即开即连。
+
+**功能亮点**
+
+- ⚡ **100% 免公网 IP**：官方 Long Polling 长轮询，本地电脑或内网服务器即可直连通信
+- 🌐 **内置 HTTP/HTTPS 代理支持**：支持填写本地 Clash / v2ray 代理（如 `http://127.0.0.1:7890`），零外部依赖
+- 📜 **实时打字机流式输出**：接入轮次生命周期，单条气泡原地 `editMessageText` 增量刷新，告别频繁发碎消息
+- 🎯 **原生快捷指令菜单（Menu 按钮）**：自动注册全范围指令，输入 `/` 或点击左下角 `[Menu]` 按钮一键直达常用命令
+- 🛡️ **Inline Keyboard 交互卡片**：权限审批下发 `[✓ 批准执行]` / `[✕ 拒绝执行]` 按键，一秒点击即时放行
+- 🖼️ **多模态与文件传输**：支持入站图片/文档自动转存交付 Agent，出站产物文件自动推回 Telegram
+- 🔄 **会话与工作区管理**：支持 `/sessions` 列出历史会话、`/use N` 切换、`/workspaces` 调度工作区
+
+**使用步骤**
+
+1. 在 Telegram 中向 [@BotFather](https://t.me/BotFather) 发送 `/newbot` 创建机器人并获取 **Bot Token**
+2. 打开 DSH 设置页「远程访问」→「IM 机器人」→ 选中「**Telegram**」
+3. 填入 **Bot Token**（国内网络可按需填入代理地址如 `http://127.0.0.1:7890`），点击「保存并连接」
+4. 手机 Telegram 扫码打开机器人，发送第一条消息（如 `/help`）即**自动完成白名单授权**
+
+**Telegram 里的命令**（完整说明见 [Telegram Bot 使用说明](docs/telegram-usage.md)）
+
+| 命令 | 说明 | 交互卡片 |
+|------|------|------|
+| *(普通文本)* | 发给当前活动 agent | 实时打字机流式输出 |
+| `/new <提示词>` | 在当前工作区新建会话并开始 | 立即启动新轮次 |
+| `/new <提示词> @N` | 在指定工作区新建会话 | 多工作区调度 |
+| `/sessions`（或 `/list`） | 查看所有会话列表 | 挂载一键切换按键 |
+| `/use N`（或 `/resume N`） | 切换到会话 N | 快速切换上下文 |
+| `/workspaces` | 列出可用工作区 | 查看工作区路径 |
+| `/status` | 查看 agent 状态看板 | 挂载刷新/停止/结束按键 |
+| `/stop` | 停止当前正在运行的任务 | 即刻中断执行 |
+| `/end` | 结束当前活动会话 | 挂载快捷开始按键 |
+| `/yes` `/no`（或 `1`/`2`） | 响应权限审批请求 | 支持直接点击卡片按钮 |
+| `/help` | 显示快捷按键与完整帮助 | 挂载全套功能导航按键 |
 
 ---
 

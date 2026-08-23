@@ -20,6 +20,7 @@ Seamlessly extend your local DeepSeek Harness to mobile phones, tablets, public 
 - **WeChat Bot (ClawBot / iLink)**: Scan a QR code to log in a WeChat personal account, then chat with, control, and approve your DeepSeek Harness agents right inside WeChat. **Multi-workspace selection, restart-persistent sessions, grouped session listing with titles, media (image/file/voice) transfer, and permission approvals** — over Tencent's official iLink Bot API, no public server or tunnel required ([Usage Guide](docs/wechat-usage.md))
 - **QQ Bot (OpenAPI v2)**: Connect your QQ Bot to receive private/group messages, send Markdown, button keyboards, and rich media. **Full event coverage (C2C / GROUP_AT_MESSAGE_CREATE), auto token refresh, reconnection with backoff, message deduplication** — over Tencent's official QQ Bot OpenAPI v2 ([Usage Guide](docs/qq-usage.md))
 - **Feishu / Lark Bot (Official WebSocket)**: Connect enterprise self-built apps via Feishu's official WebSocket protocol. **No public IP / no Webhook required, Markdown table formatting, native interactive card permission approvals with 1-click button actions** ([Usage Guide](docs/feishu-usage.md))
+- **Telegram Bot (Official Bot API + Proxy Support)**: Connect official Telegram bots for private and group interactions. **No public IP required (Long Polling getUpdates), built-in zero-dependency HTTP/HTTPS proxy tunnel, smooth typewriter streaming output, native command menu (Menu button), and Inline Keyboard interactive approval cards** ([Usage Guide](docs/telegram-usage.md))
 - **Official Brand SVG Icons**: Authentic vector brand icons for WeChat, QQ, Feishu, Telegram with real-time status indicators
 - **Fast Version Check & 1-Click Upgrade**: Dual-channel registry check (npmmirror + npmjs fallback in ~200ms) with seamless **1-click in-app upgrade**, no terminal copying required
 - **Dark Mode Support**: Deep integration with DeepSeek Harness Design Tokens (`--dsw-alias-*`), QR code background protection for safe dark mode scanning
@@ -40,7 +41,7 @@ Seamlessly extend your local DeepSeek Harness to mobile phones, tablets, public 
 | **WeChat** | Chat with your Agent directly in WeChat | ✅ Supported (workspaces / persisted sessions / media / approvals) |
 | **QQ Bot** | QQ bot integration for group/private chat | ✅ **Completed** (v2.1.0) — Markdown / buttons / rich media |
 | **Feishu** | Feishu / Lark official persistent WebSocket bot | ✅ **Completed** (v2.3.0) — No-public-IP WS / Card Approvals |
-| **Telegram** | IM channel suited for self-hosting and overseas | Planned |
+| **Telegram** | IM channel suited for self-hosting and overseas | ✅ **Completed** (v2.4.0) — Long Polling / Proxy / Native Menu / Inline Cards / Streaming |
 | **OpenClaw** | Connect with the OpenClaw ecosystem | Planned |
 
 ---
@@ -280,6 +281,45 @@ Connect your enterprise self-built app via Feishu's official WebSocket protocol.
 | `/status` | View agent status dashboard |
 | `/yes` `/no` (or `1`/`2`) | Respond to permission approval requests (or click card buttons) |
 | `/help` | Display full command help |
+
+---
+
+### Telegram Bot (Official Bot API + Proxy Support)
+
+Connect official Telegram Bot API for real-time private and group interactions. Powered by official Long Polling (`getUpdates`), **no public IP / no Webhook required**, built-in **zero-dependency HTTP/HTTPS CONNECT proxy tunnel**, ready to use in any network environment.
+
+**Key Features**
+
+- ⚡ **100% No Public IP Needed**: Official Long Polling mechanism allows local machines or private servers to connect directly
+- 🌐 **Built-in HTTP/HTTPS Proxy Support**: Easily configure local proxies like Clash / v2ray (`http://127.0.0.1:7890`) with zero external dependencies
+- 📜 **Typewriter Streaming Output**: Integrated turn lifecycle updates existing message in-place with `editMessageText`, eliminating message fragmentation
+- 🎯 **Native Command Menu (`Menu` Button)**: Automatically registered with `setMyCommands` & `setChatMenuButton`, type `/` or tap `[Menu]` for 1-click command navigation
+- 🛡️ **Inline Keyboard Interactive Cards**: Permission approvals send `[✓ Approve]` / `[✕ Reject]` buttons for 1-second approval actions
+- 🖼️ **Multimodal & File Transfers**: Inbound images/files automatically saved and sent to Agent; generated artifacts sent back to Telegram
+- 🔄 **Session & Workspace Management**: Manage multiple sessions with `/sessions`, switch with `/use N`, view workspaces with `/workspaces`
+
+**Quick Start**
+
+1. Send `/newbot` to [@BotFather](https://t.me/BotFather) on Telegram to create your bot and obtain the **Bot Token**
+2. Open DSH Settings → "Remote Access" → "IM Bots" → select "**Telegram**"
+3. Enter your **Bot Token** (and optional proxy address like `http://127.0.0.1:7890`), click "Save and Connect"
+4. Scan the QR code with Telegram on your phone, send the first message (e.g. `/help`) to **automatically authorize your account into the allowlist**
+
+**Commands in Telegram** (Full guide in [Telegram Bot Guide](docs/telegram-usage.md))
+
+| Command | Description | Interactive Card |
+|---------|-------------|------------------|
+| *(plain text)* | Send to current active agent | Real-time typewriter stream |
+| `/new <prompt>` | Create and start a new session in current workspace | Start fresh turn |
+| `/new <prompt> @N` | Create a new session in workspace N | Multi-workspace routing |
+| `/sessions` (or `/list`) | List all sessions | 1-click switch buttons |
+| `/use N` (or `/resume N`） | Switch to/resume session N | Instant context switch |
+| `/workspaces` | List all available workspaces | View workspace paths |
+| `/status` | View agent status dashboard | Refresh/Stop/End buttons |
+| `/stop` | Stop currently executing task | Immediate abort |
+| `/end` | End current active session | Quick-start button attached |
+| `/yes` `/no` (or `1`/`2`) | Respond to permission approvals | Click inline buttons directly |
+| `/help` | Display quick buttons and help | Full navigation buttons |
 
 ---
 
