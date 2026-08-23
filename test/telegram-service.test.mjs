@@ -61,6 +61,9 @@ test('formatTelegramHtml converts markdown and escapes HTML entities safely', ()
     '> 引用 Blockquote',
     '- 列表项 List item',
     '访问 [官网](https://dsh.ai) 查看 **加粗** 与 `code & tags <test>`',
+    '| 姓名 | 角色 |',
+    '| :--- | :--- |',
+    '| 张三 | 管理员 |',
     '```javascript',
     'const x = 1 < 2 && 3 > 0;',
     '```',
@@ -72,10 +75,12 @@ test('formatTelegramHtml converts markdown and escapes HTML entities safely', ()
   assert.ok(html.includes('<a href="https://dsh.ai">官网</a>'))
   assert.ok(html.includes('<b>加粗</b>'))
   assert.ok(html.includes('<code>code &amp; tags &lt;test&gt;</code>'))
+  assert.ok(html.includes('┌──────┬────────┐'))
+  assert.ok(html.includes('│ 张三 │ 管理员 │'))
   assert.ok(html.includes('<pre><code class="language-javascript">const x = 1 &lt; 2 &amp;&amp; 3 &gt; 0;</code></pre>'))
 })
 
-test('TelegramService is a Platform instance with full lifecycle', async () => {
+test('TelegramService is a Platform instance with full lifecycle and allowlist persistence', async () => {
   const ctx = makeMockCordisCtx()
   const persisted = []
   const service = new TelegramService({
@@ -100,6 +105,7 @@ test('TelegramService is a Platform instance with full lifecycle', async () => {
     // Set allowFrom
     service.setAllowFrom(['12345', '67890'])
     assert.deepEqual(service.node.config.allowFrom, ['12345', '67890'])
+    assert.ok(persisted.some(p => p.allowFrom && p.allowFrom.includes('12345')))
 
     const status = service.getStatus()
     assert.equal(status.id, 'telegram')
