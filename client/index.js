@@ -361,10 +361,22 @@ const AccessAuthCard = React.memo(function AccessAuthCard({ auth, rpcCall, onUpd
   const [mode, setMode] = React.useState(auth?.mode ?? 'token_and_password');
   const [scope, setScope] = React.useState(auth?.scope ?? 'all');
   const [adminPolicy, setAdminPolicy] = React.useState(auth?.adminPolicy ?? 'password_unlock');
-  const [password, setPassword] = React.useState('');
-  const [showPassword, setShowPassword] = React.useState(false);
-  const [saving, setSaving] = React.useState(false);
-  const [msg, setMsg] = React.useState(null);
+
+  // 1. 访客访问密码状态
+  const [accessPassword, setAccessPassword] = React.useState('');
+  const [showAccessPassword, setShowAccessPassword] = React.useState(false);
+  const [savingAccess, setSavingAccess] = React.useState(false);
+  const [saveAccessSuccess, setSaveAccessSuccess] = React.useState(false);
+  const [msgAccess, setMsgAccess] = React.useState(null);
+
+  // 2. 后台管理密码状态
+  const [adminPassword, setAdminPassword] = React.useState('');
+  const [showAdminPassword, setShowAdminPassword] = React.useState(false);
+  const [savingAdmin, setSavingAdmin] = React.useState(false);
+  const [saveAdminSuccess, setSaveAdminSuccess] = React.useState(false);
+  const [msgAdmin, setMsgAdmin] = React.useState(null);
+
+  const [topMsg, setTopMsg] = React.useState(null);
 
   React.useEffect(() => {
     if (auth) {
@@ -380,10 +392,10 @@ const AccessAuthCard = React.memo(function AccessAuthCard({ auth, rpcCall, onUpd
     setEnabled(next);
     try {
       await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { enabled: next });
-      setMsg({ ok: true, text: next ? '✓ 访问安全认证已开启（现有登录态已刷新）' : '✓ 访问安全认证已关闭' });
+      setTopMsg({ ok: true, text: next ? '✓ 访问安全认证已开启（现有登录态已刷新）' : '✓ 访问安全认证已关闭' });
       onUpdate?.();
     } catch (e) {
-      setMsg({ ok: false, text: e.message || '更新失败' });
+      setTopMsg({ ok: false, text: e.message || '更新失败' });
     }
   };
 
@@ -391,10 +403,10 @@ const AccessAuthCard = React.memo(function AccessAuthCard({ auth, rpcCall, onUpd
     setMode(m);
     try {
       await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { mode: m });
-      setMsg({ ok: true, text: '✓ 外部验证模式已切换，已重置所有设备的登录态' });
+      setTopMsg({ ok: true, text: '✓ 外部验证模式已切换，已刷新全域登录态' });
       onUpdate?.();
     } catch (e) {
-      setMsg({ ok: false, text: e.message || '更新失败' });
+      setTopMsg({ ok: false, text: e.message || '更新失败' });
     }
   };
 
@@ -402,10 +414,10 @@ const AccessAuthCard = React.memo(function AccessAuthCard({ auth, rpcCall, onUpd
     setScope(sc);
     try {
       await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { scope: sc });
-      setMsg({ ok: true, text: '✓ 防护生效范围已更新' });
+      setTopMsg({ ok: true, text: '✓ 防护生效范围已更新' });
       onUpdate?.();
     } catch (e) {
-      setMsg({ ok: false, text: e.message || '更新失败' });
+      setTopMsg({ ok: false, text: e.message || '更新失败' });
     }
   };
 
@@ -413,29 +425,54 @@ const AccessAuthCard = React.memo(function AccessAuthCard({ auth, rpcCall, onUpd
     setAdminPolicy(pol);
     try {
       await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { adminPolicy: pol });
-      setMsg({ ok: true, text: '✓ 远程管理权限策略已更新' });
+      setTopMsg({ ok: true, text: '✓ 远程管理防篡改策略已更新' });
       onUpdate?.();
     } catch (e) {
-      setMsg({ ok: false, text: e.message || '更新失败' });
+      setTopMsg({ ok: false, text: e.message || '更新失败' });
     }
   };
 
-  const handleSavePassword = async () => {
-    setSaving(true);
-    setMsg(null);
+  // 保存访客访问密码
+  const handleSaveAccessPassword = async () => {
+    setSavingAccess(true);
+    setMsgAccess(null);
     try {
-      const res = await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { password });
+      const res = await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { password: accessPassword });
       if (res?.ok) {
-        setMsg({ ok: true, text: '✓ 系统主密码已更新保存，已重置所有设备的登录与解锁状态' });
-        setPassword('');
+        setSaveAccessSuccess(true);
+        setMsgAccess({ ok: true, text: '✓ 访客访问密码已成功保存！原有的历史访客会话已全部安全刷新。' });
+        setAccessPassword('');
+        setTimeout(() => setSaveAccessSuccess(false), 3500);
         onUpdate?.();
       } else {
-        setMsg({ ok: false, text: res?.error?.message || '保存失败' });
+        setMsgAccess({ ok: false, text: res?.error?.message || '保存失败' });
       }
     } catch (e) {
-      setMsg({ ok: false, text: e.message || '保存失败' });
+      setMsgAccess({ ok: false, text: e.message || '保存失败' });
     } finally {
-      setSaving(false);
+      setSavingAccess(false);
+    }
+  };
+
+  // 保存后台管理密码
+  const handleSaveAdminPassword = async () => {
+    setSavingAdmin(true);
+    setMsgAdmin(null);
+    try {
+      const res = await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { adminPassword });
+      if (res?.ok) {
+        setSaveAdminSuccess(true);
+        setMsgAdmin({ ok: true, text: '✓ 后台管理密码已成功保存！远程管理解锁状态已重置生效。' });
+        setAdminPassword('');
+        setTimeout(() => setSaveAdminSuccess(false), 3500);
+        onUpdate?.();
+      } else {
+        setMsgAdmin({ ok: false, text: res?.error?.message || '保存失败' });
+      }
+    } catch (e) {
+      setMsgAdmin({ ok: false, text: e.message || '保存失败' });
+    } finally {
+      setSavingAdmin(false);
     }
   };
 
@@ -443,18 +480,18 @@ const AccessAuthCard = React.memo(function AccessAuthCard({ auth, rpcCall, onUpd
     if (!confirm('重置后，之前包含旧 Token 的二维码和分享链接将立即失效。是否确认重置？')) return;
     try {
       await rpcCall(BRIDGE_ENDPOINTS.authRegenerateToken, {});
-      setMsg({ ok: true, text: '✓ 安全 Token 已重置，二维码与链接已刷新' });
+      setTopMsg({ ok: true, text: '✓ 安全 Token 已重置，二维码与专属链接已刷新' });
       onUpdate?.();
     } catch (e) {
-      setMsg({ ok: false, text: e.message || '重置失败' });
+      setTopMsg({ ok: false, text: e.message || '重置失败' });
     }
   };
 
   const scopeLabel = scope === 'all' ? '全部通道 (局域网+公网)' : scope === 'public_only' ? '仅公网隧道' : '仅局域网';
   const modeLabel = mode === 'token_and_password' ? '扫码免密 + 密码' : mode === 'password_only' ? '仅密码登录' : '仅安全 Token';
-  const adminLabel = adminPolicy === 'password_unlock' ? '远程需密码解锁' : adminPolicy === 'local_only' ? '仅限电脑本机管理' : '宽松模式';
+  const adminLabel = adminPolicy === 'password_unlock' ? '需密码解锁' : adminPolicy === 'local_only' ? '仅限电脑本机管理' : '宽松模式';
 
-  return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 14, marginTop: 10 } },
+  return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 14 } },
     // ---- 顶部总控与状态概览卡片 ----
     React.createElement('div', { style: s.card },
       React.createElement('div', {
@@ -465,7 +502,7 @@ const AccessAuthCard = React.memo(function AccessAuthCard({ auth, rpcCall, onUpd
             '🔐 全局访问安全防护体系',
           ),
           React.createElement('div', { style: { ...s.muted, marginTop: 4 } },
-            '集成外部访问门禁拦截与设置面板防篡改权限控制，守护远程会话与网络配置安全',
+            '集成外部访问门禁拦截与管理后台防篡改控制，双重守护远程会话与网络配置安全',
           ),
         ),
         React.createElement('button', {
@@ -503,34 +540,36 @@ const AccessAuthCard = React.memo(function AccessAuthCard({ auth, rpcCall, onUpd
         }, '🔒 后台防篡改: ', React.createElement('strong', { style: { color: 'var(--dsw-alias-state-success-primary,#059669)' } }, adminLabel)),
       ),
 
-      msg && React.createElement('div', {
+      topMsg && React.createElement('div', {
         style: {
           marginTop: 12, padding: '8px 12px', borderRadius: 6, fontSize: 12,
-          background: msg.ok ? 'var(--dsw-alias-state-success-bg,#ecfdf5)' : 'var(--dsw-alias-state-error-bg,#fef2f2)',
-          color: msg.ok ? 'var(--dsw-alias-state-success-primary,#059669)' : 'var(--dsw-alias-state-error-primary,#dc2626)',
+          background: topMsg.ok ? 'var(--dsw-alias-state-success-bg,#ecfdf5)' : 'var(--dsw-alias-state-error-bg,#fef2f2)',
+          color: topMsg.ok ? 'var(--dsw-alias-state-success-primary,#059669)' : 'var(--dsw-alias-state-error-primary,#dc2626)',
         },
-      }, msg.text),
+      }, topMsg.text),
     ),
 
     enabled && React.createElement(React.Fragment, null,
-      // ---- 第一道防线：外部访问门禁（控制谁能用 AI） ----
+      // =========================================================================
+      // ---- 第一道防线：外部访问门禁（控制谁能进入 Web 界面使用 AI） ----
+      // =========================================================================
       React.createElement('div', { style: s.card },
         React.createElement('div', { style: { marginBottom: 14 } },
           React.createElement('div', { style: { ...s.label, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 } },
             '🛡️ 第一道防线：外部访问门禁（控制谁能使用 AI）',
           ),
           React.createElement('div', { style: { ...s.muted, marginTop: 3 } },
-            '控制外部设备通过局域网 IP 或公网隧道进入 DSH 聊天界面时的验证机制',
+            '控制外部设备通过局域网 IP 或公网隧道（Cloudflare/自建隧道）进入 DSH 聊天界面时的身份验证方式',
           ),
         ),
 
-        // 验证模式
+        // 验证模式选择
         React.createElement('div', { style: { marginBottom: 16 } },
           React.createElement('label', { style: { ...s.label, display: 'block', marginBottom: 8, fontSize: 12 } }, '验证模式选择'),
           React.createElement('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } },
             [
               { id: 'token_and_password', title: '🟢 扫码免密 + 密码认证 (推荐)', desc: '二维码自带专属 Token 扫码秒进；直接输 IP/公网域名需输密码' },
-              { id: 'password_only', title: '🔑 仅密码 / PIN 码登录', desc: '所有外部访问必须手动输入主密码方可进入' },
+              { id: 'password_only', title: '🔑 仅密码 / PIN 码登录', desc: '所有外部访问必须手动输入访问密码方可进入' },
               { id: 'token_only', title: '🎫 仅安全 Token 免密', desc: '仅持有带安全 Token 的二维码或专属分享链接方可进入' },
             ].map(opt => {
               const isSel = mode === opt.id;
@@ -584,6 +623,44 @@ const AccessAuthCard = React.memo(function AccessAuthCard({ auth, rpcCall, onUpd
           ),
         ),
 
+        // 访客访问密码输入框 (当非 token_only 时展示)
+        mode !== 'token_only' && React.createElement('div', { style: { marginBottom: 16 } },
+          React.createElement('label', { style: { ...s.label, display: 'block', marginBottom: 6, fontSize: 12 } },
+            `设置外部访客访问密码 ${auth?.hasPassword ? '(✓ 已设置访客密码)' : '(⚠️ 尚未设置密码，直接输入 IP 将免密)'}`,
+          ),
+          React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center' } },
+            React.createElement('input', {
+              type: showAccessPassword ? 'text' : 'password',
+              style: { ...s.input, flex: 1 },
+              placeholder: auth?.hasPassword ? '输入新密码以修改（留空保存可清除访客密码）' : '设置外部访客访问密码 / PIN 码',
+              value: accessPassword,
+              onChange: e => setAccessPassword(e.target.value),
+            }),
+            React.createElement('button', {
+              style: { ...s.btnGhost, height: 32, fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0 },
+              onClick: () => setShowAccessPassword(v => !v),
+            }, showAccessPassword ? '隐藏' : '显示'),
+            React.createElement('button', {
+              style: {
+                ...s.btnPri, height: 32, fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0,
+                background: saveAccessSuccess ? 'var(--dsw-alias-state-success-primary,#059669)' : undefined,
+              },
+              onClick: handleSaveAccessPassword,
+              disabled: savingAccess,
+            }, savingAccess ? '保存中…' : saveAccessSuccess ? '✓ 已成功保存！' : '保存访问密码'),
+          ),
+          React.createElement('div', { style: { ...s.muted, fontSize: 11, marginTop: 4 } },
+            '💡 当外部朋友或同事未通过二维码扫码，而是直接输入 IP 或公网域名访问时，需输入此密码登录。'
+          ),
+          msgAccess && React.createElement('div', {
+            style: {
+              marginTop: 8, padding: '6px 12px', borderRadius: 6, fontSize: 12,
+              background: msgAccess.ok ? 'var(--dsw-alias-state-success-bg,#ecfdf5)' : 'var(--dsw-alias-state-error-bg,#fef2f2)',
+              color: msgAccess.ok ? 'var(--dsw-alias-state-success-primary,#059669)' : 'var(--dsw-alias-state-error-primary,#dc2626)',
+            },
+          }, msgAccess.text),
+        ),
+
         // 免密 Token 管理
         mode !== 'password_only' && React.createElement('div', { style: s.block },
           React.createElement('label', { style: { ...s.label, display: 'block', marginBottom: 6, fontSize: 12 } }, '免密扫码 Token (专属访问凭据)'),
@@ -598,58 +675,70 @@ const AccessAuthCard = React.memo(function AccessAuthCard({ auth, rpcCall, onUpd
             }, '🔄 重置安全 Token'),
           ),
           React.createElement('div', { style: { ...s.muted, fontSize: 11, marginTop: 4 } },
-            '💡 控制台生成的局域网与公网二维码已自动内嵌此 Token，手机扫码即可免密进入聊天界面（但不赋予后台管理修改权限）。'
+            '💡 控制台生成的局域网与公网二维码已自动嵌入此 Token，手机扫码即可免密进入聊天界面（但不赋予后台管理设置权限）。'
           ),
         ),
       ),
 
-      // ---- 第二道防线：系统主密码与后台防篡改（控制谁能改设置） ----
+      // =========================================================================
+      // ---- 第二道防线：后台管理防篡改（控制谁能修改本插件所有设置） ----
+      // =========================================================================
       React.createElement('div', { style: s.card },
         React.createElement('div', { style: { marginBottom: 14 } },
           React.createElement('div', { style: { ...s.label, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 } },
-            '🔒 第二道防线：系统主密码与后台防篡改（控制谁能修改配置）',
+            '🔒 第二道防线：管理后台防篡改（控制谁能修改本插件所有设置）',
           ),
           React.createElement('div', { style: { ...s.muted, marginTop: 3 } },
-            '设置系统主密码，并管控远程设备（手机/公网访客）进入此设置面板时的管理权限，防止他人篡改密码或偷窥 Bot 密钥',
+            '锁定整个插件设置后台（包含局域网、公网隧道、IM 机器人密钥与安全设置），防止他人随意篡改配置',
           ),
         ),
 
-        // 密码设置输入框
+        // 管理员密码设置
         React.createElement('div', { style: { marginBottom: 16 } },
           React.createElement('label', { style: { ...s.label, display: 'block', marginBottom: 6, fontSize: 12 } },
-            `设置系统主密码 ${auth?.hasPassword ? '(✓ 已设置主密码)' : '(⚠️ 尚未设置主密码，手动访问将免密)'}`,
+            `设置独立管理员密码 ${auth?.hasAdminPassword ? '(✓ 已设置独立管理密码)' : '(未单独设置，默认使用上述访客访问密码)'}`,
           ),
           React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center' } },
             React.createElement('input', {
-              type: showPassword ? 'text' : 'password',
+              type: showAdminPassword ? 'text' : 'password',
               style: { ...s.input, flex: 1 },
-              placeholder: auth?.hasPassword ? '输入新密码以修改（留空保存可清除密码）' : '设置系统主密码 / PIN 码',
-              value: password,
-              onChange: e => setPassword(e.target.value),
+              placeholder: auth?.hasAdminPassword ? '输入新密码以修改（留空保存可清除独立管理密码）' : '设置后台管理解锁密码（建议与访客密码不同）',
+              value: adminPassword,
+              onChange: e => setAdminPassword(e.target.value),
             }),
             React.createElement('button', {
               style: { ...s.btnGhost, height: 32, fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0 },
-              onClick: () => setShowPassword(v => !v),
-            }, showPassword ? '隐藏' : '显示'),
+              onClick: () => setShowAdminPassword(v => !v),
+            }, showAdminPassword ? '隐藏' : '显示'),
             React.createElement('button', {
-              style: { ...s.btnPri, height: 32, fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0 },
-              onClick: handleSavePassword,
-              disabled: saving,
-            }, saving ? '保存中…' : '保存密码'),
+              style: {
+                ...s.btnPri, height: 32, fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0,
+                background: saveAdminSuccess ? 'var(--dsw-alias-state-success-primary,#059669)' : undefined,
+              },
+              onClick: handleSaveAdminPassword,
+              disabled: savingAdmin,
+            }, savingAdmin ? '保存中…' : saveAdminSuccess ? '✓ 已成功保存！' : '保存管理密码'),
           ),
-          React.createElement('div', { style: { ...s.muted, fontSize: 11, marginTop: 5, color: 'var(--dsw-alias-brand-primary,#4f6ef7)' } },
-            '🔑 双重核心作用：① 外部访客手动输入 IP/域名时的【登录验证密码】；② 远程设备进入此设置面板时的【防篡改管理员解锁密码】。'
+          React.createElement('div', { style: { ...s.muted, fontSize: 11, marginTop: 4, color: 'var(--dsw-alias-brand-primary,#4f6ef7)' } },
+            '🔑 核心作用：用于远程设备进入设置后台时的解锁验证。设置后，即便把访问密码告知他人，他人也无法进入设置后台改配置。'
           ),
+          msgAdmin && React.createElement('div', {
+            style: {
+              marginTop: 8, padding: '6px 12px', borderRadius: 6, fontSize: 12,
+              background: msgAdmin.ok ? 'var(--dsw-alias-state-success-bg,#ecfdf5)' : 'var(--dsw-alias-state-error-bg,#fef2f2)',
+              color: msgAdmin.ok ? 'var(--dsw-alias-state-success-primary,#059669)' : 'var(--dsw-alias-state-error-primary,#dc2626)',
+            },
+          }, msgAdmin.text),
         ),
 
-        // 远程管理权限控制
+        // 远程管理权限控制策略
         React.createElement('div', { style: s.block },
-          React.createElement('label', { style: { ...s.label, display: 'block', marginBottom: 8, fontSize: 12 } }, '远程设备管理设置权限（防篡改策略）'),
+          React.createElement('label', { style: { ...s.label, display: 'block', marginBottom: 8, fontSize: 12 } }, '远程设备管理权限策略'),
           React.createElement('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } },
             [
-              { id: 'password_unlock', title: '🔒 需密码解锁 (推荐)', desc: '远程手机/外网打开设置面板时默认锁定，需输入上述主密码解锁后方可修改配置' },
-              { id: 'local_only', title: '🚫 仅限电脑本机管理 (最严格)', desc: '远程设备彻底锁定并禁止修改任何配置，仅允许在 127.0.0.1 电脑本机上操作' },
-              { id: 'open', title: '🔓 宽松模式', desc: '任何已通过第一道防线登录的设备均可直接修改设置' },
+              { id: 'password_unlock', title: '🔒 需密码解锁 (推荐)', desc: '远程手机/外网打开本插件设置时默认全局锁定，输入管理密码解锁后方可使用' },
+              { id: 'local_only', title: '🚫 仅限电脑本机管理 (最严格)', desc: '远程设备彻底锁定整个设置后台，仅允许在 127.0.0.1 电脑本机上操作' },
+              { id: 'open', title: '🔓 宽松模式', desc: '任何已通过第一道防线登录的设备均可直接修改所有配置' },
             ].map(opt => {
               const isSel = adminPolicy === opt.id;
               return React.createElement('div', {
@@ -1632,79 +1721,11 @@ function BridgePanel({ rpcCall }) {
       ),
     );
   } else if (activeTab === 'security') {
-    const auth = status?.auth;
-    const policy = auth?.adminPolicy ?? 'password_unlock';
-    const isLocked = !isLocalhost && auth?.enabled && policy !== 'open' && !adminUnlocked;
-
-    if (isLocked) {
-      if (policy === 'local_only') {
-        tabContent = React.createElement('div', {
-          style: { ...s.card, textAlign: 'center', padding: '36px 20px', marginTop: 10 },
-        },
-          React.createElement('div', { style: { fontSize: 36, marginBottom: 12 } }, '🛡️'),
-          React.createElement('div', { style: { ...s.label, fontSize: 16, marginBottom: 8 } }, '已开启「仅限电脑本机管理」安全保护'),
-          React.createElement('div', { style: { ...s.muted, maxWidth: 380, margin: '0 auto', lineHeight: 1.6 } },
-            '当前设备为远程接入。为了保护您的系统安全，设置面板已被锁定，如需修改密码或通道设置请在电脑本机（127.0.0.1）上操作。'
-          ),
-        );
-      } else {
-        // policy === 'password_unlock'
-        tabContent = React.createElement('div', {
-          style: { ...s.card, maxWidth: 440, margin: '16px auto', padding: '28px 24px' },
-        },
-          React.createElement('div', { style: { textAlign: 'center', marginBottom: 20 } },
-            React.createElement('div', { style: { fontSize: 36, marginBottom: 10 } }, '🔒'),
-            React.createElement('div', { style: { ...s.label, fontSize: 16, fontWeight: 600 } }, '管理设置面板已锁定'),
-            React.createElement('div', { style: { ...s.muted, fontSize: 12, marginTop: 4 } },
-              '当前设备为远程访问，请输入管理员密码以解锁配置管理权限'
-            ),
-          ),
-          React.createElement('form', {
-            onSubmit: handleUnlockAdmin,
-            style: { display: 'flex', flexDirection: 'column', gap: 12 },
-          },
-            React.createElement('input', {
-              type: 'password',
-              style: s.input,
-              placeholder: '输入管理员访问密码',
-              value: unlockPassword,
-              onChange: (e) => setUnlockPassword(e.target.value),
-              autoFocus: true,
-            }),
-            unlockErr && React.createElement('div', {
-              style: { fontSize: 12, color: 'var(--dsw-alias-state-error-primary,#dc2626)' },
-            }, unlockErr),
-            React.createElement('button', {
-              type: 'submit',
-              style: { ...s.btnPri, width: '100%', justifyContent: 'center', height: 36 },
-              disabled: unlocking,
-            }, unlocking ? '验证中…' : '解锁管理权限'),
-          ),
-        );
-      }
-    } else {
-      tabContent = React.createElement(React.Fragment, null,
-        !isLocalhost && adminUnlocked && React.createElement('div', {
-          style: {
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '8px 12px', background: 'var(--dsw-alias-state-info-bg,#eff6ff)',
-            border: '1px solid var(--dsw-alias-brand-primary,#4f6ef7)', borderRadius: 8,
-            marginBottom: 12, fontSize: 12, color: 'var(--dsw-alias-brand-primary,#4f6ef7)',
-          },
-        },
-          React.createElement('span', null, '🔓 远程管理权限已解锁（当前临时会话有效）'),
-          React.createElement('button', {
-            style: { ...s.btnGhost, height: 24, fontSize: 11, padding: '0 8px' },
-            onClick: () => setAdminUnlocked(false),
-          }, '🔒 重新锁定'),
-        ),
-        React.createElement(AccessAuthCard, {
-          auth: status?.auth,
-          rpcCall,
-          onUpdate: () => load(true),
-        }),
-      );
-    }
+    tabContent = React.createElement(AccessAuthCard, {
+      auth: status?.auth,
+      rpcCall,
+      onUpdate: () => load(true),
+    });
   } else if (activeTab === 'im') {
     // 从 listPlatforms 动态生成平台列表
     const IM_PLATFORMS = [
@@ -1769,10 +1790,79 @@ function BridgePanel({ rpcCall }) {
     );
   }
 
+  const auth = status?.auth;
+  const policy = auth?.adminPolicy ?? 'password_unlock';
+  const isLocked = !isLocalhost && auth?.enabled && policy !== 'open' && !adminUnlocked;
+
+  // 远程设备被锁定：全局展示锁定页面，阻断所有 Tab 的查看与操作
+  if (isLocked) {
+    return React.createElement('div', { style: { maxWidth: 620 } },
+      policy === 'local_only' ? (
+        React.createElement('div', {
+          style: { ...s.card, textAlign: 'center', padding: '36px 20px', marginTop: 10 },
+        },
+          React.createElement('div', { style: { fontSize: 40, marginBottom: 12 } }, '🛡️'),
+          React.createElement('div', { style: { ...s.label, fontSize: 16, fontWeight: 600, marginBottom: 8 } }, '管理控制台已锁定（仅限电脑本机管理）'),
+          React.createElement('div', { style: { ...s.muted, maxWidth: 380, margin: '0 auto', lineHeight: 1.6, fontSize: 13 } },
+            '当前设备通过远程局域网或公网接入。已开启「仅限电脑本机管理」最高安全策略，远程设备禁止查看与修改任何网络与机器人配置。如需管理请在电脑本机（127.0.0.1）上操作。'
+          ),
+        )
+      ) : (
+        React.createElement('div', {
+          style: { ...s.card, maxWidth: 440, margin: '20px auto', padding: '32px 24px' },
+        },
+          React.createElement('div', { style: { textAlign: 'center', marginBottom: 20 } },
+            React.createElement('div', { style: { fontSize: 40, marginBottom: 10 } }, '🔒'),
+            React.createElement('div', { style: { ...s.label, fontSize: 16, fontWeight: 600 } }, '管理控制台已锁定'),
+            React.createElement('div', { style: { ...s.muted, fontSize: 12, marginTop: 6, lineHeight: 1.5 } },
+              '当前设备为远程访问。为保护您的网络与平台配置安全，请输入管理员密码解锁管理权限。'
+            ),
+          ),
+          React.createElement('form', {
+            onSubmit: handleUnlockAdmin,
+            style: { display: 'flex', flexDirection: 'column', gap: 12 },
+          },
+            React.createElement('input', {
+              type: 'password',
+              style: s.input,
+              placeholder: '输入后台管理密码',
+              value: unlockPassword,
+              onChange: (e) => setUnlockPassword(e.target.value),
+              autoFocus: true,
+            }),
+            unlockErr && React.createElement('div', {
+              style: { fontSize: 12, color: 'var(--dsw-alias-state-error-primary,#dc2626)' },
+            }, unlockErr),
+            React.createElement('button', {
+              type: 'submit',
+              style: { ...s.btnPri, width: '100%', justifyContent: 'center', height: 36 },
+              disabled: unlocking,
+            }, unlocking ? '验证中…' : '解锁管理权限'),
+          ),
+        )
+      )
+    );
+  }
+
   return React.createElement('div', { style: { maxWidth: 620 } },
     err && React.createElement('div', {
       style: { ...s.card, background: 'var(--dsw-alias-state-error-bg,#fef2f2)', color: 'var(--dsw-alias-state-error-primary,#dc2626)', fontSize: 13, marginBottom: 16 },
     }, err),
+
+    !isLocalhost && adminUnlocked && React.createElement('div', {
+      style: {
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '8px 14px', background: 'var(--dsw-alias-state-info-bg,#eff6ff)',
+        border: '1px solid var(--dsw-alias-brand-primary,#4f6ef7)', borderRadius: 8,
+        marginBottom: 14, fontSize: 12, color: 'var(--dsw-alias-brand-primary,#4f6ef7)',
+      },
+    },
+      React.createElement('span', null, '🔓 管理员权限已解锁（当前临时会话有效）'),
+      React.createElement('button', {
+        style: { ...s.btnGhost, height: 24, fontSize: 11, padding: '0 8px' },
+        onClick: () => setAdminUnlocked(false),
+      }, '🔒 重新锁定后台'),
+    ),
 
     React.createElement(VersionBanner, { rpcCall }),
 

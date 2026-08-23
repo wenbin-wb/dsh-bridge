@@ -457,10 +457,17 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
   const [mode, setMode] = React.useState(auth?.mode ?? "token_and_password");
   const [scope, setScope] = React.useState(auth?.scope ?? "all");
   const [adminPolicy, setAdminPolicy] = React.useState(auth?.adminPolicy ?? "password_unlock");
-  const [password, setPassword] = React.useState("");
-  const [showPassword, setShowPassword] = React.useState(false);
-  const [saving, setSaving] = React.useState(false);
-  const [msg, setMsg] = React.useState(null);
+  const [accessPassword, setAccessPassword] = React.useState("");
+  const [showAccessPassword, setShowAccessPassword] = React.useState(false);
+  const [savingAccess, setSavingAccess] = React.useState(false);
+  const [saveAccessSuccess, setSaveAccessSuccess] = React.useState(false);
+  const [msgAccess, setMsgAccess] = React.useState(null);
+  const [adminPassword, setAdminPassword] = React.useState("");
+  const [showAdminPassword, setShowAdminPassword] = React.useState(false);
+  const [savingAdmin, setSavingAdmin] = React.useState(false);
+  const [saveAdminSuccess, setSaveAdminSuccess] = React.useState(false);
+  const [msgAdmin, setMsgAdmin] = React.useState(null);
+  const [topMsg, setTopMsg] = React.useState(null);
   React.useEffect(() => {
     if (auth) {
       setEnabled(auth.enabled ?? false);
@@ -474,76 +481,98 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
     setEnabled(next);
     try {
       await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { enabled: next });
-      setMsg({ ok: true, text: next ? "\u2713 \u8BBF\u95EE\u5B89\u5168\u8BA4\u8BC1\u5DF2\u5F00\u542F\uFF08\u73B0\u6709\u767B\u5F55\u6001\u5DF2\u5237\u65B0\uFF09" : "\u2713 \u8BBF\u95EE\u5B89\u5168\u8BA4\u8BC1\u5DF2\u5173\u95ED" });
+      setTopMsg({ ok: true, text: next ? "\u2713 \u8BBF\u95EE\u5B89\u5168\u8BA4\u8BC1\u5DF2\u5F00\u542F\uFF08\u73B0\u6709\u767B\u5F55\u6001\u5DF2\u5237\u65B0\uFF09" : "\u2713 \u8BBF\u95EE\u5B89\u5168\u8BA4\u8BC1\u5DF2\u5173\u95ED" });
       onUpdate?.();
     } catch (e) {
-      setMsg({ ok: false, text: e.message || "\u66F4\u65B0\u5931\u8D25" });
+      setTopMsg({ ok: false, text: e.message || "\u66F4\u65B0\u5931\u8D25" });
     }
   };
   const handleChangeMode = async (m) => {
     setMode(m);
     try {
       await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { mode: m });
-      setMsg({ ok: true, text: "\u2713 \u5916\u90E8\u9A8C\u8BC1\u6A21\u5F0F\u5DF2\u5207\u6362\uFF0C\u5DF2\u91CD\u7F6E\u6240\u6709\u8BBE\u5907\u7684\u767B\u5F55\u6001" });
+      setTopMsg({ ok: true, text: "\u2713 \u5916\u90E8\u9A8C\u8BC1\u6A21\u5F0F\u5DF2\u5207\u6362\uFF0C\u5DF2\u5237\u65B0\u5168\u57DF\u767B\u5F55\u6001" });
       onUpdate?.();
     } catch (e) {
-      setMsg({ ok: false, text: e.message || "\u66F4\u65B0\u5931\u8D25" });
+      setTopMsg({ ok: false, text: e.message || "\u66F4\u65B0\u5931\u8D25" });
     }
   };
   const handleChangeScope = async (sc) => {
     setScope(sc);
     try {
       await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { scope: sc });
-      setMsg({ ok: true, text: "\u2713 \u9632\u62A4\u751F\u6548\u8303\u56F4\u5DF2\u66F4\u65B0" });
+      setTopMsg({ ok: true, text: "\u2713 \u9632\u62A4\u751F\u6548\u8303\u56F4\u5DF2\u66F4\u65B0" });
       onUpdate?.();
     } catch (e) {
-      setMsg({ ok: false, text: e.message || "\u66F4\u65B0\u5931\u8D25" });
+      setTopMsg({ ok: false, text: e.message || "\u66F4\u65B0\u5931\u8D25" });
     }
   };
   const handleChangeAdminPolicy = async (pol) => {
     setAdminPolicy(pol);
     try {
       await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { adminPolicy: pol });
-      setMsg({ ok: true, text: "\u2713 \u8FDC\u7A0B\u7BA1\u7406\u6743\u9650\u7B56\u7565\u5DF2\u66F4\u65B0" });
+      setTopMsg({ ok: true, text: "\u2713 \u8FDC\u7A0B\u7BA1\u7406\u9632\u7BE1\u6539\u7B56\u7565\u5DF2\u66F4\u65B0" });
       onUpdate?.();
     } catch (e) {
-      setMsg({ ok: false, text: e.message || "\u66F4\u65B0\u5931\u8D25" });
+      setTopMsg({ ok: false, text: e.message || "\u66F4\u65B0\u5931\u8D25" });
     }
   };
-  const handleSavePassword = async () => {
-    setSaving(true);
-    setMsg(null);
+  const handleSaveAccessPassword = async () => {
+    setSavingAccess(true);
+    setMsgAccess(null);
     try {
-      const res = await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { password });
+      const res = await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { password: accessPassword });
       if (res?.ok) {
-        setMsg({ ok: true, text: "\u2713 \u7CFB\u7EDF\u4E3B\u5BC6\u7801\u5DF2\u66F4\u65B0\u4FDD\u5B58\uFF0C\u5DF2\u91CD\u7F6E\u6240\u6709\u8BBE\u5907\u7684\u767B\u5F55\u4E0E\u89E3\u9501\u72B6\u6001" });
-        setPassword("");
+        setSaveAccessSuccess(true);
+        setMsgAccess({ ok: true, text: "\u2713 \u8BBF\u5BA2\u8BBF\u95EE\u5BC6\u7801\u5DF2\u6210\u529F\u4FDD\u5B58\uFF01\u539F\u6709\u7684\u5386\u53F2\u8BBF\u5BA2\u4F1A\u8BDD\u5DF2\u5168\u90E8\u5B89\u5168\u5237\u65B0\u3002" });
+        setAccessPassword("");
+        setTimeout(() => setSaveAccessSuccess(false), 3500);
         onUpdate?.();
       } else {
-        setMsg({ ok: false, text: res?.error?.message || "\u4FDD\u5B58\u5931\u8D25" });
+        setMsgAccess({ ok: false, text: res?.error?.message || "\u4FDD\u5B58\u5931\u8D25" });
       }
     } catch (e) {
-      setMsg({ ok: false, text: e.message || "\u4FDD\u5B58\u5931\u8D25" });
+      setMsgAccess({ ok: false, text: e.message || "\u4FDD\u5B58\u5931\u8D25" });
     } finally {
-      setSaving(false);
+      setSavingAccess(false);
+    }
+  };
+  const handleSaveAdminPassword = async () => {
+    setSavingAdmin(true);
+    setMsgAdmin(null);
+    try {
+      const res = await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { adminPassword });
+      if (res?.ok) {
+        setSaveAdminSuccess(true);
+        setMsgAdmin({ ok: true, text: "\u2713 \u540E\u53F0\u7BA1\u7406\u5BC6\u7801\u5DF2\u6210\u529F\u4FDD\u5B58\uFF01\u8FDC\u7A0B\u7BA1\u7406\u89E3\u9501\u72B6\u6001\u5DF2\u91CD\u7F6E\u751F\u6548\u3002" });
+        setAdminPassword("");
+        setTimeout(() => setSaveAdminSuccess(false), 3500);
+        onUpdate?.();
+      } else {
+        setMsgAdmin({ ok: false, text: res?.error?.message || "\u4FDD\u5B58\u5931\u8D25" });
+      }
+    } catch (e) {
+      setMsgAdmin({ ok: false, text: e.message || "\u4FDD\u5B58\u5931\u8D25" });
+    } finally {
+      setSavingAdmin(false);
     }
   };
   const handleRegenerateToken = async () => {
     if (!confirm("\u91CD\u7F6E\u540E\uFF0C\u4E4B\u524D\u5305\u542B\u65E7 Token \u7684\u4E8C\u7EF4\u7801\u548C\u5206\u4EAB\u94FE\u63A5\u5C06\u7ACB\u5373\u5931\u6548\u3002\u662F\u5426\u786E\u8BA4\u91CD\u7F6E\uFF1F")) return;
     try {
       await rpcCall(BRIDGE_ENDPOINTS.authRegenerateToken, {});
-      setMsg({ ok: true, text: "\u2713 \u5B89\u5168 Token \u5DF2\u91CD\u7F6E\uFF0C\u4E8C\u7EF4\u7801\u4E0E\u94FE\u63A5\u5DF2\u5237\u65B0" });
+      setTopMsg({ ok: true, text: "\u2713 \u5B89\u5168 Token \u5DF2\u91CD\u7F6E\uFF0C\u4E8C\u7EF4\u7801\u4E0E\u4E13\u5C5E\u94FE\u63A5\u5DF2\u5237\u65B0" });
       onUpdate?.();
     } catch (e) {
-      setMsg({ ok: false, text: e.message || "\u91CD\u7F6E\u5931\u8D25" });
+      setTopMsg({ ok: false, text: e.message || "\u91CD\u7F6E\u5931\u8D25" });
     }
   };
   const scopeLabel = scope === "all" ? "\u5168\u90E8\u901A\u9053 (\u5C40\u57DF\u7F51+\u516C\u7F51)" : scope === "public_only" ? "\u4EC5\u516C\u7F51\u96A7\u9053" : "\u4EC5\u5C40\u57DF\u7F51";
   const modeLabel = mode === "token_and_password" ? "\u626B\u7801\u514D\u5BC6 + \u5BC6\u7801" : mode === "password_only" ? "\u4EC5\u5BC6\u7801\u767B\u5F55" : "\u4EC5\u5B89\u5168 Token";
-  const adminLabel = adminPolicy === "password_unlock" ? "\u8FDC\u7A0B\u9700\u5BC6\u7801\u89E3\u9501" : adminPolicy === "local_only" ? "\u4EC5\u9650\u7535\u8111\u672C\u673A\u7BA1\u7406" : "\u5BBD\u677E\u6A21\u5F0F";
+  const adminLabel = adminPolicy === "password_unlock" ? "\u9700\u5BC6\u7801\u89E3\u9501" : adminPolicy === "local_only" ? "\u4EC5\u9650\u7535\u8111\u672C\u673A\u7BA1\u7406" : "\u5BBD\u677E\u6A21\u5F0F";
   return React.createElement(
     "div",
-    { style: { display: "flex", flexDirection: "column", gap: 14, marginTop: 10 } },
+    { style: { display: "flex", flexDirection: "column", gap: 14 } },
     // ---- 顶部总控与状态概览卡片 ----
     React.createElement(
       "div",
@@ -564,7 +593,7 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
           React.createElement(
             "div",
             { style: { ...s.muted, marginTop: 4 } },
-            "\u96C6\u6210\u5916\u90E8\u8BBF\u95EE\u95E8\u7981\u62E6\u622A\u4E0E\u8BBE\u7F6E\u9762\u677F\u9632\u7BE1\u6539\u6743\u9650\u63A7\u5236\uFF0C\u5B88\u62A4\u8FDC\u7A0B\u4F1A\u8BDD\u4E0E\u7F51\u7EDC\u914D\u7F6E\u5B89\u5168"
+            "\u96C6\u6210\u5916\u90E8\u8BBF\u95EE\u95E8\u7981\u62E6\u622A\u4E0E\u7BA1\u7406\u540E\u53F0\u9632\u7BE1\u6539\u63A7\u5236\uFF0C\u53CC\u91CD\u5B88\u62A4\u8FDC\u7A0B\u4F1A\u8BDD\u4E0E\u7F51\u7EDC\u914D\u7F6E\u5B89\u5168"
           )
         ),
         React.createElement("button", {
@@ -621,21 +650,23 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
           }
         }, "\u{1F512} \u540E\u53F0\u9632\u7BE1\u6539: ", React.createElement("strong", { style: { color: "var(--dsw-alias-state-success-primary,#059669)" } }, adminLabel))
       ),
-      msg && React.createElement("div", {
+      topMsg && React.createElement("div", {
         style: {
           marginTop: 12,
           padding: "8px 12px",
           borderRadius: 6,
           fontSize: 12,
-          background: msg.ok ? "var(--dsw-alias-state-success-bg,#ecfdf5)" : "var(--dsw-alias-state-error-bg,#fef2f2)",
-          color: msg.ok ? "var(--dsw-alias-state-success-primary,#059669)" : "var(--dsw-alias-state-error-primary,#dc2626)"
+          background: topMsg.ok ? "var(--dsw-alias-state-success-bg,#ecfdf5)" : "var(--dsw-alias-state-error-bg,#fef2f2)",
+          color: topMsg.ok ? "var(--dsw-alias-state-success-primary,#059669)" : "var(--dsw-alias-state-error-primary,#dc2626)"
         }
-      }, msg.text)
+      }, topMsg.text)
     ),
     enabled && React.createElement(
       React.Fragment,
       null,
-      // ---- 第一道防线：外部访问门禁（控制谁能用 AI） ----
+      // =========================================================================
+      // ---- 第一道防线：外部访问门禁（控制谁能进入 Web 界面使用 AI） ----
+      // =========================================================================
       React.createElement(
         "div",
         { style: s.card },
@@ -650,10 +681,10 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
           React.createElement(
             "div",
             { style: { ...s.muted, marginTop: 3 } },
-            "\u63A7\u5236\u5916\u90E8\u8BBE\u5907\u901A\u8FC7\u5C40\u57DF\u7F51 IP \u6216\u516C\u7F51\u96A7\u9053\u8FDB\u5165 DSH \u804A\u5929\u754C\u9762\u65F6\u7684\u9A8C\u8BC1\u673A\u5236"
+            "\u63A7\u5236\u5916\u90E8\u8BBE\u5907\u901A\u8FC7\u5C40\u57DF\u7F51 IP \u6216\u516C\u7F51\u96A7\u9053\uFF08Cloudflare/\u81EA\u5EFA\u96A7\u9053\uFF09\u8FDB\u5165 DSH \u804A\u5929\u754C\u9762\u65F6\u7684\u8EAB\u4EFD\u9A8C\u8BC1\u65B9\u5F0F"
           )
         ),
-        // 验证模式
+        // 验证模式选择
         React.createElement(
           "div",
           { style: { marginBottom: 16 } },
@@ -663,7 +694,7 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
             { style: { display: "flex", gap: 8, flexWrap: "wrap" } },
             [
               { id: "token_and_password", title: "\u{1F7E2} \u626B\u7801\u514D\u5BC6 + \u5BC6\u7801\u8BA4\u8BC1 (\u63A8\u8350)", desc: "\u4E8C\u7EF4\u7801\u81EA\u5E26\u4E13\u5C5E Token \u626B\u7801\u79D2\u8FDB\uFF1B\u76F4\u63A5\u8F93 IP/\u516C\u7F51\u57DF\u540D\u9700\u8F93\u5BC6\u7801" },
-              { id: "password_only", title: "\u{1F511} \u4EC5\u5BC6\u7801 / PIN \u7801\u767B\u5F55", desc: "\u6240\u6709\u5916\u90E8\u8BBF\u95EE\u5FC5\u987B\u624B\u52A8\u8F93\u5165\u4E3B\u5BC6\u7801\u65B9\u53EF\u8FDB\u5165" },
+              { id: "password_only", title: "\u{1F511} \u4EC5\u5BC6\u7801 / PIN \u7801\u767B\u5F55", desc: "\u6240\u6709\u5916\u90E8\u8BBF\u95EE\u5FC5\u987B\u624B\u52A8\u8F93\u5165\u8BBF\u95EE\u5BC6\u7801\u65B9\u53EF\u8FDB\u5165" },
               { id: "token_only", title: "\u{1F3AB} \u4EC5\u5B89\u5168 Token \u514D\u5BC6", desc: "\u4EC5\u6301\u6709\u5E26\u5B89\u5168 Token \u7684\u4E8C\u7EF4\u7801\u6216\u4E13\u5C5E\u5206\u4EAB\u94FE\u63A5\u65B9\u53EF\u8FDB\u5165" }
             ].map((opt) => {
               const isSel = mode === opt.id;
@@ -723,6 +754,58 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
             })
           )
         ),
+        // 访客访问密码输入框 (当非 token_only 时展示)
+        mode !== "token_only" && React.createElement(
+          "div",
+          { style: { marginBottom: 16 } },
+          React.createElement(
+            "label",
+            { style: { ...s.label, display: "block", marginBottom: 6, fontSize: 12 } },
+            `\u8BBE\u7F6E\u5916\u90E8\u8BBF\u5BA2\u8BBF\u95EE\u5BC6\u7801 ${auth?.hasPassword ? "(\u2713 \u5DF2\u8BBE\u7F6E\u8BBF\u5BA2\u5BC6\u7801)" : "(\u26A0\uFE0F \u5C1A\u672A\u8BBE\u7F6E\u5BC6\u7801\uFF0C\u76F4\u63A5\u8F93\u5165 IP \u5C06\u514D\u5BC6)"}`
+          ),
+          React.createElement(
+            "div",
+            { style: { display: "flex", gap: 8, alignItems: "center" } },
+            React.createElement("input", {
+              type: showAccessPassword ? "text" : "password",
+              style: { ...s.input, flex: 1 },
+              placeholder: auth?.hasPassword ? "\u8F93\u5165\u65B0\u5BC6\u7801\u4EE5\u4FEE\u6539\uFF08\u7559\u7A7A\u4FDD\u5B58\u53EF\u6E05\u9664\u8BBF\u5BA2\u5BC6\u7801\uFF09" : "\u8BBE\u7F6E\u5916\u90E8\u8BBF\u5BA2\u8BBF\u95EE\u5BC6\u7801 / PIN \u7801",
+              value: accessPassword,
+              onChange: (e) => setAccessPassword(e.target.value)
+            }),
+            React.createElement("button", {
+              style: { ...s.btnGhost, height: 32, fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 },
+              onClick: () => setShowAccessPassword((v) => !v)
+            }, showAccessPassword ? "\u9690\u85CF" : "\u663E\u793A"),
+            React.createElement("button", {
+              style: {
+                ...s.btnPri,
+                height: 32,
+                fontSize: 12,
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+                background: saveAccessSuccess ? "var(--dsw-alias-state-success-primary,#059669)" : void 0
+              },
+              onClick: handleSaveAccessPassword,
+              disabled: savingAccess
+            }, savingAccess ? "\u4FDD\u5B58\u4E2D\u2026" : saveAccessSuccess ? "\u2713 \u5DF2\u6210\u529F\u4FDD\u5B58\uFF01" : "\u4FDD\u5B58\u8BBF\u95EE\u5BC6\u7801")
+          ),
+          React.createElement(
+            "div",
+            { style: { ...s.muted, fontSize: 11, marginTop: 4 } },
+            "\u{1F4A1} \u5F53\u5916\u90E8\u670B\u53CB\u6216\u540C\u4E8B\u672A\u901A\u8FC7\u4E8C\u7EF4\u7801\u626B\u7801\uFF0C\u800C\u662F\u76F4\u63A5\u8F93\u5165 IP \u6216\u516C\u7F51\u57DF\u540D\u8BBF\u95EE\u65F6\uFF0C\u9700\u8F93\u5165\u6B64\u5BC6\u7801\u767B\u5F55\u3002"
+          ),
+          msgAccess && React.createElement("div", {
+            style: {
+              marginTop: 8,
+              padding: "6px 12px",
+              borderRadius: 6,
+              fontSize: 12,
+              background: msgAccess.ok ? "var(--dsw-alias-state-success-bg,#ecfdf5)" : "var(--dsw-alias-state-error-bg,#fef2f2)",
+              color: msgAccess.ok ? "var(--dsw-alias-state-success-primary,#059669)" : "var(--dsw-alias-state-error-primary,#dc2626)"
+            }
+          }, msgAccess.text)
+        ),
         // 免密 Token 管理
         mode !== "password_only" && React.createElement(
           "div",
@@ -745,11 +828,13 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
           React.createElement(
             "div",
             { style: { ...s.muted, fontSize: 11, marginTop: 4 } },
-            "\u{1F4A1} \u63A7\u5236\u53F0\u751F\u6210\u7684\u5C40\u57DF\u7F51\u4E0E\u516C\u7F51\u4E8C\u7EF4\u7801\u5DF2\u81EA\u52A8\u5185\u5D4C\u6B64 Token\uFF0C\u624B\u673A\u626B\u7801\u5373\u53EF\u514D\u5BC6\u8FDB\u5165\u804A\u5929\u754C\u9762\uFF08\u4F46\u4E0D\u8D4B\u4E88\u540E\u53F0\u7BA1\u7406\u4FEE\u6539\u6743\u9650\uFF09\u3002"
+            "\u{1F4A1} \u63A7\u5236\u53F0\u751F\u6210\u7684\u5C40\u57DF\u7F51\u4E0E\u516C\u7F51\u4E8C\u7EF4\u7801\u5DF2\u81EA\u52A8\u5D4C\u5165\u6B64 Token\uFF0C\u624B\u673A\u626B\u7801\u5373\u53EF\u514D\u5BC6\u8FDB\u5165\u804A\u5929\u754C\u9762\uFF08\u4F46\u4E0D\u8D4B\u4E88\u540E\u53F0\u7BA1\u7406\u8BBE\u7F6E\u6743\u9650\uFF09\u3002"
           )
         )
       ),
-      // ---- 第二道防线：系统主密码与后台防篡改（控制谁能改设置） ----
+      // =========================================================================
+      // ---- 第二道防线：后台管理防篡改（控制谁能修改本插件所有设置） ----
+      // =========================================================================
       React.createElement(
         "div",
         { style: s.card },
@@ -759,61 +844,78 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
           React.createElement(
             "div",
             { style: { ...s.label, fontSize: 14, display: "flex", alignItems: "center", gap: 6 } },
-            "\u{1F512} \u7B2C\u4E8C\u9053\u9632\u7EBF\uFF1A\u7CFB\u7EDF\u4E3B\u5BC6\u7801\u4E0E\u540E\u53F0\u9632\u7BE1\u6539\uFF08\u63A7\u5236\u8C01\u80FD\u4FEE\u6539\u914D\u7F6E\uFF09"
+            "\u{1F512} \u7B2C\u4E8C\u9053\u9632\u7EBF\uFF1A\u7BA1\u7406\u540E\u53F0\u9632\u7BE1\u6539\uFF08\u63A7\u5236\u8C01\u80FD\u4FEE\u6539\u672C\u63D2\u4EF6\u6240\u6709\u8BBE\u7F6E\uFF09"
           ),
           React.createElement(
             "div",
             { style: { ...s.muted, marginTop: 3 } },
-            "\u8BBE\u7F6E\u7CFB\u7EDF\u4E3B\u5BC6\u7801\uFF0C\u5E76\u7BA1\u63A7\u8FDC\u7A0B\u8BBE\u5907\uFF08\u624B\u673A/\u516C\u7F51\u8BBF\u5BA2\uFF09\u8FDB\u5165\u6B64\u8BBE\u7F6E\u9762\u677F\u65F6\u7684\u7BA1\u7406\u6743\u9650\uFF0C\u9632\u6B62\u4ED6\u4EBA\u7BE1\u6539\u5BC6\u7801\u6216\u5077\u7AA5 Bot \u5BC6\u94A5"
+            "\u9501\u5B9A\u6574\u4E2A\u63D2\u4EF6\u8BBE\u7F6E\u540E\u53F0\uFF08\u5305\u542B\u5C40\u57DF\u7F51\u3001\u516C\u7F51\u96A7\u9053\u3001IM \u673A\u5668\u4EBA\u5BC6\u94A5\u4E0E\u5B89\u5168\u8BBE\u7F6E\uFF09\uFF0C\u9632\u6B62\u4ED6\u4EBA\u968F\u610F\u7BE1\u6539\u914D\u7F6E"
           )
         ),
-        // 密码设置输入框
+        // 管理员密码设置
         React.createElement(
           "div",
           { style: { marginBottom: 16 } },
           React.createElement(
             "label",
             { style: { ...s.label, display: "block", marginBottom: 6, fontSize: 12 } },
-            `\u8BBE\u7F6E\u7CFB\u7EDF\u4E3B\u5BC6\u7801 ${auth?.hasPassword ? "(\u2713 \u5DF2\u8BBE\u7F6E\u4E3B\u5BC6\u7801)" : "(\u26A0\uFE0F \u5C1A\u672A\u8BBE\u7F6E\u4E3B\u5BC6\u7801\uFF0C\u624B\u52A8\u8BBF\u95EE\u5C06\u514D\u5BC6)"}`
+            `\u8BBE\u7F6E\u72EC\u7ACB\u7BA1\u7406\u5458\u5BC6\u7801 ${auth?.hasAdminPassword ? "(\u2713 \u5DF2\u8BBE\u7F6E\u72EC\u7ACB\u7BA1\u7406\u5BC6\u7801)" : "(\u672A\u5355\u72EC\u8BBE\u7F6E\uFF0C\u9ED8\u8BA4\u4F7F\u7528\u4E0A\u8FF0\u8BBF\u5BA2\u8BBF\u95EE\u5BC6\u7801)"}`
           ),
           React.createElement(
             "div",
             { style: { display: "flex", gap: 8, alignItems: "center" } },
             React.createElement("input", {
-              type: showPassword ? "text" : "password",
+              type: showAdminPassword ? "text" : "password",
               style: { ...s.input, flex: 1 },
-              placeholder: auth?.hasPassword ? "\u8F93\u5165\u65B0\u5BC6\u7801\u4EE5\u4FEE\u6539\uFF08\u7559\u7A7A\u4FDD\u5B58\u53EF\u6E05\u9664\u5BC6\u7801\uFF09" : "\u8BBE\u7F6E\u7CFB\u7EDF\u4E3B\u5BC6\u7801 / PIN \u7801",
-              value: password,
-              onChange: (e) => setPassword(e.target.value)
+              placeholder: auth?.hasAdminPassword ? "\u8F93\u5165\u65B0\u5BC6\u7801\u4EE5\u4FEE\u6539\uFF08\u7559\u7A7A\u4FDD\u5B58\u53EF\u6E05\u9664\u72EC\u7ACB\u7BA1\u7406\u5BC6\u7801\uFF09" : "\u8BBE\u7F6E\u540E\u53F0\u7BA1\u7406\u89E3\u9501\u5BC6\u7801\uFF08\u5EFA\u8BAE\u4E0E\u8BBF\u5BA2\u5BC6\u7801\u4E0D\u540C\uFF09",
+              value: adminPassword,
+              onChange: (e) => setAdminPassword(e.target.value)
             }),
             React.createElement("button", {
               style: { ...s.btnGhost, height: 32, fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 },
-              onClick: () => setShowPassword((v) => !v)
-            }, showPassword ? "\u9690\u85CF" : "\u663E\u793A"),
+              onClick: () => setShowAdminPassword((v) => !v)
+            }, showAdminPassword ? "\u9690\u85CF" : "\u663E\u793A"),
             React.createElement("button", {
-              style: { ...s.btnPri, height: 32, fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 },
-              onClick: handleSavePassword,
-              disabled: saving
-            }, saving ? "\u4FDD\u5B58\u4E2D\u2026" : "\u4FDD\u5B58\u5BC6\u7801")
+              style: {
+                ...s.btnPri,
+                height: 32,
+                fontSize: 12,
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+                background: saveAdminSuccess ? "var(--dsw-alias-state-success-primary,#059669)" : void 0
+              },
+              onClick: handleSaveAdminPassword,
+              disabled: savingAdmin
+            }, savingAdmin ? "\u4FDD\u5B58\u4E2D\u2026" : saveAdminSuccess ? "\u2713 \u5DF2\u6210\u529F\u4FDD\u5B58\uFF01" : "\u4FDD\u5B58\u7BA1\u7406\u5BC6\u7801")
           ),
           React.createElement(
             "div",
-            { style: { ...s.muted, fontSize: 11, marginTop: 5, color: "var(--dsw-alias-brand-primary,#4f6ef7)" } },
-            "\u{1F511} \u53CC\u91CD\u6838\u5FC3\u4F5C\u7528\uFF1A\u2460 \u5916\u90E8\u8BBF\u5BA2\u624B\u52A8\u8F93\u5165 IP/\u57DF\u540D\u65F6\u7684\u3010\u767B\u5F55\u9A8C\u8BC1\u5BC6\u7801\u3011\uFF1B\u2461 \u8FDC\u7A0B\u8BBE\u5907\u8FDB\u5165\u6B64\u8BBE\u7F6E\u9762\u677F\u65F6\u7684\u3010\u9632\u7BE1\u6539\u7BA1\u7406\u5458\u89E3\u9501\u5BC6\u7801\u3011\u3002"
-          )
+            { style: { ...s.muted, fontSize: 11, marginTop: 4, color: "var(--dsw-alias-brand-primary,#4f6ef7)" } },
+            "\u{1F511} \u6838\u5FC3\u4F5C\u7528\uFF1A\u7528\u4E8E\u8FDC\u7A0B\u8BBE\u5907\u8FDB\u5165\u8BBE\u7F6E\u540E\u53F0\u65F6\u7684\u89E3\u9501\u9A8C\u8BC1\u3002\u8BBE\u7F6E\u540E\uFF0C\u5373\u4FBF\u628A\u8BBF\u95EE\u5BC6\u7801\u544A\u77E5\u4ED6\u4EBA\uFF0C\u4ED6\u4EBA\u4E5F\u65E0\u6CD5\u8FDB\u5165\u8BBE\u7F6E\u540E\u53F0\u6539\u914D\u7F6E\u3002"
+          ),
+          msgAdmin && React.createElement("div", {
+            style: {
+              marginTop: 8,
+              padding: "6px 12px",
+              borderRadius: 6,
+              fontSize: 12,
+              background: msgAdmin.ok ? "var(--dsw-alias-state-success-bg,#ecfdf5)" : "var(--dsw-alias-state-error-bg,#fef2f2)",
+              color: msgAdmin.ok ? "var(--dsw-alias-state-success-primary,#059669)" : "var(--dsw-alias-state-error-primary,#dc2626)"
+            }
+          }, msgAdmin.text)
         ),
-        // 远程管理权限控制
+        // 远程管理权限控制策略
         React.createElement(
           "div",
           { style: s.block },
-          React.createElement("label", { style: { ...s.label, display: "block", marginBottom: 8, fontSize: 12 } }, "\u8FDC\u7A0B\u8BBE\u5907\u7BA1\u7406\u8BBE\u7F6E\u6743\u9650\uFF08\u9632\u7BE1\u6539\u7B56\u7565\uFF09"),
+          React.createElement("label", { style: { ...s.label, display: "block", marginBottom: 8, fontSize: 12 } }, "\u8FDC\u7A0B\u8BBE\u5907\u7BA1\u7406\u6743\u9650\u7B56\u7565"),
           React.createElement(
             "div",
             { style: { display: "flex", gap: 8, flexWrap: "wrap" } },
             [
-              { id: "password_unlock", title: "\u{1F512} \u9700\u5BC6\u7801\u89E3\u9501 (\u63A8\u8350)", desc: "\u8FDC\u7A0B\u624B\u673A/\u5916\u7F51\u6253\u5F00\u8BBE\u7F6E\u9762\u677F\u65F6\u9ED8\u8BA4\u9501\u5B9A\uFF0C\u9700\u8F93\u5165\u4E0A\u8FF0\u4E3B\u5BC6\u7801\u89E3\u9501\u540E\u65B9\u53EF\u4FEE\u6539\u914D\u7F6E" },
-              { id: "local_only", title: "\u{1F6AB} \u4EC5\u9650\u7535\u8111\u672C\u673A\u7BA1\u7406 (\u6700\u4E25\u683C)", desc: "\u8FDC\u7A0B\u8BBE\u5907\u5F7B\u5E95\u9501\u5B9A\u5E76\u7981\u6B62\u4FEE\u6539\u4EFB\u4F55\u914D\u7F6E\uFF0C\u4EC5\u5141\u8BB8\u5728 127.0.0.1 \u7535\u8111\u672C\u673A\u4E0A\u64CD\u4F5C" },
-              { id: "open", title: "\u{1F513} \u5BBD\u677E\u6A21\u5F0F", desc: "\u4EFB\u4F55\u5DF2\u901A\u8FC7\u7B2C\u4E00\u9053\u9632\u7EBF\u767B\u5F55\u7684\u8BBE\u5907\u5747\u53EF\u76F4\u63A5\u4FEE\u6539\u8BBE\u7F6E" }
+              { id: "password_unlock", title: "\u{1F512} \u9700\u5BC6\u7801\u89E3\u9501 (\u63A8\u8350)", desc: "\u8FDC\u7A0B\u624B\u673A/\u5916\u7F51\u6253\u5F00\u672C\u63D2\u4EF6\u8BBE\u7F6E\u65F6\u9ED8\u8BA4\u5168\u5C40\u9501\u5B9A\uFF0C\u8F93\u5165\u7BA1\u7406\u5BC6\u7801\u89E3\u9501\u540E\u65B9\u53EF\u4F7F\u7528" },
+              { id: "local_only", title: "\u{1F6AB} \u4EC5\u9650\u7535\u8111\u672C\u673A\u7BA1\u7406 (\u6700\u4E25\u683C)", desc: "\u8FDC\u7A0B\u8BBE\u5907\u5F7B\u5E95\u9501\u5B9A\u6574\u4E2A\u8BBE\u7F6E\u540E\u53F0\uFF0C\u4EC5\u5141\u8BB8\u5728 127.0.0.1 \u7535\u8111\u672C\u673A\u4E0A\u64CD\u4F5C" },
+              { id: "open", title: "\u{1F513} \u5BBD\u677E\u6A21\u5F0F", desc: "\u4EFB\u4F55\u5DF2\u901A\u8FC7\u7B2C\u4E00\u9053\u9632\u7EBF\u767B\u5F55\u7684\u8BBE\u5907\u5747\u53EF\u76F4\u63A5\u4FEE\u6539\u6240\u6709\u914D\u7F6E" }
             ].map((opt) => {
               const isSel = adminPolicy === opt.id;
               return React.createElement(
@@ -1826,99 +1928,11 @@ function BridgePanel({ rpcCall }) {
       )
     );
   } else if (activeTab === "security") {
-    const auth = status?.auth;
-    const policy = auth?.adminPolicy ?? "password_unlock";
-    const isLocked = !isLocalhost && auth?.enabled && policy !== "open" && !adminUnlocked;
-    if (isLocked) {
-      if (policy === "local_only") {
-        tabContent = React.createElement(
-          "div",
-          {
-            style: { ...s.card, textAlign: "center", padding: "36px 20px", marginTop: 10 }
-          },
-          React.createElement("div", { style: { fontSize: 36, marginBottom: 12 } }, "\u{1F6E1}\uFE0F"),
-          React.createElement("div", { style: { ...s.label, fontSize: 16, marginBottom: 8 } }, "\u5DF2\u5F00\u542F\u300C\u4EC5\u9650\u7535\u8111\u672C\u673A\u7BA1\u7406\u300D\u5B89\u5168\u4FDD\u62A4"),
-          React.createElement(
-            "div",
-            { style: { ...s.muted, maxWidth: 380, margin: "0 auto", lineHeight: 1.6 } },
-            "\u5F53\u524D\u8BBE\u5907\u4E3A\u8FDC\u7A0B\u63A5\u5165\u3002\u4E3A\u4E86\u4FDD\u62A4\u60A8\u7684\u7CFB\u7EDF\u5B89\u5168\uFF0C\u8BBE\u7F6E\u9762\u677F\u5DF2\u88AB\u9501\u5B9A\uFF0C\u5982\u9700\u4FEE\u6539\u5BC6\u7801\u6216\u901A\u9053\u8BBE\u7F6E\u8BF7\u5728\u7535\u8111\u672C\u673A\uFF08127.0.0.1\uFF09\u4E0A\u64CD\u4F5C\u3002"
-          )
-        );
-      } else {
-        tabContent = React.createElement(
-          "div",
-          {
-            style: { ...s.card, maxWidth: 440, margin: "16px auto", padding: "28px 24px" }
-          },
-          React.createElement(
-            "div",
-            { style: { textAlign: "center", marginBottom: 20 } },
-            React.createElement("div", { style: { fontSize: 36, marginBottom: 10 } }, "\u{1F512}"),
-            React.createElement("div", { style: { ...s.label, fontSize: 16, fontWeight: 600 } }, "\u7BA1\u7406\u8BBE\u7F6E\u9762\u677F\u5DF2\u9501\u5B9A"),
-            React.createElement(
-              "div",
-              { style: { ...s.muted, fontSize: 12, marginTop: 4 } },
-              "\u5F53\u524D\u8BBE\u5907\u4E3A\u8FDC\u7A0B\u8BBF\u95EE\uFF0C\u8BF7\u8F93\u5165\u7BA1\u7406\u5458\u5BC6\u7801\u4EE5\u89E3\u9501\u914D\u7F6E\u7BA1\u7406\u6743\u9650"
-            )
-          ),
-          React.createElement(
-            "form",
-            {
-              onSubmit: handleUnlockAdmin,
-              style: { display: "flex", flexDirection: "column", gap: 12 }
-            },
-            React.createElement("input", {
-              type: "password",
-              style: s.input,
-              placeholder: "\u8F93\u5165\u7BA1\u7406\u5458\u8BBF\u95EE\u5BC6\u7801",
-              value: unlockPassword,
-              onChange: (e) => setUnlockPassword(e.target.value),
-              autoFocus: true
-            }),
-            unlockErr && React.createElement("div", {
-              style: { fontSize: 12, color: "var(--dsw-alias-state-error-primary,#dc2626)" }
-            }, unlockErr),
-            React.createElement("button", {
-              type: "submit",
-              style: { ...s.btnPri, width: "100%", justifyContent: "center", height: 36 },
-              disabled: unlocking
-            }, unlocking ? "\u9A8C\u8BC1\u4E2D\u2026" : "\u89E3\u9501\u7BA1\u7406\u6743\u9650")
-          )
-        );
-      }
-    } else {
-      tabContent = React.createElement(
-        React.Fragment,
-        null,
-        !isLocalhost && adminUnlocked && React.createElement(
-          "div",
-          {
-            style: {
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "8px 12px",
-              background: "var(--dsw-alias-state-info-bg,#eff6ff)",
-              border: "1px solid var(--dsw-alias-brand-primary,#4f6ef7)",
-              borderRadius: 8,
-              marginBottom: 12,
-              fontSize: 12,
-              color: "var(--dsw-alias-brand-primary,#4f6ef7)"
-            }
-          },
-          React.createElement("span", null, "\u{1F513} \u8FDC\u7A0B\u7BA1\u7406\u6743\u9650\u5DF2\u89E3\u9501\uFF08\u5F53\u524D\u4E34\u65F6\u4F1A\u8BDD\u6709\u6548\uFF09"),
-          React.createElement("button", {
-            style: { ...s.btnGhost, height: 24, fontSize: 11, padding: "0 8px" },
-            onClick: () => setAdminUnlocked(false)
-          }, "\u{1F512} \u91CD\u65B0\u9501\u5B9A")
-        ),
-        React.createElement(AccessAuthCard, {
-          auth: status?.auth,
-          rpcCall,
-          onUpdate: () => load(true)
-        })
-      );
-    }
+    tabContent = React.createElement(AccessAuthCard, {
+      auth: status?.auth,
+      rpcCall,
+      onUpdate: () => load(true)
+    });
   } else if (activeTab === "im") {
     const IM_PLATFORMS = [
       { id: "wechat", label: "\u5FAE\u4FE1", icon: Icons.wechat, brandColor: "#07C160", desc: "ClawBot \u626B\u7801\u76F4\u8FDE \xB7 \u65E0\u9700\u516C\u7F51" },
@@ -1991,12 +2005,95 @@ function BridgePanel({ rpcCall }) {
       })
     );
   }
+  const auth = status?.auth;
+  const policy = auth?.adminPolicy ?? "password_unlock";
+  const isLocked = !isLocalhost && auth?.enabled && policy !== "open" && !adminUnlocked;
+  if (isLocked) {
+    return React.createElement(
+      "div",
+      { style: { maxWidth: 620 } },
+      policy === "local_only" ? React.createElement(
+        "div",
+        {
+          style: { ...s.card, textAlign: "center", padding: "36px 20px", marginTop: 10 }
+        },
+        React.createElement("div", { style: { fontSize: 40, marginBottom: 12 } }, "\u{1F6E1}\uFE0F"),
+        React.createElement("div", { style: { ...s.label, fontSize: 16, fontWeight: 600, marginBottom: 8 } }, "\u7BA1\u7406\u63A7\u5236\u53F0\u5DF2\u9501\u5B9A\uFF08\u4EC5\u9650\u7535\u8111\u672C\u673A\u7BA1\u7406\uFF09"),
+        React.createElement(
+          "div",
+          { style: { ...s.muted, maxWidth: 380, margin: "0 auto", lineHeight: 1.6, fontSize: 13 } },
+          "\u5F53\u524D\u8BBE\u5907\u901A\u8FC7\u8FDC\u7A0B\u5C40\u57DF\u7F51\u6216\u516C\u7F51\u63A5\u5165\u3002\u5DF2\u5F00\u542F\u300C\u4EC5\u9650\u7535\u8111\u672C\u673A\u7BA1\u7406\u300D\u6700\u9AD8\u5B89\u5168\u7B56\u7565\uFF0C\u8FDC\u7A0B\u8BBE\u5907\u7981\u6B62\u67E5\u770B\u4E0E\u4FEE\u6539\u4EFB\u4F55\u7F51\u7EDC\u4E0E\u673A\u5668\u4EBA\u914D\u7F6E\u3002\u5982\u9700\u7BA1\u7406\u8BF7\u5728\u7535\u8111\u672C\u673A\uFF08127.0.0.1\uFF09\u4E0A\u64CD\u4F5C\u3002"
+        )
+      ) : React.createElement(
+        "div",
+        {
+          style: { ...s.card, maxWidth: 440, margin: "20px auto", padding: "32px 24px" }
+        },
+        React.createElement(
+          "div",
+          { style: { textAlign: "center", marginBottom: 20 } },
+          React.createElement("div", { style: { fontSize: 40, marginBottom: 10 } }, "\u{1F512}"),
+          React.createElement("div", { style: { ...s.label, fontSize: 16, fontWeight: 600 } }, "\u7BA1\u7406\u63A7\u5236\u53F0\u5DF2\u9501\u5B9A"),
+          React.createElement(
+            "div",
+            { style: { ...s.muted, fontSize: 12, marginTop: 6, lineHeight: 1.5 } },
+            "\u5F53\u524D\u8BBE\u5907\u4E3A\u8FDC\u7A0B\u8BBF\u95EE\u3002\u4E3A\u4FDD\u62A4\u60A8\u7684\u7F51\u7EDC\u4E0E\u5E73\u53F0\u914D\u7F6E\u5B89\u5168\uFF0C\u8BF7\u8F93\u5165\u7BA1\u7406\u5458\u5BC6\u7801\u89E3\u9501\u7BA1\u7406\u6743\u9650\u3002"
+          )
+        ),
+        React.createElement(
+          "form",
+          {
+            onSubmit: handleUnlockAdmin,
+            style: { display: "flex", flexDirection: "column", gap: 12 }
+          },
+          React.createElement("input", {
+            type: "password",
+            style: s.input,
+            placeholder: "\u8F93\u5165\u540E\u53F0\u7BA1\u7406\u5BC6\u7801",
+            value: unlockPassword,
+            onChange: (e) => setUnlockPassword(e.target.value),
+            autoFocus: true
+          }),
+          unlockErr && React.createElement("div", {
+            style: { fontSize: 12, color: "var(--dsw-alias-state-error-primary,#dc2626)" }
+          }, unlockErr),
+          React.createElement("button", {
+            type: "submit",
+            style: { ...s.btnPri, width: "100%", justifyContent: "center", height: 36 },
+            disabled: unlocking
+          }, unlocking ? "\u9A8C\u8BC1\u4E2D\u2026" : "\u89E3\u9501\u7BA1\u7406\u6743\u9650")
+        )
+      )
+    );
+  }
   return React.createElement(
     "div",
     { style: { maxWidth: 620 } },
     err && React.createElement("div", {
       style: { ...s.card, background: "var(--dsw-alias-state-error-bg,#fef2f2)", color: "var(--dsw-alias-state-error-primary,#dc2626)", fontSize: 13, marginBottom: 16 }
     }, err),
+    !isLocalhost && adminUnlocked && React.createElement(
+      "div",
+      {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "8px 14px",
+          background: "var(--dsw-alias-state-info-bg,#eff6ff)",
+          border: "1px solid var(--dsw-alias-brand-primary,#4f6ef7)",
+          borderRadius: 8,
+          marginBottom: 14,
+          fontSize: 12,
+          color: "var(--dsw-alias-brand-primary,#4f6ef7)"
+        }
+      },
+      React.createElement("span", null, "\u{1F513} \u7BA1\u7406\u5458\u6743\u9650\u5DF2\u89E3\u9501\uFF08\u5F53\u524D\u4E34\u65F6\u4F1A\u8BDD\u6709\u6548\uFF09"),
+      React.createElement("button", {
+        style: { ...s.btnGhost, height: 24, fontSize: 11, padding: "0 8px" },
+        onClick: () => setAdminUnlocked(false)
+      }, "\u{1F512} \u91CD\u65B0\u9501\u5B9A\u540E\u53F0")
+    ),
     React.createElement(VersionBanner, { rpcCall }),
     React.createElement(TabBar, { active: activeTab, onChange: setActiveTab, dots }),
     tabContent

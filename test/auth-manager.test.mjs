@@ -149,25 +149,28 @@ test('AuthManager handles adminPolicy and remote admin unlocking', async () => {
     },
   })
 
-  await auth.setPassword('admin-secret-999')
+  await auth.setPassword('access-pass-111')
+  await auth.setAdminPassword('admin-pass-222')
   assert.equal(auth.adminPolicy, 'password_unlock')
+  assert.equal(auth.hasPassword, true)
+  assert.equal(auth.hasAdminPassword, true)
 
-  // 1. Wrong password cannot unlock admin
-  const failRes = auth.unlockAdmin('wrong-pass', '192.168.1.88')
-  assert.equal(failRes.ok, false)
+  // 1. Access password cannot unlock admin when adminPassword is set
+  const failRes1 = auth.unlockAdmin('access-pass-111', '192.168.1.88')
+  assert.equal(failRes1.ok, false)
 
-  // 2. Correct password returns valid adminToken
-  const okRes = auth.unlockAdmin('admin-secret-999', '192.168.1.88')
+  // 2. Correct admin password returns valid adminToken
+  const okRes = auth.unlockAdmin('admin-pass-222', '192.168.1.88')
   assert.equal(okRes.ok, true)
   assert.ok(okRes.adminToken)
   assert.equal(auth.validateAdminSession(okRes.adminToken), true)
 
-  // 3. Changing password or policy invalidates admin session
+  // 3. Changing admin policy invalidates admin session
   await auth.setAdminPolicy('local_only')
   assert.equal(auth.validateAdminSession(okRes.adminToken), false)
 
   // 4. In local_only mode, unlockAdmin is rejected
-  const localOnlyRes = auth.unlockAdmin('admin-secret-999', '192.168.1.88')
+  const localOnlyRes = auth.unlockAdmin('admin-pass-222', '192.168.1.88')
   assert.equal(localOnlyRes.ok, false)
   assert.ok(localOnlyRes.error.includes('仅限电脑本机'))
 
