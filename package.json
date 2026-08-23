@@ -22,6 +22,7 @@
   ],
   "scripts": {
     "build:client": "node client/build.mjs",
+    "build:banner": "node scripts/generate-banner.mjs",
     "prepack": "npm run build:client",
     "test": "node --test test/*.test.mjs"
   },
