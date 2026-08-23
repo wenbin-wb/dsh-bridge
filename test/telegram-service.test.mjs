@@ -195,3 +195,36 @@ test('TelegramConversationNode processes inbound media photos and files', async 
   assert.ok(routedEvents[0].text.includes('请看这张图'))
   assert.ok(routedEvents[0].text.includes('[文件: /mock/.telegram-media/highres_1.png]'))
 })
+
+test('TelegramConversationNode streams turn output incrementally with editMessageText', async () => {
+  const ctx = makeMockCordisCtx()
+  const sent = []
+  const edited = []
+  ctx.telegram = {
+    sendText: async (chatId, text) => {
+      sent.push({ chatId, text })
+      return { message_id: 10086 }
+    },
+    editMessageText: async (chatId, messageId, text) => {
+      edited.push({ chatId, messageId, text })
+      return {}
+    },
+  }
+
+  const node = new TelegramConversationNode(ctx, { allowFrom: ['1003'], sendChunkDelayMs: 10 }, ctx.logger())
+  node._lastPeer = { chatId: '1003' }
+  node.activeSessionId = 'sess_1'
+
+  // Turn start
+  await ctx.emit('session/event', { id: 'sess_1' }, { type: 'turn/start' })
+
+  // Send turn content
+  await node.sendText('Line 1\nLine 2\nLine 3')
+
+  assert.equal(sent.length, 1)
+  assert.equal(sent[0].chatId, '1003')
+
+  // Turn end
+  await ctx.emit('session/event', { id: 'sess_1' }, { type: 'turn/end' })
+  assert.equal(node._streamMsgId, null)
+})
