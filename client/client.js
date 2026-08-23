@@ -474,7 +474,7 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
     setEnabled(next);
     try {
       await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { enabled: next });
-      setMsg({ ok: true, text: next ? "\u2713 \u8BBF\u95EE\u8BA4\u8BC1\u5DF2\u5F00\u542F\uFF08\u73B0\u6709\u767B\u5F55\u6001\u5DF2\u5237\u65B0\uFF09" : "\u2713 \u8BBF\u95EE\u8BA4\u8BC1\u5DF2\u5173\u95ED" });
+      setMsg({ ok: true, text: next ? "\u2713 \u8BBF\u95EE\u5B89\u5168\u8BA4\u8BC1\u5DF2\u5F00\u542F\uFF08\u73B0\u6709\u767B\u5F55\u6001\u5DF2\u5237\u65B0\uFF09" : "\u2713 \u8BBF\u95EE\u5B89\u5168\u8BA4\u8BC1\u5DF2\u5173\u95ED" });
       onUpdate?.();
     } catch (e) {
       setMsg({ ok: false, text: e.message || "\u66F4\u65B0\u5931\u8D25" });
@@ -484,7 +484,7 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
     setMode(m);
     try {
       await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { mode: m });
-      setMsg({ ok: true, text: "\u2713 \u8BA4\u8BC1\u6A21\u5F0F\u5DF2\u5207\u6362\uFF0C\u5DF2\u91CD\u7F6E\u6240\u6709\u8BBE\u5907\u7684\u767B\u5F55\u6001" });
+      setMsg({ ok: true, text: "\u2713 \u5916\u90E8\u9A8C\u8BC1\u6A21\u5F0F\u5DF2\u5207\u6362\uFF0C\u5DF2\u91CD\u7F6E\u6240\u6709\u8BBE\u5907\u7684\u767B\u5F55\u6001" });
       onUpdate?.();
     } catch (e) {
       setMsg({ ok: false, text: e.message || "\u66F4\u65B0\u5931\u8D25" });
@@ -494,7 +494,7 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
     setScope(sc);
     try {
       await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { scope: sc });
-      setMsg({ ok: true, text: "\u2713 \u9632\u62A4\u8303\u56F4\u5DF2\u66F4\u65B0" });
+      setMsg({ ok: true, text: "\u2713 \u9632\u62A4\u751F\u6548\u8303\u56F4\u5DF2\u66F4\u65B0" });
       onUpdate?.();
     } catch (e) {
       setMsg({ ok: false, text: e.message || "\u66F4\u65B0\u5931\u8D25" });
@@ -516,7 +516,7 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
     try {
       const res = await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { password });
       if (res?.ok) {
-        setMsg({ ok: true, text: "\u2713 \u8BBF\u95EE\u5BC6\u7801\u5DF2\u66F4\u65B0\u4FDD\u5B58\uFF0C\u5DF2\u91CD\u7F6E\u6240\u6709\u8BBE\u5907\u7684\u767B\u5F55\u6001" });
+        setMsg({ ok: true, text: "\u2713 \u7CFB\u7EDF\u4E3B\u5BC6\u7801\u5DF2\u66F4\u65B0\u4FDD\u5B58\uFF0C\u5DF2\u91CD\u7F6E\u6240\u6709\u8BBE\u5907\u7684\u767B\u5F55\u4E0E\u89E3\u9501\u72B6\u6001" });
         setPassword("");
         onUpdate?.();
       } else {
@@ -538,206 +538,306 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
       setMsg({ ok: false, text: e.message || "\u91CD\u7F6E\u5931\u8D25" });
     }
   };
+  const scopeLabel = scope === "all" ? "\u5168\u90E8\u901A\u9053 (\u5C40\u57DF\u7F51+\u516C\u7F51)" : scope === "public_only" ? "\u4EC5\u516C\u7F51\u96A7\u9053" : "\u4EC5\u5C40\u57DF\u7F51";
+  const modeLabel = mode === "token_and_password" ? "\u626B\u7801\u514D\u5BC6 + \u5BC6\u7801" : mode === "password_only" ? "\u4EC5\u5BC6\u7801\u767B\u5F55" : "\u4EC5\u5B89\u5168 Token";
+  const adminLabel = adminPolicy === "password_unlock" ? "\u8FDC\u7A0B\u9700\u5BC6\u7801\u89E3\u9501" : adminPolicy === "local_only" ? "\u4EC5\u9650\u7535\u8111\u672C\u673A\u7BA1\u7406" : "\u5BBD\u677E\u6A21\u5F0F";
   return React.createElement(
     "div",
-    { style: { ...s.card, marginTop: 16 } },
+    { style: { display: "flex", flexDirection: "column", gap: 14, marginTop: 10 } },
+    // ---- 顶部总控与状态概览卡片 ----
     React.createElement(
       "div",
-      {
-        style: { display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 6 }
-      },
+      { style: s.card },
       React.createElement(
         "div",
-        { style: { flex: "1 1 240px" } },
+        {
+          style: { display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }
+        },
         React.createElement(
           "div",
-          { style: { ...s.label, fontSize: 14, display: "flex", alignItems: "center", gap: 6 } },
-          "\u{1F510} \u8BBF\u95EE\u5B89\u5168\u8BA4\u8BC1\uFF08\u5C40\u57DF\u7F51 / \u516C\u7F51\u9632\u62A4\uFF09"
-        ),
-        React.createElement(
-          "div",
-          { style: { ...s.muted, marginTop: 3 } },
-          "\u5F00\u542F\u540E\uFF0C\u5C40\u57DF\u7F51\u4E0E\u516C\u7F51\u8BBF\u95EE\u9700\u901A\u8FC7\u5B89\u5168 Token \u6216\u8BBF\u95EE\u5BC6\u7801\u8BA4\u8BC1\uFF0C\u9632\u6B62\u672A\u6388\u6743\u8BBE\u5907\u63A5\u5165"
-        )
-      ),
-      React.createElement("button", {
-        style: { ...enabled ? s.btnPri : s.btnGhost, whiteSpace: "nowrap", flexShrink: 0 },
-        onClick: handleToggleEnabled
-      }, enabled ? "\u2713 \u5DF2\u542F\u7528\u8BA4\u8BC1" : "\u672A\u5F00\u542F\u8BA4\u8BC1")
-    ),
-    enabled && React.createElement(
-      "div",
-      { style: s.block },
-      // 防护范围选择
-      React.createElement(
-        "div",
-        { style: { marginBottom: 16 } },
-        React.createElement("label", { style: { ...s.label, display: "block", marginBottom: 8 } }, "\u9632\u62A4\u751F\u6548\u8303\u56F4"),
-        React.createElement(
-          "div",
-          { style: { display: "flex", gap: 8, flexWrap: "wrap" } },
-          [
-            { id: "all", title: "\u5168\u90E8\u9632\u62A4 (\u63A8\u8350)", desc: "\u5C40\u57DF\u7F51\u8BBF\u95EE\u4E0E\u516C\u7F51\u96A7\u9053\u5168\u90E8\u53D7\u5B89\u5168\u8BA4\u8BC1\u4FDD\u62A4" },
-            { id: "public_only", title: "\u4EC5\u516C\u7F51\u96A7\u9053\u5F00\u542F\u8BA4\u8BC1", desc: "\u5C40\u57DF\u7F51\u5185\u8BBE\u5907\u76F4\u63A5\u514D\u5BC6\u76F4\u8FDE\uFF0C\u516C\u7F51\u96A7\u9053\u5F3A\u5236\u8BA4\u8BC1" },
-            { id: "lan_only", title: "\u4EC5\u5C40\u57DF\u7F51\u5F00\u542F\u8BA4\u8BC1", desc: "\u4EC5\u5C40\u57DF\u7F51\u8BBF\u95EE\u9700\u8BA4\u8BC1\uFF0C\u516C\u7F51\u96A7\u9053\u4E0D\u5F00\u542F" }
-          ].map((opt) => {
-            const isSel = scope === opt.id;
-            return React.createElement(
-              "div",
-              {
-                key: opt.id,
-                onClick: () => handleChangeScope(opt.id),
-                style: {
-                  flex: "1 1 180px",
-                  padding: "9px 12px",
-                  borderRadius: 8,
-                  border: `1px solid ${isSel ? "var(--dsw-alias-brand-primary,#4f6ef7)" : "var(--dsw-alias-border-l2,#e5e7eb)"}`,
-                  background: isSel ? "var(--dsw-alias-state-info-bg,#eff6ff)" : "var(--dsw-alias-bg-layer-2,#f9fafb)",
-                  cursor: "pointer",
-                  transition: "all 0.15s ease"
-                }
-              },
-              React.createElement("div", { style: { fontSize: 13, fontWeight: isSel ? 600 : 500, color: isSel ? "var(--dsw-alias-brand-primary,#4f6ef7)" : "var(--dsw-alias-label-primary,currentColor)" } }, opt.title),
-              React.createElement("div", { style: { ...s.muted, fontSize: 11, marginTop: 3 } }, opt.desc)
-            );
-          })
-        )
-      ),
-      // 认证模式切换
-      React.createElement(
-        "div",
-        { style: { marginBottom: 16 } },
-        React.createElement("label", { style: { ...s.label, display: "block", marginBottom: 8 } }, "\u8BA4\u8BC1\u9A8C\u8BC1\u6A21\u5F0F"),
-        React.createElement(
-          "div",
-          { style: { display: "flex", gap: 8, flexWrap: "wrap" } },
-          [
-            { id: "token_and_password", title: "\u626B\u7801\u514D\u5BC6 + \u5BC6\u7801\u8BA4\u8BC1 (\u63A8\u8350)", desc: "\u4E8C\u7EF4\u7801\u81EA\u5E26 Token \u626B\u7801\u79D2\u8FDB\uFF0C\u624B\u52A8\u8F93\u5165 IP \u9700\u8F93\u5BC6\u7801" },
-            { id: "password_only", title: "\u4EC5\u5BC6\u7801 / PIN \u7801", desc: "\u6240\u6709\u8BBF\u95EE\u5747\u9700\u624B\u52A8\u8F93\u5165\u8BBF\u95EE\u5BC6\u7801" },
-            { id: "token_only", title: "\u4EC5\u5B89\u5168 Token \u514D\u5BC6", desc: "\u4EC5\u6301\u6709\u5E26\u5B89\u5168 Token \u7684\u94FE\u63A5\u6216\u4E8C\u7EF4\u7801\u65B9\u53EF\u8BBF\u95EE" }
-          ].map((opt) => {
-            const isSel = mode === opt.id;
-            return React.createElement(
-              "div",
-              {
-                key: opt.id,
-                onClick: () => handleChangeMode(opt.id),
-                style: {
-                  flex: "1 1 180px",
-                  padding: "9px 12px",
-                  borderRadius: 8,
-                  border: `1px solid ${isSel ? "var(--dsw-alias-brand-primary,#4f6ef7)" : "var(--dsw-alias-border-l2,#e5e7eb)"}`,
-                  background: isSel ? "var(--dsw-alias-state-info-bg,#eff6ff)" : "var(--dsw-alias-bg-layer-2,#f9fafb)",
-                  cursor: "pointer",
-                  transition: "all 0.15s ease"
-                }
-              },
-              React.createElement("div", { style: { fontSize: 13, fontWeight: isSel ? 600 : 500, color: isSel ? "var(--dsw-alias-brand-primary,#4f6ef7)" : "var(--dsw-alias-label-primary,currentColor)" } }, opt.title),
-              React.createElement("div", { style: { ...s.muted, fontSize: 11, marginTop: 3 } }, opt.desc)
-            );
-          })
-        )
-      ),
-      // 密码设置区域 (当非 token_only 时展示)
-      mode !== "token_only" && React.createElement(
-        "div",
-        { style: { marginBottom: 16 } },
-        React.createElement(
-          "label",
-          { style: { ...s.label, display: "block", marginBottom: 6 } },
-          `\u8BBF\u95EE\u5BC6\u7801 / PIN \u7801 ${auth?.hasPassword ? "(\u5DF2\u8BBE\u7F6E\u5BC6\u7801)" : "(\u5C1A\u672A\u8BBE\u7F6E\u5BC6\u7801\uFF0C\u76F4\u63A5\u8BBF\u95EE\u5C06\u514D\u5BC6)"}`
-        ),
-        React.createElement(
-          "div",
-          { style: { display: "flex", gap: 8, alignItems: "center" } },
-          React.createElement("input", {
-            type: showPassword ? "text" : "password",
-            style: { ...s.input, flex: 1 },
-            placeholder: auth?.hasPassword ? "\u8F93\u5165\u65B0\u5BC6\u7801\u4EE5\u4FEE\u6539\uFF08\u7559\u7A7A\u4FDD\u5B58\u53EF\u6E05\u9664\u5BC6\u7801\uFF09" : "\u8BBE\u7F6E\u8BBF\u95EE\u5BC6\u7801 / PIN \u7801",
-            value: password,
-            onChange: (e) => setPassword(e.target.value)
-          }),
-          React.createElement("button", {
-            style: { ...s.btnGhost, height: 32, fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 },
-            onClick: () => setShowPassword((v) => !v)
-          }, showPassword ? "\u9690\u85CF" : "\u663E\u793A"),
-          React.createElement("button", {
-            style: { ...s.btnPri, height: 32, fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 },
-            onClick: handleSavePassword,
-            disabled: saving
-          }, saving ? "\u4FDD\u5B58\u4E2D\u2026" : "\u4FDD\u5B58\u5BC6\u7801")
-        )
-      ),
-      // 远程设备管理权限控制 (防篡改设置)
-      React.createElement(
-        "div",
-        { style: { marginBottom: 16 } },
-        React.createElement("label", { style: { ...s.label, display: "block", marginBottom: 8 } }, "\u2699\uFE0F \u8FDC\u7A0B\u8BBE\u5907\u7BA1\u7406\u6743\u9650\uFF08\u9632\u7BE1\u6539\u63A7\u5236\uFF09"),
-        React.createElement(
-          "div",
-          { style: { display: "flex", gap: 8, flexWrap: "wrap" } },
-          [
-            { id: "password_unlock", title: "\u9700\u5BC6\u7801\u89E3\u9501 (\u63A8\u8350)", desc: "\u8FDC\u7A0B\u624B\u673A/\u6D4F\u89C8\u5668\u8FDB\u5165\u8BBE\u7F6E\u9700\u8F93\u5165\u4E3B\u5BC6\u7801\u89E3\u9501" },
-            { id: "local_only", title: "\u4EC5\u9650\u7535\u8111\u672C\u673A\u7BA1\u7406 (\u6700\u4E25\u683C)", desc: "\u8FDC\u7A0B\u8BBE\u5907\u9501\u5B9A\u5E76\u7981\u6B62\u4FEE\u6539\u4EFB\u4F55\u914D\u7F6E\uFF0C\u4EC5\u9650 127.0.0.1 \u7BA1\u7406" },
-            { id: "open", title: "\u5BBD\u677E\u6A21\u5F0F", desc: "\u4EFB\u4F55\u5DF2\u767B\u5F55\u8BBE\u5907\u5747\u53EF\u76F4\u63A5\u4FEE\u6539\u914D\u7F6E" }
-          ].map((opt) => {
-            const isSel = adminPolicy === opt.id;
-            return React.createElement(
-              "div",
-              {
-                key: opt.id,
-                onClick: () => handleChangeAdminPolicy(opt.id),
-                style: {
-                  flex: "1 1 180px",
-                  padding: "9px 12px",
-                  borderRadius: 8,
-                  border: `1px solid ${isSel ? "var(--dsw-alias-brand-primary,#4f6ef7)" : "var(--dsw-alias-border-l2,#e5e7eb)"}`,
-                  background: isSel ? "var(--dsw-alias-state-info-bg,#eff6ff)" : "var(--dsw-alias-bg-layer-2,#f9fafb)",
-                  cursor: "pointer",
-                  transition: "all 0.15s ease"
-                }
-              },
-              React.createElement("div", { style: { fontSize: 13, fontWeight: isSel ? 600 : 500, color: isSel ? "var(--dsw-alias-brand-primary,#4f6ef7)" : "var(--dsw-alias-label-primary,currentColor)" } }, opt.title),
-              React.createElement("div", { style: { ...s.muted, fontSize: 11, marginTop: 3 } }, opt.desc)
-            );
-          })
-        )
-      ),
-      // 安全 Token 管理
-      mode !== "password_only" && React.createElement(
-        "div",
-        { style: { marginBottom: 12 } },
-        React.createElement("label", { style: { ...s.label, display: "block", marginBottom: 6 } }, "\u5B89\u5168 Token (\u514D\u5BC6\u626B\u7801\u51ED\u636E)"),
-        React.createElement(
-          "div",
-          { style: { display: "flex", gap: 8, alignItems: "center" } },
+          { style: { flex: "1 1 260px" } },
           React.createElement(
-            "code",
-            { style: { ...s.code, flex: 1, padding: "6px 10px", background: "var(--dsw-alias-bg-layer-1,#fff)", borderRadius: 6, border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)" } },
-            auth?.secretToken ? `${auth.secretToken.slice(0, 10)}****************` : "\u672A\u751F\u6210"
+            "div",
+            { style: { ...s.label, fontSize: 15, display: "flex", alignItems: "center", gap: 8 } },
+            "\u{1F510} \u5168\u5C40\u8BBF\u95EE\u5B89\u5168\u9632\u62A4\u4F53\u7CFB"
           ),
-          React.createElement("button", {
-            style: { ...s.btnGhost, height: 32, fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 },
-            onClick: handleRegenerateToken,
-            title: "\u91CD\u65B0\u751F\u6210 Token\uFF0C\u4F7F\u4E4B\u524D\u5206\u4EAB\u7684\u65E7\u4E8C\u7EF4\u7801\u548C\u94FE\u63A5\u7ACB\u5373\u5931\u6548"
-          }, "\u{1F504} \u91CD\u7F6E\u5B89\u5168 Token")
+          React.createElement(
+            "div",
+            { style: { ...s.muted, marginTop: 4 } },
+            "\u96C6\u6210\u5916\u90E8\u8BBF\u95EE\u95E8\u7981\u62E6\u622A\u4E0E\u8BBE\u7F6E\u9762\u677F\u9632\u7BE1\u6539\u6743\u9650\u63A7\u5236\uFF0C\u5B88\u62A4\u8FDC\u7A0B\u4F1A\u8BDD\u4E0E\u7F51\u7EDC\u914D\u7F6E\u5B89\u5168"
+          )
         ),
-        React.createElement(
-          "div",
-          { style: { ...s.muted, fontSize: 11, marginTop: 4 } },
-          "\u{1F4A1} \u751F\u6210\u7684\u5C40\u57DF\u7F51\u4E0E\u516C\u7F51\u4E8C\u7EF4\u7801\u5DF2\u81EA\u52A8\u5D4C\u5165\u8BE5\u5B89\u5168 Token\uFF0C\u626B\u7801\u8BBE\u5907\u4E00\u79D2\u514D\u5BC6\u8FDB\u5165\uFF0C\u65E0\u9700\u624B\u52A8\u8F93\u5165\u5BC6\u7801\u3002"
-        )
+        React.createElement("button", {
+          style: { ...enabled ? s.btnPri : s.btnGhost, whiteSpace: "nowrap", flexShrink: 0 },
+          onClick: handleToggleEnabled
+        }, enabled ? "\u2713 \u5DF2\u542F\u7528\u5B89\u5168\u9632\u62A4" : "\u672A\u5F00\u542F\u5B89\u5168\u9632\u62A4")
+      ),
+      enabled && React.createElement(
+        "div",
+        {
+          style: {
+            display: "flex",
+            gap: 8,
+            flexWrap: "wrap",
+            marginTop: 14,
+            paddingTop: 12,
+            borderTop: "1px solid var(--dsw-alias-border-l2,#e5e7eb)"
+          }
+        },
+        React.createElement("div", {
+          style: {
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+            padding: "4px 10px",
+            borderRadius: 16,
+            fontSize: 11,
+            background: "var(--dsw-alias-bg-layer-2,#f3f4f6)",
+            color: "var(--dsw-alias-label-secondary,#4b5563)"
+          }
+        }, "\u{1F310} \u4FDD\u62A4\u8303\u56F4: ", React.createElement("strong", { style: { color: "var(--dsw-alias-brand-primary,#4f6ef7)" } }, scopeLabel)),
+        React.createElement("div", {
+          style: {
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+            padding: "4px 10px",
+            borderRadius: 16,
+            fontSize: 11,
+            background: "var(--dsw-alias-bg-layer-2,#f3f4f6)",
+            color: "var(--dsw-alias-label-secondary,#4b5563)"
+          }
+        }, "\u{1F511} \u5916\u90E8\u9A8C\u8BC1: ", React.createElement("strong", { style: { color: "var(--dsw-alias-brand-primary,#4f6ef7)" } }, modeLabel)),
+        React.createElement("div", {
+          style: {
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+            padding: "4px 10px",
+            borderRadius: 16,
+            fontSize: 11,
+            background: "var(--dsw-alias-bg-layer-2,#f3f4f6)",
+            color: "var(--dsw-alias-label-secondary,#4b5563)"
+          }
+        }, "\u{1F512} \u540E\u53F0\u9632\u7BE1\u6539: ", React.createElement("strong", { style: { color: "var(--dsw-alias-state-success-primary,#059669)" } }, adminLabel))
       ),
       msg && React.createElement("div", {
         style: {
-          marginTop: 10,
-          padding: "6px 12px",
+          marginTop: 12,
+          padding: "8px 12px",
           borderRadius: 6,
           fontSize: 12,
           background: msg.ok ? "var(--dsw-alias-state-success-bg,#ecfdf5)" : "var(--dsw-alias-state-error-bg,#fef2f2)",
           color: msg.ok ? "var(--dsw-alias-state-success-primary,#059669)" : "var(--dsw-alias-state-error-primary,#dc2626)"
         }
       }, msg.text)
+    ),
+    enabled && React.createElement(
+      React.Fragment,
+      null,
+      // ---- 第一道防线：外部访问门禁（控制谁能用 AI） ----
+      React.createElement(
+        "div",
+        { style: s.card },
+        React.createElement(
+          "div",
+          { style: { marginBottom: 14 } },
+          React.createElement(
+            "div",
+            { style: { ...s.label, fontSize: 14, display: "flex", alignItems: "center", gap: 6 } },
+            "\u{1F6E1}\uFE0F \u7B2C\u4E00\u9053\u9632\u7EBF\uFF1A\u5916\u90E8\u8BBF\u95EE\u95E8\u7981\uFF08\u63A7\u5236\u8C01\u80FD\u4F7F\u7528 AI\uFF09"
+          ),
+          React.createElement(
+            "div",
+            { style: { ...s.muted, marginTop: 3 } },
+            "\u63A7\u5236\u5916\u90E8\u8BBE\u5907\u901A\u8FC7\u5C40\u57DF\u7F51 IP \u6216\u516C\u7F51\u96A7\u9053\u8FDB\u5165 DSH \u804A\u5929\u754C\u9762\u65F6\u7684\u9A8C\u8BC1\u673A\u5236"
+          )
+        ),
+        // 验证模式
+        React.createElement(
+          "div",
+          { style: { marginBottom: 16 } },
+          React.createElement("label", { style: { ...s.label, display: "block", marginBottom: 8, fontSize: 12 } }, "\u9A8C\u8BC1\u6A21\u5F0F\u9009\u62E9"),
+          React.createElement(
+            "div",
+            { style: { display: "flex", gap: 8, flexWrap: "wrap" } },
+            [
+              { id: "token_and_password", title: "\u{1F7E2} \u626B\u7801\u514D\u5BC6 + \u5BC6\u7801\u8BA4\u8BC1 (\u63A8\u8350)", desc: "\u4E8C\u7EF4\u7801\u81EA\u5E26\u4E13\u5C5E Token \u626B\u7801\u79D2\u8FDB\uFF1B\u76F4\u63A5\u8F93 IP/\u516C\u7F51\u57DF\u540D\u9700\u8F93\u5BC6\u7801" },
+              { id: "password_only", title: "\u{1F511} \u4EC5\u5BC6\u7801 / PIN \u7801\u767B\u5F55", desc: "\u6240\u6709\u5916\u90E8\u8BBF\u95EE\u5FC5\u987B\u624B\u52A8\u8F93\u5165\u4E3B\u5BC6\u7801\u65B9\u53EF\u8FDB\u5165" },
+              { id: "token_only", title: "\u{1F3AB} \u4EC5\u5B89\u5168 Token \u514D\u5BC6", desc: "\u4EC5\u6301\u6709\u5E26\u5B89\u5168 Token \u7684\u4E8C\u7EF4\u7801\u6216\u4E13\u5C5E\u5206\u4EAB\u94FE\u63A5\u65B9\u53EF\u8FDB\u5165" }
+            ].map((opt) => {
+              const isSel = mode === opt.id;
+              return React.createElement(
+                "div",
+                {
+                  key: opt.id,
+                  onClick: () => handleChangeMode(opt.id),
+                  style: {
+                    flex: "1 1 200px",
+                    padding: "10px 12px",
+                    borderRadius: 8,
+                    border: `1px solid ${isSel ? "var(--dsw-alias-brand-primary,#4f6ef7)" : "var(--dsw-alias-border-l2,#e5e7eb)"}`,
+                    background: isSel ? "var(--dsw-alias-state-info-bg,#eff6ff)" : "var(--dsw-alias-bg-layer-2,#f9fafb)",
+                    cursor: "pointer",
+                    transition: "all 0.15s ease"
+                  }
+                },
+                React.createElement("div", { style: { fontSize: 13, fontWeight: isSel ? 600 : 500, color: isSel ? "var(--dsw-alias-brand-primary,#4f6ef7)" : "var(--dsw-alias-label-primary,currentColor)" } }, opt.title),
+                React.createElement("div", { style: { ...s.muted, fontSize: 11, marginTop: 4 } }, opt.desc)
+              );
+            })
+          )
+        ),
+        // 防护生效范围
+        React.createElement(
+          "div",
+          { style: { marginBottom: 16 } },
+          React.createElement("label", { style: { ...s.label, display: "block", marginBottom: 8, fontSize: 12 } }, "\u9632\u62A4\u751F\u6548\u901A\u9053"),
+          React.createElement(
+            "div",
+            { style: { display: "flex", gap: 8, flexWrap: "wrap" } },
+            [
+              { id: "all", title: "\u5168\u90E8\u901A\u9053\u9632\u62A4 (\u63A8\u8350)", desc: "\u5C40\u57DF\u7F51 IP \u76F4\u8FDE\u4E0E\u516C\u7F51\u96A7\u9053\u5168\u90E8\u53D7\u5B89\u5168\u4FDD\u62A4" },
+              { id: "public_only", title: "\u4EC5\u516C\u7F51\u96A7\u9053\u5F00\u542F\u9632\u62A4", desc: "\u5C40\u57DF\u7F51\u5185\u8BBE\u5907\u76F4\u63A5\u514D\u5BC6\u76F4\u8FDE\uFF0C\u516C\u7F51\u96A7\u9053\u5F3A\u5236\u9A8C\u8BC1" },
+              { id: "lan_only", title: "\u4EC5\u5C40\u57DF\u7F51\u5F00\u542F\u9632\u62A4", desc: "\u4EC5\u5C40\u57DF\u7F51\u76F4\u8FDE\u9700\u9A8C\u8BC1\uFF0C\u516C\u7F51\u96A7\u9053\u4E0D\u5F00\u542F" }
+            ].map((opt) => {
+              const isSel = scope === opt.id;
+              return React.createElement(
+                "div",
+                {
+                  key: opt.id,
+                  onClick: () => handleChangeScope(opt.id),
+                  style: {
+                    flex: "1 1 180px",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: `1px solid ${isSel ? "var(--dsw-alias-brand-primary,#4f6ef7)" : "var(--dsw-alias-border-l2,#e5e7eb)"}`,
+                    background: isSel ? "var(--dsw-alias-state-info-bg,#eff6ff)" : "var(--dsw-alias-bg-layer-2,#f9fafb)",
+                    cursor: "pointer",
+                    transition: "all 0.15s ease"
+                  }
+                },
+                React.createElement("div", { style: { fontSize: 13, fontWeight: isSel ? 600 : 500, color: isSel ? "var(--dsw-alias-brand-primary,#4f6ef7)" : "var(--dsw-alias-label-primary,currentColor)" } }, opt.title),
+                React.createElement("div", { style: { ...s.muted, fontSize: 11, marginTop: 3 } }, opt.desc)
+              );
+            })
+          )
+        ),
+        // 免密 Token 管理
+        mode !== "password_only" && React.createElement(
+          "div",
+          { style: s.block },
+          React.createElement("label", { style: { ...s.label, display: "block", marginBottom: 6, fontSize: 12 } }, "\u514D\u5BC6\u626B\u7801 Token (\u4E13\u5C5E\u8BBF\u95EE\u51ED\u636E)"),
+          React.createElement(
+            "div",
+            { style: { display: "flex", gap: 8, alignItems: "center" } },
+            React.createElement(
+              "code",
+              { style: { ...s.code, flex: 1, padding: "6px 10px", background: "var(--dsw-alias-bg-layer-1,#fff)", borderRadius: 6, border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)" } },
+              auth?.secretToken ? `${auth.secretToken.slice(0, 10)}****************` : "\u672A\u751F\u6210"
+            ),
+            React.createElement("button", {
+              style: { ...s.btnGhost, height: 32, fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 },
+              onClick: handleRegenerateToken,
+              title: "\u91CD\u65B0\u751F\u6210 Token\uFF0C\u4F7F\u4E4B\u524D\u5206\u4EAB\u7684\u65E7\u4E8C\u7EF4\u7801\u548C\u94FE\u63A5\u7ACB\u5373\u5931\u6548"
+            }, "\u{1F504} \u91CD\u7F6E\u5B89\u5168 Token")
+          ),
+          React.createElement(
+            "div",
+            { style: { ...s.muted, fontSize: 11, marginTop: 4 } },
+            "\u{1F4A1} \u63A7\u5236\u53F0\u751F\u6210\u7684\u5C40\u57DF\u7F51\u4E0E\u516C\u7F51\u4E8C\u7EF4\u7801\u5DF2\u81EA\u52A8\u5185\u5D4C\u6B64 Token\uFF0C\u624B\u673A\u626B\u7801\u5373\u53EF\u514D\u5BC6\u8FDB\u5165\u804A\u5929\u754C\u9762\uFF08\u4F46\u4E0D\u8D4B\u4E88\u540E\u53F0\u7BA1\u7406\u4FEE\u6539\u6743\u9650\uFF09\u3002"
+          )
+        )
+      ),
+      // ---- 第二道防线：系统主密码与后台防篡改（控制谁能改设置） ----
+      React.createElement(
+        "div",
+        { style: s.card },
+        React.createElement(
+          "div",
+          { style: { marginBottom: 14 } },
+          React.createElement(
+            "div",
+            { style: { ...s.label, fontSize: 14, display: "flex", alignItems: "center", gap: 6 } },
+            "\u{1F512} \u7B2C\u4E8C\u9053\u9632\u7EBF\uFF1A\u7CFB\u7EDF\u4E3B\u5BC6\u7801\u4E0E\u540E\u53F0\u9632\u7BE1\u6539\uFF08\u63A7\u5236\u8C01\u80FD\u4FEE\u6539\u914D\u7F6E\uFF09"
+          ),
+          React.createElement(
+            "div",
+            { style: { ...s.muted, marginTop: 3 } },
+            "\u8BBE\u7F6E\u7CFB\u7EDF\u4E3B\u5BC6\u7801\uFF0C\u5E76\u7BA1\u63A7\u8FDC\u7A0B\u8BBE\u5907\uFF08\u624B\u673A/\u516C\u7F51\u8BBF\u5BA2\uFF09\u8FDB\u5165\u6B64\u8BBE\u7F6E\u9762\u677F\u65F6\u7684\u7BA1\u7406\u6743\u9650\uFF0C\u9632\u6B62\u4ED6\u4EBA\u7BE1\u6539\u5BC6\u7801\u6216\u5077\u7AA5 Bot \u5BC6\u94A5"
+          )
+        ),
+        // 密码设置输入框
+        React.createElement(
+          "div",
+          { style: { marginBottom: 16 } },
+          React.createElement(
+            "label",
+            { style: { ...s.label, display: "block", marginBottom: 6, fontSize: 12 } },
+            `\u8BBE\u7F6E\u7CFB\u7EDF\u4E3B\u5BC6\u7801 ${auth?.hasPassword ? "(\u2713 \u5DF2\u8BBE\u7F6E\u4E3B\u5BC6\u7801)" : "(\u26A0\uFE0F \u5C1A\u672A\u8BBE\u7F6E\u4E3B\u5BC6\u7801\uFF0C\u624B\u52A8\u8BBF\u95EE\u5C06\u514D\u5BC6)"}`
+          ),
+          React.createElement(
+            "div",
+            { style: { display: "flex", gap: 8, alignItems: "center" } },
+            React.createElement("input", {
+              type: showPassword ? "text" : "password",
+              style: { ...s.input, flex: 1 },
+              placeholder: auth?.hasPassword ? "\u8F93\u5165\u65B0\u5BC6\u7801\u4EE5\u4FEE\u6539\uFF08\u7559\u7A7A\u4FDD\u5B58\u53EF\u6E05\u9664\u5BC6\u7801\uFF09" : "\u8BBE\u7F6E\u7CFB\u7EDF\u4E3B\u5BC6\u7801 / PIN \u7801",
+              value: password,
+              onChange: (e) => setPassword(e.target.value)
+            }),
+            React.createElement("button", {
+              style: { ...s.btnGhost, height: 32, fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 },
+              onClick: () => setShowPassword((v) => !v)
+            }, showPassword ? "\u9690\u85CF" : "\u663E\u793A"),
+            React.createElement("button", {
+              style: { ...s.btnPri, height: 32, fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 },
+              onClick: handleSavePassword,
+              disabled: saving
+            }, saving ? "\u4FDD\u5B58\u4E2D\u2026" : "\u4FDD\u5B58\u5BC6\u7801")
+          ),
+          React.createElement(
+            "div",
+            { style: { ...s.muted, fontSize: 11, marginTop: 5, color: "var(--dsw-alias-brand-primary,#4f6ef7)" } },
+            "\u{1F511} \u53CC\u91CD\u6838\u5FC3\u4F5C\u7528\uFF1A\u2460 \u5916\u90E8\u8BBF\u5BA2\u624B\u52A8\u8F93\u5165 IP/\u57DF\u540D\u65F6\u7684\u3010\u767B\u5F55\u9A8C\u8BC1\u5BC6\u7801\u3011\uFF1B\u2461 \u8FDC\u7A0B\u8BBE\u5907\u8FDB\u5165\u6B64\u8BBE\u7F6E\u9762\u677F\u65F6\u7684\u3010\u9632\u7BE1\u6539\u7BA1\u7406\u5458\u89E3\u9501\u5BC6\u7801\u3011\u3002"
+          )
+        ),
+        // 远程管理权限控制
+        React.createElement(
+          "div",
+          { style: s.block },
+          React.createElement("label", { style: { ...s.label, display: "block", marginBottom: 8, fontSize: 12 } }, "\u8FDC\u7A0B\u8BBE\u5907\u7BA1\u7406\u8BBE\u7F6E\u6743\u9650\uFF08\u9632\u7BE1\u6539\u7B56\u7565\uFF09"),
+          React.createElement(
+            "div",
+            { style: { display: "flex", gap: 8, flexWrap: "wrap" } },
+            [
+              { id: "password_unlock", title: "\u{1F512} \u9700\u5BC6\u7801\u89E3\u9501 (\u63A8\u8350)", desc: "\u8FDC\u7A0B\u624B\u673A/\u5916\u7F51\u6253\u5F00\u8BBE\u7F6E\u9762\u677F\u65F6\u9ED8\u8BA4\u9501\u5B9A\uFF0C\u9700\u8F93\u5165\u4E0A\u8FF0\u4E3B\u5BC6\u7801\u89E3\u9501\u540E\u65B9\u53EF\u4FEE\u6539\u914D\u7F6E" },
+              { id: "local_only", title: "\u{1F6AB} \u4EC5\u9650\u7535\u8111\u672C\u673A\u7BA1\u7406 (\u6700\u4E25\u683C)", desc: "\u8FDC\u7A0B\u8BBE\u5907\u5F7B\u5E95\u9501\u5B9A\u5E76\u7981\u6B62\u4FEE\u6539\u4EFB\u4F55\u914D\u7F6E\uFF0C\u4EC5\u5141\u8BB8\u5728 127.0.0.1 \u7535\u8111\u672C\u673A\u4E0A\u64CD\u4F5C" },
+              { id: "open", title: "\u{1F513} \u5BBD\u677E\u6A21\u5F0F", desc: "\u4EFB\u4F55\u5DF2\u901A\u8FC7\u7B2C\u4E00\u9053\u9632\u7EBF\u767B\u5F55\u7684\u8BBE\u5907\u5747\u53EF\u76F4\u63A5\u4FEE\u6539\u8BBE\u7F6E" }
+            ].map((opt) => {
+              const isSel = adminPolicy === opt.id;
+              return React.createElement(
+                "div",
+                {
+                  key: opt.id,
+                  onClick: () => handleChangeAdminPolicy(opt.id),
+                  style: {
+                    flex: "1 1 180px",
+                    padding: "10px 12px",
+                    borderRadius: 8,
+                    border: `1px solid ${isSel ? "var(--dsw-alias-brand-primary,#4f6ef7)" : "var(--dsw-alias-border-l2,#e5e7eb)"}`,
+                    background: isSel ? "var(--dsw-alias-state-info-bg,#eff6ff)" : "var(--dsw-alias-bg-layer-2,#f9fafb)",
+                    cursor: "pointer",
+                    transition: "all 0.15s ease"
+                  }
+                },
+                React.createElement("div", { style: { fontSize: 13, fontWeight: isSel ? 600 : 500, color: isSel ? "var(--dsw-alias-brand-primary,#4f6ef7)" : "var(--dsw-alias-label-primary,currentColor)" } }, opt.title),
+                React.createElement("div", { style: { ...s.muted, fontSize: 11, marginTop: 4 } }, opt.desc)
+              );
+            })
+          )
+        )
+      )
     )
   );
 });

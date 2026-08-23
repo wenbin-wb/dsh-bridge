@@ -380,7 +380,7 @@ const AccessAuthCard = React.memo(function AccessAuthCard({ auth, rpcCall, onUpd
     setEnabled(next);
     try {
       await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { enabled: next });
-      setMsg({ ok: true, text: next ? '✓ 访问认证已开启（现有登录态已刷新）' : '✓ 访问认证已关闭' });
+      setMsg({ ok: true, text: next ? '✓ 访问安全认证已开启（现有登录态已刷新）' : '✓ 访问安全认证已关闭' });
       onUpdate?.();
     } catch (e) {
       setMsg({ ok: false, text: e.message || '更新失败' });
@@ -391,7 +391,7 @@ const AccessAuthCard = React.memo(function AccessAuthCard({ auth, rpcCall, onUpd
     setMode(m);
     try {
       await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { mode: m });
-      setMsg({ ok: true, text: '✓ 认证模式已切换，已重置所有设备的登录态' });
+      setMsg({ ok: true, text: '✓ 外部验证模式已切换，已重置所有设备的登录态' });
       onUpdate?.();
     } catch (e) {
       setMsg({ ok: false, text: e.message || '更新失败' });
@@ -402,7 +402,7 @@ const AccessAuthCard = React.memo(function AccessAuthCard({ auth, rpcCall, onUpd
     setScope(sc);
     try {
       await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { scope: sc });
-      setMsg({ ok: true, text: '✓ 防护范围已更新' });
+      setMsg({ ok: true, text: '✓ 防护生效范围已更新' });
       onUpdate?.();
     } catch (e) {
       setMsg({ ok: false, text: e.message || '更新失败' });
@@ -426,7 +426,7 @@ const AccessAuthCard = React.memo(function AccessAuthCard({ auth, rpcCall, onUpd
     try {
       const res = await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { password });
       if (res?.ok) {
-        setMsg({ ok: true, text: '✓ 访问密码已更新保存，已重置所有设备的登录态' });
+        setMsg({ ok: true, text: '✓ 系统主密码已更新保存，已重置所有设备的登录与解锁状态' });
         setPassword('');
         onUpdate?.();
       } else {
@@ -450,168 +450,228 @@ const AccessAuthCard = React.memo(function AccessAuthCard({ auth, rpcCall, onUpd
     }
   };
 
-  return React.createElement('div', { style: { ...s.card, marginTop: 16 } },
-    React.createElement('div', {
-      style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 6 },
-    },
-      React.createElement('div', { style: { flex: '1 1 240px' } },
-        React.createElement('div', { style: { ...s.label, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 } },
-          '🔐 访问安全认证（局域网 / 公网防护）',
-        ),
-        React.createElement('div', { style: { ...s.muted, marginTop: 3 } },
-          '开启后，局域网与公网访问需通过安全 Token 或访问密码认证，防止未授权设备接入',
-        ),
-      ),
-      React.createElement('button', {
-        style: { ...(enabled ? s.btnPri : s.btnGhost), whiteSpace: 'nowrap', flexShrink: 0 },
-        onClick: handleToggleEnabled,
-      }, enabled ? '✓ 已启用认证' : '未开启认证'),
-    ),
+  const scopeLabel = scope === 'all' ? '全部通道 (局域网+公网)' : scope === 'public_only' ? '仅公网隧道' : '仅局域网';
+  const modeLabel = mode === 'token_and_password' ? '扫码免密 + 密码' : mode === 'password_only' ? '仅密码登录' : '仅安全 Token';
+  const adminLabel = adminPolicy === 'password_unlock' ? '远程需密码解锁' : adminPolicy === 'local_only' ? '仅限电脑本机管理' : '宽松模式';
 
-    enabled && React.createElement('div', { style: s.block },
-      // 防护范围选择
-      React.createElement('div', { style: { marginBottom: 16 } },
-        React.createElement('label', { style: { ...s.label, display: 'block', marginBottom: 8 } }, '防护生效范围'),
-        React.createElement('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } },
-          [
-            { id: 'all', title: '全部防护 (推荐)', desc: '局域网访问与公网隧道全部受安全认证保护' },
-            { id: 'public_only', title: '仅公网隧道开启认证', desc: '局域网内设备直接免密直连，公网隧道强制认证' },
-            { id: 'lan_only', title: '仅局域网开启认证', desc: '仅局域网访问需认证，公网隧道不开启' },
-          ].map(opt => {
-            const isSel = scope === opt.id;
-            return React.createElement('div', {
-              key: opt.id,
-              onClick: () => handleChangeScope(opt.id),
-              style: {
-                flex: '1 1 180px',
-                padding: '9px 12px',
-                borderRadius: 8,
-                border: `1px solid ${isSel ? 'var(--dsw-alias-brand-primary,#4f6ef7)' : 'var(--dsw-alias-border-l2,#e5e7eb)'}`,
-                background: isSel ? 'var(--dsw-alias-state-info-bg,#eff6ff)' : 'var(--dsw-alias-bg-layer-2,#f9fafb)',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              },
-            },
-              React.createElement('div', { style: { fontSize: 13, fontWeight: isSel ? 600 : 500, color: isSel ? 'var(--dsw-alias-brand-primary,#4f6ef7)' : 'var(--dsw-alias-label-primary,currentColor)' } }, opt.title),
-              React.createElement('div', { style: { ...s.muted, fontSize: 11, marginTop: 3 } }, opt.desc),
-            );
-          })
-        ),
-      ),
-
-      // 认证模式切换
-      React.createElement('div', { style: { marginBottom: 16 } },
-        React.createElement('label', { style: { ...s.label, display: 'block', marginBottom: 8 } }, '认证验证模式'),
-        React.createElement('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } },
-          [
-            { id: 'token_and_password', title: '扫码免密 + 密码认证 (推荐)', desc: '二维码自带 Token 扫码秒进，手动输入 IP 需输密码' },
-            { id: 'password_only', title: '仅密码 / PIN 码', desc: '所有访问均需手动输入访问密码' },
-            { id: 'token_only', title: '仅安全 Token 免密', desc: '仅持有带安全 Token 的链接或二维码方可访问' },
-          ].map(opt => {
-            const isSel = mode === opt.id;
-            return React.createElement('div', {
-              key: opt.id,
-              onClick: () => handleChangeMode(opt.id),
-              style: {
-                flex: '1 1 180px',
-                padding: '9px 12px',
-                borderRadius: 8,
-                border: `1px solid ${isSel ? 'var(--dsw-alias-brand-primary,#4f6ef7)' : 'var(--dsw-alias-border-l2,#e5e7eb)'}`,
-                background: isSel ? 'var(--dsw-alias-state-info-bg,#eff6ff)' : 'var(--dsw-alias-bg-layer-2,#f9fafb)',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              },
-            },
-              React.createElement('div', { style: { fontSize: 13, fontWeight: isSel ? 600 : 500, color: isSel ? 'var(--dsw-alias-brand-primary,#4f6ef7)' : 'var(--dsw-alias-label-primary,currentColor)' } }, opt.title),
-              React.createElement('div', { style: { ...s.muted, fontSize: 11, marginTop: 3 } }, opt.desc),
-            );
-          })
-        ),
-      ),
-
-      // 密码设置区域 (当非 token_only 时展示)
-      mode !== 'token_only' && React.createElement('div', { style: { marginBottom: 16 } },
-        React.createElement('label', { style: { ...s.label, display: 'block', marginBottom: 6 } },
-          `访问密码 / PIN 码 ${auth?.hasPassword ? '(已设置密码)' : '(尚未设置密码，直接访问将免密)'}`,
-        ),
-        React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center' } },
-          React.createElement('input', {
-            type: showPassword ? 'text' : 'password',
-            style: { ...s.input, flex: 1 },
-            placeholder: auth?.hasPassword ? '输入新密码以修改（留空保存可清除密码）' : '设置访问密码 / PIN 码',
-            value: password,
-            onChange: e => setPassword(e.target.value),
-          }),
-          React.createElement('button', {
-            style: { ...s.btnGhost, height: 32, fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0 },
-            onClick: () => setShowPassword(v => !v),
-          }, showPassword ? '隐藏' : '显示'),
-          React.createElement('button', {
-            style: { ...s.btnPri, height: 32, fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0 },
-            onClick: handleSavePassword,
-            disabled: saving,
-          }, saving ? '保存中…' : '保存密码'),
-        ),
-      ),
-
-      // 远程设备管理权限控制 (防篡改设置)
-      React.createElement('div', { style: { marginBottom: 16 } },
-        React.createElement('label', { style: { ...s.label, display: 'block', marginBottom: 8 } }, '⚙️ 远程设备管理权限（防篡改控制）'),
-        React.createElement('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } },
-          [
-            { id: 'password_unlock', title: '需密码解锁 (推荐)', desc: '远程手机/浏览器进入设置需输入主密码解锁' },
-            { id: 'local_only', title: '仅限电脑本机管理 (最严格)', desc: '远程设备锁定并禁止修改任何配置，仅限 127.0.0.1 管理' },
-            { id: 'open', title: '宽松模式', desc: '任何已登录设备均可直接修改配置' },
-          ].map(opt => {
-            const isSel = adminPolicy === opt.id;
-            return React.createElement('div', {
-              key: opt.id,
-              onClick: () => handleChangeAdminPolicy(opt.id),
-              style: {
-                flex: '1 1 180px',
-                padding: '9px 12px',
-                borderRadius: 8,
-                border: `1px solid ${isSel ? 'var(--dsw-alias-brand-primary,#4f6ef7)' : 'var(--dsw-alias-border-l2,#e5e7eb)'}`,
-                background: isSel ? 'var(--dsw-alias-state-info-bg,#eff6ff)' : 'var(--dsw-alias-bg-layer-2,#f9fafb)',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              },
-            },
-              React.createElement('div', { style: { fontSize: 13, fontWeight: isSel ? 600 : 500, color: isSel ? 'var(--dsw-alias-brand-primary,#4f6ef7)' : 'var(--dsw-alias-label-primary,currentColor)' } }, opt.title),
-              React.createElement('div', { style: { ...s.muted, fontSize: 11, marginTop: 3 } }, opt.desc),
-            );
-          })
-        ),
-      ),
-
-      // 安全 Token 管理
-      mode !== 'password_only' && React.createElement('div', { style: { marginBottom: 12 } },
-        React.createElement('label', { style: { ...s.label, display: 'block', marginBottom: 6 } }, '安全 Token (免密扫码凭据)'),
-        React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center' } },
-          React.createElement('code', { style: { ...s.code, flex: 1, padding: '6px 10px', background: 'var(--dsw-alias-bg-layer-1,#fff)', borderRadius: 6, border: '1px solid var(--dsw-alias-border-l2,#e5e7eb)' } },
-            auth?.secretToken ? `${auth.secretToken.slice(0, 10)}****************` : '未生成'
+  return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 14, marginTop: 10 } },
+    // ---- 顶部总控与状态概览卡片 ----
+    React.createElement('div', { style: s.card },
+      React.createElement('div', {
+        style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 },
+      },
+        React.createElement('div', { style: { flex: '1 1 260px' } },
+          React.createElement('div', { style: { ...s.label, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 } },
+            '🔐 全局访问安全防护体系',
           ),
-          React.createElement('button', {
-            style: { ...s.btnGhost, height: 32, fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0 },
-            onClick: handleRegenerateToken,
-            title: '重新生成 Token，使之前分享的旧二维码和链接立即失效',
-          }, '🔄 重置安全 Token'),
+          React.createElement('div', { style: { ...s.muted, marginTop: 4 } },
+            '集成外部访问门禁拦截与设置面板防篡改权限控制，守护远程会话与网络配置安全',
+          ),
         ),
-        React.createElement('div', { style: { ...s.muted, fontSize: 11, marginTop: 4 } },
-          '💡 生成的局域网与公网二维码已自动嵌入该安全 Token，扫码设备一秒免密进入，无需手动输入密码。'
-        ),
+        React.createElement('button', {
+          style: { ...(enabled ? s.btnPri : s.btnGhost), whiteSpace: 'nowrap', flexShrink: 0 },
+          onClick: handleToggleEnabled,
+        }, enabled ? '✓ 已启用安全防护' : '未开启安全防护'),
+      ),
+
+      enabled && React.createElement('div', {
+        style: {
+          display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14, paddingTop: 12,
+          borderTop: '1px solid var(--dsw-alias-border-l2,#e5e7eb)',
+        },
+      },
+        React.createElement('div', {
+          style: {
+            display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px',
+            borderRadius: 16, fontSize: 11, background: 'var(--dsw-alias-bg-layer-2,#f3f4f6)',
+            color: 'var(--dsw-alias-label-secondary,#4b5563)',
+          },
+        }, '🌐 保护范围: ', React.createElement('strong', { style: { color: 'var(--dsw-alias-brand-primary,#4f6ef7)' } }, scopeLabel)),
+        React.createElement('div', {
+          style: {
+            display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px',
+            borderRadius: 16, fontSize: 11, background: 'var(--dsw-alias-bg-layer-2,#f3f4f6)',
+            color: 'var(--dsw-alias-label-secondary,#4b5563)',
+          },
+        }, '🔑 外部验证: ', React.createElement('strong', { style: { color: 'var(--dsw-alias-brand-primary,#4f6ef7)' } }, modeLabel)),
+        React.createElement('div', {
+          style: {
+            display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px',
+            borderRadius: 16, fontSize: 11, background: 'var(--dsw-alias-bg-layer-2,#f3f4f6)',
+            color: 'var(--dsw-alias-label-secondary,#4b5563)',
+          },
+        }, '🔒 后台防篡改: ', React.createElement('strong', { style: { color: 'var(--dsw-alias-state-success-primary,#059669)' } }, adminLabel)),
       ),
 
       msg && React.createElement('div', {
         style: {
-          marginTop: 10,
-          padding: '6px 12px',
-          borderRadius: 6,
-          fontSize: 12,
+          marginTop: 12, padding: '8px 12px', borderRadius: 6, fontSize: 12,
           background: msg.ok ? 'var(--dsw-alias-state-success-bg,#ecfdf5)' : 'var(--dsw-alias-state-error-bg,#fef2f2)',
           color: msg.ok ? 'var(--dsw-alias-state-success-primary,#059669)' : 'var(--dsw-alias-state-error-primary,#dc2626)',
         },
       }, msg.text),
+    ),
+
+    enabled && React.createElement(React.Fragment, null,
+      // ---- 第一道防线：外部访问门禁（控制谁能用 AI） ----
+      React.createElement('div', { style: s.card },
+        React.createElement('div', { style: { marginBottom: 14 } },
+          React.createElement('div', { style: { ...s.label, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 } },
+            '🛡️ 第一道防线：外部访问门禁（控制谁能使用 AI）',
+          ),
+          React.createElement('div', { style: { ...s.muted, marginTop: 3 } },
+            '控制外部设备通过局域网 IP 或公网隧道进入 DSH 聊天界面时的验证机制',
+          ),
+        ),
+
+        // 验证模式
+        React.createElement('div', { style: { marginBottom: 16 } },
+          React.createElement('label', { style: { ...s.label, display: 'block', marginBottom: 8, fontSize: 12 } }, '验证模式选择'),
+          React.createElement('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } },
+            [
+              { id: 'token_and_password', title: '🟢 扫码免密 + 密码认证 (推荐)', desc: '二维码自带专属 Token 扫码秒进；直接输 IP/公网域名需输密码' },
+              { id: 'password_only', title: '🔑 仅密码 / PIN 码登录', desc: '所有外部访问必须手动输入主密码方可进入' },
+              { id: 'token_only', title: '🎫 仅安全 Token 免密', desc: '仅持有带安全 Token 的二维码或专属分享链接方可进入' },
+            ].map(opt => {
+              const isSel = mode === opt.id;
+              return React.createElement('div', {
+                key: opt.id,
+                onClick: () => handleChangeMode(opt.id),
+                style: {
+                  flex: '1 1 200px',
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  border: `1px solid ${isSel ? 'var(--dsw-alias-brand-primary,#4f6ef7)' : 'var(--dsw-alias-border-l2,#e5e7eb)'}`,
+                  background: isSel ? 'var(--dsw-alias-state-info-bg,#eff6ff)' : 'var(--dsw-alias-bg-layer-2,#f9fafb)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                },
+              },
+                React.createElement('div', { style: { fontSize: 13, fontWeight: isSel ? 600 : 500, color: isSel ? 'var(--dsw-alias-brand-primary,#4f6ef7)' : 'var(--dsw-alias-label-primary,currentColor)' } }, opt.title),
+                React.createElement('div', { style: { ...s.muted, fontSize: 11, marginTop: 4 } }, opt.desc),
+              );
+            })
+          ),
+        ),
+
+        // 防护生效范围
+        React.createElement('div', { style: { marginBottom: 16 } },
+          React.createElement('label', { style: { ...s.label, display: 'block', marginBottom: 8, fontSize: 12 } }, '防护生效通道'),
+          React.createElement('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } },
+            [
+              { id: 'all', title: '全部通道防护 (推荐)', desc: '局域网 IP 直连与公网隧道全部受安全保护' },
+              { id: 'public_only', title: '仅公网隧道开启防护', desc: '局域网内设备直接免密直连，公网隧道强制验证' },
+              { id: 'lan_only', title: '仅局域网开启防护', desc: '仅局域网直连需验证，公网隧道不开启' },
+            ].map(opt => {
+              const isSel = scope === opt.id;
+              return React.createElement('div', {
+                key: opt.id,
+                onClick: () => handleChangeScope(opt.id),
+                style: {
+                  flex: '1 1 180px',
+                  padding: '9px 12px',
+                  borderRadius: 8,
+                  border: `1px solid ${isSel ? 'var(--dsw-alias-brand-primary,#4f6ef7)' : 'var(--dsw-alias-border-l2,#e5e7eb)'}`,
+                  background: isSel ? 'var(--dsw-alias-state-info-bg,#eff6ff)' : 'var(--dsw-alias-bg-layer-2,#f9fafb)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                },
+              },
+                React.createElement('div', { style: { fontSize: 13, fontWeight: isSel ? 600 : 500, color: isSel ? 'var(--dsw-alias-brand-primary,#4f6ef7)' : 'var(--dsw-alias-label-primary,currentColor)' } }, opt.title),
+                React.createElement('div', { style: { ...s.muted, fontSize: 11, marginTop: 3 } }, opt.desc),
+              );
+            })
+          ),
+        ),
+
+        // 免密 Token 管理
+        mode !== 'password_only' && React.createElement('div', { style: s.block },
+          React.createElement('label', { style: { ...s.label, display: 'block', marginBottom: 6, fontSize: 12 } }, '免密扫码 Token (专属访问凭据)'),
+          React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center' } },
+            React.createElement('code', { style: { ...s.code, flex: 1, padding: '6px 10px', background: 'var(--dsw-alias-bg-layer-1,#fff)', borderRadius: 6, border: '1px solid var(--dsw-alias-border-l2,#e5e7eb)' } },
+              auth?.secretToken ? `${auth.secretToken.slice(0, 10)}****************` : '未生成'
+            ),
+            React.createElement('button', {
+              style: { ...s.btnGhost, height: 32, fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0 },
+              onClick: handleRegenerateToken,
+              title: '重新生成 Token，使之前分享的旧二维码和链接立即失效',
+            }, '🔄 重置安全 Token'),
+          ),
+          React.createElement('div', { style: { ...s.muted, fontSize: 11, marginTop: 4 } },
+            '💡 控制台生成的局域网与公网二维码已自动内嵌此 Token，手机扫码即可免密进入聊天界面（但不赋予后台管理修改权限）。'
+          ),
+        ),
+      ),
+
+      // ---- 第二道防线：系统主密码与后台防篡改（控制谁能改设置） ----
+      React.createElement('div', { style: s.card },
+        React.createElement('div', { style: { marginBottom: 14 } },
+          React.createElement('div', { style: { ...s.label, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 } },
+            '🔒 第二道防线：系统主密码与后台防篡改（控制谁能修改配置）',
+          ),
+          React.createElement('div', { style: { ...s.muted, marginTop: 3 } },
+            '设置系统主密码，并管控远程设备（手机/公网访客）进入此设置面板时的管理权限，防止他人篡改密码或偷窥 Bot 密钥',
+          ),
+        ),
+
+        // 密码设置输入框
+        React.createElement('div', { style: { marginBottom: 16 } },
+          React.createElement('label', { style: { ...s.label, display: 'block', marginBottom: 6, fontSize: 12 } },
+            `设置系统主密码 ${auth?.hasPassword ? '(✓ 已设置主密码)' : '(⚠️ 尚未设置主密码，手动访问将免密)'}`,
+          ),
+          React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center' } },
+            React.createElement('input', {
+              type: showPassword ? 'text' : 'password',
+              style: { ...s.input, flex: 1 },
+              placeholder: auth?.hasPassword ? '输入新密码以修改（留空保存可清除密码）' : '设置系统主密码 / PIN 码',
+              value: password,
+              onChange: e => setPassword(e.target.value),
+            }),
+            React.createElement('button', {
+              style: { ...s.btnGhost, height: 32, fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0 },
+              onClick: () => setShowPassword(v => !v),
+            }, showPassword ? '隐藏' : '显示'),
+            React.createElement('button', {
+              style: { ...s.btnPri, height: 32, fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0 },
+              onClick: handleSavePassword,
+              disabled: saving,
+            }, saving ? '保存中…' : '保存密码'),
+          ),
+          React.createElement('div', { style: { ...s.muted, fontSize: 11, marginTop: 5, color: 'var(--dsw-alias-brand-primary,#4f6ef7)' } },
+            '🔑 双重核心作用：① 外部访客手动输入 IP/域名时的【登录验证密码】；② 远程设备进入此设置面板时的【防篡改管理员解锁密码】。'
+          ),
+        ),
+
+        // 远程管理权限控制
+        React.createElement('div', { style: s.block },
+          React.createElement('label', { style: { ...s.label, display: 'block', marginBottom: 8, fontSize: 12 } }, '远程设备管理设置权限（防篡改策略）'),
+          React.createElement('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } },
+            [
+              { id: 'password_unlock', title: '🔒 需密码解锁 (推荐)', desc: '远程手机/外网打开设置面板时默认锁定，需输入上述主密码解锁后方可修改配置' },
+              { id: 'local_only', title: '🚫 仅限电脑本机管理 (最严格)', desc: '远程设备彻底锁定并禁止修改任何配置，仅允许在 127.0.0.1 电脑本机上操作' },
+              { id: 'open', title: '🔓 宽松模式', desc: '任何已通过第一道防线登录的设备均可直接修改设置' },
+            ].map(opt => {
+              const isSel = adminPolicy === opt.id;
+              return React.createElement('div', {
+                key: opt.id,
+                onClick: () => handleChangeAdminPolicy(opt.id),
+                style: {
+                  flex: '1 1 180px',
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  border: `1px solid ${isSel ? 'var(--dsw-alias-brand-primary,#4f6ef7)' : 'var(--dsw-alias-border-l2,#e5e7eb)'}`,
+                  background: isSel ? 'var(--dsw-alias-state-info-bg,#eff6ff)' : 'var(--dsw-alias-bg-layer-2,#f9fafb)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                },
+              },
+                React.createElement('div', { style: { fontSize: 13, fontWeight: isSel ? 600 : 500, color: isSel ? 'var(--dsw-alias-brand-primary,#4f6ef7)' : 'var(--dsw-alias-label-primary,currentColor)' } }, opt.title),
+                React.createElement('div', { style: { ...s.muted, fontSize: 11, marginTop: 4 } }, opt.desc),
+              );
+            })
+          ),
+        ),
+      ),
     ),
   );
 });
