@@ -643,7 +643,9 @@ const AccessAuthCard = React.memo(function AccessAuthCard({ auth, rpcCall, onUpd
             React.createElement('button', {
               style: {
                 ...s.btnPri, height: 32, fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0,
-                background: saveAccessSuccess ? 'var(--dsw-alias-state-success-primary,#059669)' : undefined,
+                background: saveAccessSuccess ? '#059669' : 'var(--dsw-alias-brand-primary, #4f6ef7)',
+                color: '#ffffff',
+                cursor: savingAccess ? 'wait' : 'pointer',
               },
               onClick: handleSaveAccessPassword,
               disabled: savingAccess,
@@ -713,7 +715,9 @@ const AccessAuthCard = React.memo(function AccessAuthCard({ auth, rpcCall, onUpd
             React.createElement('button', {
               style: {
                 ...s.btnPri, height: 32, fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0,
-                background: saveAdminSuccess ? 'var(--dsw-alias-state-success-primary,#059669)' : undefined,
+                background: saveAdminSuccess ? '#059669' : 'var(--dsw-alias-brand-primary, #4f6ef7)',
+                color: '#ffffff',
+                cursor: savingAdmin ? 'wait' : 'pointer',
               },
               onClick: handleSaveAdminPassword,
               disabled: savingAdmin,
