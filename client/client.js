@@ -2012,6 +2012,7 @@ function BridgePanel({ rpcCall }) {
   const auth = status?.auth;
   const policy = auth?.adminPolicy ?? "password_unlock";
   const isLocked = !isLocalhost && auth?.enabled && policy !== "open" && !adminUnlocked;
+  const [showForgotGuide, setShowForgotGuide] = React.useState(false);
   if (isLocked) {
     return React.createElement(
       "div",
@@ -2025,8 +2026,38 @@ function BridgePanel({ rpcCall }) {
         React.createElement("div", { style: { ...s.label, fontSize: 16, fontWeight: 600, marginBottom: 8 } }, "\u7BA1\u7406\u63A7\u5236\u53F0\u5DF2\u9501\u5B9A\uFF08\u4EC5\u9650\u7535\u8111\u672C\u673A\u7BA1\u7406\uFF09"),
         React.createElement(
           "div",
-          { style: { ...s.muted, maxWidth: 380, margin: "0 auto", lineHeight: 1.6, fontSize: 13 } },
+          { style: { ...s.muted, maxWidth: 420, margin: "0 auto", lineHeight: 1.6, fontSize: 13 } },
           "\u5F53\u524D\u8BBE\u5907\u901A\u8FC7\u8FDC\u7A0B\u5C40\u57DF\u7F51\u6216\u516C\u7F51\u63A5\u5165\u3002\u5DF2\u5F00\u542F\u300C\u4EC5\u9650\u7535\u8111\u672C\u673A\u7BA1\u7406\u300D\u6700\u9AD8\u5B89\u5168\u7B56\u7565\uFF0C\u8FDC\u7A0B\u8BBE\u5907\u7981\u6B62\u67E5\u770B\u4E0E\u4FEE\u6539\u4EFB\u4F55\u7F51\u7EDC\u4E0E\u673A\u5668\u4EBA\u914D\u7F6E\u3002\u5982\u9700\u7BA1\u7406\u8BF7\u5728\u7535\u8111\u672C\u673A\uFF08127.0.0.1\uFF09\u4E0A\u64CD\u4F5C\u3002"
+        ),
+        React.createElement(
+          "div",
+          { style: { marginTop: 20 } },
+          React.createElement("button", {
+            type: "button",
+            style: { ...s.btnLink, fontSize: 12, color: "var(--dsw-alias-label-secondary,#6b7280)" },
+            onClick: () => setShowForgotGuide((v) => !v)
+          }, "\u2753 \u8FDC\u7A0B\u5982\u4F55\u6551\u6025\u89E3\u9664\u9501\u5B9A\uFF1F")
+        ),
+        showForgotGuide && React.createElement(
+          "div",
+          {
+            style: {
+              marginTop: 14,
+              padding: "12px 14px",
+              borderRadius: 8,
+              fontSize: 12,
+              lineHeight: 1.6,
+              background: "var(--dsw-alias-bg-layer-2,#f3f4f6)",
+              border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)",
+              color: "var(--dsw-alias-label-secondary,#4b5563)",
+              textAlign: "left",
+              maxWidth: 420,
+              margin: "14px auto 0"
+            }
+          },
+          React.createElement("div", { style: { fontWeight: 600, color: "var(--dsw-alias-label-primary,currentColor)", marginBottom: 4 } }, "\u{1F6DF} \u6551\u6025\u89E3\u9664\u9501\u5B9A\u6307\u5F15\uFF1A"),
+          React.createElement("div", null, "1. ", React.createElement("strong", null, "\u7535\u8111\u672C\u673A\u76F4\u8FDE\u4FEE\u6539"), "\uFF1A\u76F4\u63A5\u5728\u8FD0\u884C\u672C\u7A0B\u5E8F\u7684\u7535\u8111\u672C\u673A\u6253\u5F00\u672C\u63A7\u5236\u53F0\uFF08127.0.0.1 \u4EAB\u6709\u7269\u7406\u514D\u9501\u7279\u6743\uFF09\uFF0C\u53EF\u968F\u65F6\u4FEE\u6539\u7B56\u7565\u6216\u6E05\u9664\u5BC6\u7801\u3002"),
+          React.createElement("div", { style: { marginTop: 4 } }, "2. ", React.createElement("strong", null, "\u670D\u52A1\u5668\u6551\u6025\u6307\u4EE4"), "\uFF1A\u5728\u5BBF\u4E3B\u7535\u8111/\u670D\u52A1\u5668\u7EC8\u7AEF\u6267\u884C ", React.createElement("code", { style: s.code }, "touch ~/.dsh/dsh-bridge/reset-auth"), " \u5373\u53EF\u77AC\u95F4\u6E05\u7A7A\u5BC6\u7801\u6062\u590D\u521D\u59CB\u72B6\u6001\u3002")
         )
       ) : React.createElement(
         "div",
@@ -2063,9 +2094,37 @@ function BridgePanel({ rpcCall }) {
           }, unlockErr),
           React.createElement("button", {
             type: "submit",
-            style: { ...s.btnPri, width: "100%", justifyContent: "center", height: 36 },
+            style: { ...s.btnPri, width: "100%", justifyContent: "center", height: 36, background: "#4f6ef7", color: "#ffffff" },
             disabled: unlocking
           }, unlocking ? "\u9A8C\u8BC1\u4E2D\u2026" : "\u89E3\u9501\u7BA1\u7406\u6743\u9650")
+        ),
+        React.createElement(
+          "div",
+          { style: { marginTop: 16, textAlign: "center" } },
+          React.createElement("button", {
+            type: "button",
+            style: { ...s.btnLink, fontSize: 12, color: "var(--dsw-alias-label-secondary,#6b7280)" },
+            onClick: () => setShowForgotGuide((v) => !v)
+          }, "\u2753 \u5FD8\u8BB0\u540E\u53F0\u7BA1\u7406\u5BC6\u7801\uFF1F")
+        ),
+        showForgotGuide && React.createElement(
+          "div",
+          {
+            style: {
+              marginTop: 12,
+              padding: "12px 14px",
+              borderRadius: 8,
+              fontSize: 12,
+              lineHeight: 1.6,
+              background: "var(--dsw-alias-bg-layer-2,#f3f4f6)",
+              border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)",
+              color: "var(--dsw-alias-label-secondary,#4b5563)",
+              textAlign: "left"
+            }
+          },
+          React.createElement("div", { style: { fontWeight: 600, color: "var(--dsw-alias-label-primary,currentColor)", marginBottom: 4 } }, "\u{1F6DF} \u627E\u56DE\u4E0E\u91CD\u7F6E\u5BC6\u7801\u6307\u5F15\uFF1A"),
+          React.createElement("div", null, "1. ", React.createElement("strong", null, "\u7535\u8111\u672C\u673A\u76F4\u8FDE\u4FEE\u6539"), "\uFF1A\u76F4\u63A5\u5728\u8FD0\u884C\u672C\u7A0B\u5E8F\u7684\u7535\u8111\u672C\u673A\u6253\u5F00\u672C\u63A7\u5236\u53F0\uFF08127.0.0.1 \u4EAB\u6709\u7269\u7406\u514D\u9501\u7279\u6743\uFF09\uFF0C\u53EF\u968F\u65F6\u4FEE\u6539\u7BA1\u7406\u5BC6\u7801\u3002"),
+          React.createElement("div", { style: { marginTop: 4 } }, "2. ", React.createElement("strong", null, "\u670D\u52A1\u5668\u6551\u6025\u6307\u4EE4"), "\uFF1A\u5728\u5BBF\u4E3B\u7535\u8111\u7EC8\u7AEF\u6267\u884C ", React.createElement("code", { style: s.code }, "touch ~/.dsh/dsh-bridge/reset-auth"), " \u5373\u53EF\u77AC\u95F4\u6E05\u7A7A\u5BC6\u7801\u6062\u590D\u521D\u59CB\u72B6\u6001\u3002")
         )
       )
     );

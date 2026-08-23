@@ -1798,6 +1798,8 @@ function BridgePanel({ rpcCall }) {
   const policy = auth?.adminPolicy ?? 'password_unlock';
   const isLocked = !isLocalhost && auth?.enabled && policy !== 'open' && !adminUnlocked;
 
+  const [showForgotGuide, setShowForgotGuide] = React.useState(false);
+
   // 远程设备被锁定：全局展示锁定页面，阻断所有 Tab 的查看与操作
   if (isLocked) {
     return React.createElement('div', { style: { maxWidth: 620 } },
@@ -1807,8 +1809,26 @@ function BridgePanel({ rpcCall }) {
         },
           React.createElement('div', { style: { fontSize: 40, marginBottom: 12 } }, '🛡️'),
           React.createElement('div', { style: { ...s.label, fontSize: 16, fontWeight: 600, marginBottom: 8 } }, '管理控制台已锁定（仅限电脑本机管理）'),
-          React.createElement('div', { style: { ...s.muted, maxWidth: 380, margin: '0 auto', lineHeight: 1.6, fontSize: 13 } },
+          React.createElement('div', { style: { ...s.muted, maxWidth: 420, margin: '0 auto', lineHeight: 1.6, fontSize: 13 } },
             '当前设备通过远程局域网或公网接入。已开启「仅限电脑本机管理」最高安全策略，远程设备禁止查看与修改任何网络与机器人配置。如需管理请在电脑本机（127.0.0.1）上操作。'
+          ),
+          React.createElement('div', { style: { marginTop: 20 } },
+            React.createElement('button', {
+              type: 'button',
+              style: { ...s.btnLink, fontSize: 12, color: 'var(--dsw-alias-label-secondary,#6b7280)' },
+              onClick: () => setShowForgotGuide(v => !v),
+            }, '❓ 远程如何救急解除锁定？'),
+          ),
+          showForgotGuide && React.createElement('div', {
+            style: {
+              marginTop: 14, padding: '12px 14px', borderRadius: 8, fontSize: 12, lineHeight: 1.6,
+              background: 'var(--dsw-alias-bg-layer-2,#f3f4f6)', border: '1px solid var(--dsw-alias-border-l2,#e5e7eb)',
+              color: 'var(--dsw-alias-label-secondary,#4b5563)', textAlign: 'left', maxWidth: 420, margin: '14px auto 0',
+            },
+          },
+            React.createElement('div', { style: { fontWeight: 600, color: 'var(--dsw-alias-label-primary,currentColor)', marginBottom: 4 } }, '🛟 救急解除锁定指引：'),
+            React.createElement('div', null, '1. ', React.createElement('strong', null, '电脑本机直连修改'), '：直接在运行本程序的电脑本机打开本控制台（127.0.0.1 享有物理免锁特权），可随时修改策略或清除密码。'),
+            React.createElement('div', { style: { marginTop: 4 } }, '2. ', React.createElement('strong', null, '服务器救急指令'), '：在宿主电脑/服务器终端执行 ', React.createElement('code', { style: s.code }, 'touch ~/.dsh/dsh-bridge/reset-auth'), ' 即可瞬间清空密码恢复初始状态。'),
           ),
         )
       ) : (
@@ -1839,9 +1859,27 @@ function BridgePanel({ rpcCall }) {
             }, unlockErr),
             React.createElement('button', {
               type: 'submit',
-              style: { ...s.btnPri, width: '100%', justifyContent: 'center', height: 36 },
+              style: { ...s.btnPri, width: '100%', justifyContent: 'center', height: 36, background: '#4f6ef7', color: '#ffffff' },
               disabled: unlocking,
             }, unlocking ? '验证中…' : '解锁管理权限'),
+          ),
+          React.createElement('div', { style: { marginTop: 16, textAlign: 'center' } },
+            React.createElement('button', {
+              type: 'button',
+              style: { ...s.btnLink, fontSize: 12, color: 'var(--dsw-alias-label-secondary,#6b7280)' },
+              onClick: () => setShowForgotGuide(v => !v),
+            }, '❓ 忘记后台管理密码？'),
+          ),
+          showForgotGuide && React.createElement('div', {
+            style: {
+              marginTop: 12, padding: '12px 14px', borderRadius: 8, fontSize: 12, lineHeight: 1.6,
+              background: 'var(--dsw-alias-bg-layer-2,#f3f4f6)', border: '1px solid var(--dsw-alias-border-l2,#e5e7eb)',
+              color: 'var(--dsw-alias-label-secondary,#4b5563)', textAlign: 'left',
+            },
+          },
+            React.createElement('div', { style: { fontWeight: 600, color: 'var(--dsw-alias-label-primary,currentColor)', marginBottom: 4 } }, '🛟 找回与重置密码指引：'),
+            React.createElement('div', null, '1. ', React.createElement('strong', null, '电脑本机直连修改'), '：直接在运行本程序的电脑本机打开本控制台（127.0.0.1 享有物理免锁特权），可随时修改管理密码。'),
+            React.createElement('div', { style: { marginTop: 4 } }, '2. ', React.createElement('strong', null, '服务器救急指令'), '：在宿主电脑终端执行 ', React.createElement('code', { style: s.code }, 'touch ~/.dsh/dsh-bridge/reset-auth'), ' 即可瞬间清空密码恢复初始状态。'),
           ),
         )
       )
