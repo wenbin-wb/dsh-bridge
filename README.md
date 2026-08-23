@@ -326,6 +326,14 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 
 ![飞书 Bot 配置](docs/screenshots/feishu-bot-config.jpg)
 
+<details>
+  <summary>📱 点击展开手机飞书对话与卡片审批截图</summary>
+  <br/>
+  <p align="center">
+    <img src="docs/screenshots/feishu-chat.jpg" width="380" alt="飞书对话与卡片审批示例" />
+  </p>
+</details>
+
 **功能亮点**
 
 - ⚡ **100% 免公网 IP**：官方 WebSocket 全双工长连接，本地电脑即可直连飞书开放平台

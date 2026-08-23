@@ -326,6 +326,14 @@ Connect your enterprise self-built app via Feishu's official WebSocket protocol.
 
 ![Feishu Bot Configuration](docs/screenshots/feishu-bot-config.jpg)
 
+<details>
+  <summary>📱 Click to expand mobile Feishu chat & card approval screenshot</summary>
+  <br/>
+  <p align="center">
+    <img src="docs/screenshots/feishu-chat.jpg" width="380" alt="Feishu Chat & Card Approval" />
+  </p>
+</details>
+
 **Key Highlights**
 
 - ⚡ **100% No Public IP Required**: Direct duplex WebSocket connection to Feishu Open Platform
