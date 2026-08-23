@@ -1,14 +1,36 @@
 # dsh-bridge
 
-[简体中文](README.md) | English
+<p align="center">
+  <img src="docs/banner.jpg" alt="dsh-bridge banner" width="100%" />
+</p>
 
-![dsh-bridge banner](docs/banner.jpg)
+<p align="center">
+  <a href="https://www.npmjs.com/package/@wenbin_wb/dsh-bridge"><img src="https://img.shields.io/npm/v/@wenbin_wb/dsh-bridge.svg?style=flat-square&color=38bdf8&logo=npm" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/@wenbin_wb/dsh-bridge"><img src="https://img.shields.io/npm/dt/@wenbin_wb/dsh-bridge.svg?style=flat-square&color=fbbf24&logo=npm" alt="npm downloads" /></a>
+  <a href="https://github.com/wenbin-wb/dsh-bridge/releases"><img src="https://img.shields.io/github/v/release/wenbin-wb/dsh-bridge?style=flat-square&color=10b981&logo=github" alt="GitHub release" /></a>
+  <a href="https://github.com/wenbin-wb/dsh-bridge/stargazers"><img src="https://img.shields.io/github/stars/wenbin-wb/dsh-bridge?style=flat-square&color=f43f5e&logo=github" alt="GitHub stars" /></a>
+  <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/Node.js-%E2%89%A522.19%20%7C%20%E2%89%A524-339933?style=flat-square&logo=node.js" alt="Node.js version" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/npm/l/@wenbin_wb/dsh-bridge?style=flat-square&color=a855f7" alt="license" /></a>
+</p>
 
-> Multi-channel remote access plugin for DeepSeek Harness
+<p align="center">
+  <img src="https://img.shields.io/badge/Security-Access%20Auth%20%2B%20PBKDF2-6366f1?style=flat-square&logo=security" alt="Security" />
+  <img src="https://img.shields.io/badge/WeChat-ClawBot%20%7C%20iLink-07C160?style=flat-square&logo=wechat" alt="WeChat" />
+  <img src="https://img.shields.io/badge/QQ%20Bot-OpenAPI%20v2-12B7F5?style=flat-square&logo=tencentqq" alt="QQ" />
+  <img src="https://img.shields.io/badge/Feishu-WebSocket%202.0-00D6B9?style=flat-square&logo=lark" alt="Feishu" />
+  <img src="https://img.shields.io/badge/Telegram-Bot%20API-24A1DE?style=flat-square&logo=telegram" alt="Telegram" />
+  <img src="https://img.shields.io/badge/Cloudflare-Tunnel-F38020?style=flat-square&logo=cloudflare" alt="Cloudflare" />
+</p>
 
-Keep using your DeepSeek Harness on the go. Scan a QR code with your phone and keep working from your sofa, another room, or across the world — no need to sit at your desk, no need to be on the same network, and no need to set up your own public server.
+<p align="center">
+  <a href="README.md">简体中文</a> | <b>English</b>
+</p>
 
-Seamlessly extend your local DeepSeek Harness to mobile phones, tablets, public networks, and WeChat / QQ. Access your AI assistant anytime, anywhere via QR code scanning, web browsers, or IM bots.
+> **Multi-channel remote access & enterprise security guard plugin for DeepSeek Harness**
+> 
+> Keep using your DeepSeek Harness on the go. Scan a QR code with your phone and keep working from your sofa, another room, or across the world — no need to sit at your desk, no need to be on the same network, and no need to set up your own public server.
+> 
+> Seamlessly extend your local DeepSeek Harness to mobile phones, tablets, public networks, and WeChat / QQ / Feishu / Telegram. Access your AI assistant anytime, anywhere via QR code scanning, web browsers, or IM bots.
 
 ---
 
@@ -29,11 +51,6 @@ Seamlessly extend your local DeepSeek Harness to mobile phones, tablets, public 
 - **Official Brand SVG Icons**: Authentic vector brand icons for WeChat, QQ, Feishu, Telegram with real-time status indicators
 - **Fast Version Check & 1-Click Upgrade**: Dual-channel registry check (npmmirror + npmjs fallback in ~200ms) with seamless **1-click in-app upgrade**, no terminal copying required
 - **Dark Mode Support**: Deep integration with DeepSeek Harness Design Tokens (`--dsw-alias-*`), QR code background protection for safe dark mode scanning
-
-![npm](https://img.shields.io/npm/v/@wenbin_wb/dsh-bridge?label=npm)
-![npm downloads](https://img.shields.io/npm/dt/@wenbin_wb/dsh-bridge?label=downloads)
-![npm license](https://img.shields.io/npm/l/@wenbin_wb/dsh-bridge?label=license)
-![Node](https://img.shields.io/badge/node-%3E%3D22-brightgreen)
 
 ---
 

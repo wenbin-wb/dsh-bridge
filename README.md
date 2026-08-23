@@ -1,14 +1,36 @@
 # dsh-bridge
 
-简体中文 | [English](README.en.md)
+<p align="center">
+  <img src="docs/banner.jpg" alt="dsh-bridge banner" width="100%" />
+</p>
 
-![dsh-bridge banner](docs/banner.jpg)
+<p align="center">
+  <a href="https://www.npmjs.com/package/@wenbin_wb/dsh-bridge"><img src="https://img.shields.io/npm/v/@wenbin_wb/dsh-bridge.svg?style=flat-square&color=38bdf8&logo=npm" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/@wenbin_wb/dsh-bridge"><img src="https://img.shields.io/npm/dt/@wenbin_wb/dsh-bridge.svg?style=flat-square&color=fbbf24&logo=npm" alt="npm downloads" /></a>
+  <a href="https://github.com/wenbin-wb/dsh-bridge/releases"><img src="https://img.shields.io/github/v/release/wenbin-wb/dsh-bridge?style=flat-square&color=10b981&logo=github" alt="GitHub release" /></a>
+  <a href="https://github.com/wenbin-wb/dsh-bridge/stargazers"><img src="https://img.shields.io/github/stars/wenbin-wb/dsh-bridge?style=flat-square&color=f43f5e&logo=github" alt="GitHub stars" /></a>
+  <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/Node.js-%E2%89%A522.19%20%7C%20%E2%89%A524-339933?style=flat-square&logo=node.js" alt="Node.js version" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/npm/l/@wenbin_wb/dsh-bridge?style=flat-square&color=a855f7" alt="license" /></a>
+</p>
 
-> DeepSeek Harness 多通道远程访问插件
+<p align="center">
+  <img src="https://img.shields.io/badge/Security-Access%20Auth%20%2B%20PBKDF2-6366f1?style=flat-square&logo=security" alt="Security" />
+  <img src="https://img.shields.io/badge/WeChat-ClawBot%20%7C%20iLink-07C160?style=flat-square&logo=wechat" alt="WeChat" />
+  <img src="https://img.shields.io/badge/QQ%20Bot-OpenAPI%20v2-12B7F5?style=flat-square&logo=tencentqq" alt="QQ" />
+  <img src="https://img.shields.io/badge/Feishu-WebSocket%202.0-00D6B9?style=flat-square&logo=lark" alt="Feishu" />
+  <img src="https://img.shields.io/badge/Telegram-Bot%20API-24A1DE?style=flat-square&logo=telegram" alt="Telegram" />
+  <img src="https://img.shields.io/badge/Cloudflare-Tunnel-F38020?style=flat-square&logo=cloudflare" alt="Cloudflare" />
+</p>
 
-手机扫个码，人不在电脑前也能继续用 DeepSeek Harness。躺在沙发上、出差在外、跨网访问——都不用守着电脑，也不用自己搭公网服务器，扫码就能在手机/平板或任意设备上接着干。
+<p align="center">
+  <b>简体中文</b> | <a href="README.en.md">English</a>
+</p>
 
-把你本地的 DeepSeek Harness 无缝延伸到手机、平板、公网、甚至微信 / QQ。无论你在哪，都能通过扫码、网页或 IM 机器人，随时调用你的 AI 助手。
+> **DeepSeek Harness 多通道远程访问与全域安全门禁插件**
+> 
+> 手机扫个码，人不在电脑前也能继续用 DeepSeek Harness。躺在沙发上、出差在外、跨网访问——都不用守着电脑，也不用自己搭公网服务器，扫码就能在手机/平板或任意设备上接着干。
+> 
+> 把你本地的 DeepSeek Harness 无缝延伸到手机、平板、公网、甚至微信 / QQ / 飞书 / Telegram。无论你在哪，都能通过扫码、网页或 IM 机器人，随时调用你的 AI 助手。
 
 ---
 
@@ -29,11 +51,6 @@
 - **IM 官方品牌矢量图标**：微信、QQ、飞书、Telegram 官方矢量图标与状态展示，直接在聊天软件里呼唤你的 Agent
 - **极速版本检查与一键升级**：国内高速镜像（npmmirror）优先 + 官方源毫秒级双通道检查，检测到新版本支持**界面一键直接升级**，无需手动打开终端
 - **深色模式深度适配**：完美适配 DeepSeek Harness 设计系统明暗主题切换，二维码自带白底安全垫，暗光下手机扫码 100% 极速识别
-
-![npm](https://img.shields.io/npm/v/@wenbin_wb/dsh-bridge?label=npm)
-![npm downloads](https://img.shields.io/npm/dt/@wenbin_wb/dsh-bridge?label=downloads)
-![npm license](https://img.shields.io/npm/l/@wenbin_wb/dsh-bridge?label=license)
-![Node](https://img.shields.io/badge/node-%3E%3D22-brightgreen)
 
 ---
 
