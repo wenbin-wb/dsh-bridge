@@ -56,11 +56,23 @@ test('createConnectProxyAgent handles http proxy url', () => {
 })
 
 test('formatTelegramHtml converts markdown and escapes HTML entities safely', () => {
-  const input = 'Hello **world** with `code & tags <test>` and:\n```\nconst x = 1 < 2 && 3 > 0;\n```'
+  const input = [
+    '## 标题 Header',
+    '> 引用 Blockquote',
+    '- 列表项 List item',
+    '访问 [官网](https://dsh.ai) 查看 **加粗** 与 `code & tags <test>`',
+    '```javascript',
+    'const x = 1 < 2 && 3 > 0;',
+    '```',
+  ].join('\n')
   const html = formatTelegramHtml(input)
-  assert.ok(html.includes('<b>world</b>'))
+  assert.ok(html.includes('<b>标题 Header</b>'))
+  assert.ok(html.includes('<blockquote>引用 Blockquote</blockquote>'))
+  assert.ok(html.includes('• 列表项 List item'))
+  assert.ok(html.includes('<a href="https://dsh.ai">官网</a>'))
+  assert.ok(html.includes('<b>加粗</b>'))
   assert.ok(html.includes('<code>code &amp; tags &lt;test&gt;</code>'))
-  assert.ok(html.includes('<pre><code>\nconst x = 1 &lt; 2 &amp;&amp; 3 &gt; 0;\n</code></pre>'))
+  assert.ok(html.includes('<pre><code class="language-javascript">const x = 1 &lt; 2 &amp;&amp; 3 &gt; 0;</code></pre>'))
 })
 
 test('TelegramService is a Platform instance with full lifecycle', async () => {
