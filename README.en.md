@@ -14,6 +14,11 @@ Seamlessly extend your local DeepSeek Harness to mobile phones, tablets, public 
 
 ## Features
 
+- **🔐 Enterprise Access Security & Admin Guard (v2.5.0 Major Release)**:
+  - **1st Line of Defense (Visitor Access Guard)**: Auto-injected 256-bit security Token in QR codes for 1-click passwordless login; manual IP/domain visits enforce password verification; granular channel scoping (All / Public Tunnels Only / LAN Only);
+  - **2nd Line of Defense (Admin Console Guard)**: Separated administrator password and visitor password; global console lockout for remote devices to prevent unauthorized configuration changes (Password Unlock / Local Host Only / Open);
+  - **Fail-safe Recovery System (Triple Protection)**: Host machine (`127.0.0.1`) enjoys permanent physical privileges (never locked out) + terminal command `touch ~/.dsh/dsh-bridge/reset-auth` for instant emergency recovery + built-in "Forgot Password" guides;
+  - **Financial-grade Security Engine**: PBKDF2 + SHA-256 salted password hashing, 30-day HttpOnly SameSite session protection, IP brute-force rate limiter (5 failed attempts trigger 60s cooldown).
 - **LAN Access**: Scan QR code with your smartphone/tablet, direct access on the same Wi-Fi — keep the conversation going from your phone
 - **Cloudflare Tunnel**: One-click public internet exposure, connect from anywhere without a public server of your own — keep working even when you're away from home
 - **Custom Tunnel**: Connect to your own tunnel server with a fixed domain ([Setup Guide](docs/custom-tunnel.md))
@@ -24,7 +29,6 @@ Seamlessly extend your local DeepSeek Harness to mobile phones, tablets, public 
 - **Official Brand SVG Icons**: Authentic vector brand icons for WeChat, QQ, Feishu, Telegram with real-time status indicators
 - **Fast Version Check & 1-Click Upgrade**: Dual-channel registry check (npmmirror + npmjs fallback in ~200ms) with seamless **1-click in-app upgrade**, no terminal copying required
 - **Dark Mode Support**: Deep integration with DeepSeek Harness Design Tokens (`--dsw-alias-*`), QR code background protection for safe dark mode scanning
-- **Security Alerts**: URLs and QR codes with access warnings to prevent accidental sharing
 
 ![npm](https://img.shields.io/npm/v/@wenbin_wb/dsh-bridge?label=npm)
 ![npm downloads](https://img.shields.io/npm/dt/@wenbin_wb/dsh-bridge?label=downloads)
@@ -37,12 +41,12 @@ Seamlessly extend your local DeepSeek Harness to mobile phones, tablets, public 
 
 | Target | Description | Status |
 |--------|-------------|--------|
+| **Access Security** | Visitor Access Auth Guard + Admin Console Anti-Tamper + Fail-safe Recovery | ✅ **Completed** (v2.5.0) |
+| **Telegram** | IM channel suited for self-hosting and overseas (Long Polling / Proxy / Native Menu / Inline Cards / Streaming) | ✅ **Completed** (v2.4.0) |
+| **Feishu** | Feishu / Lark official persistent WebSocket bot (No-public-IP WS / Card Approvals) | ✅ **Completed** (v2.3.0) |
+| **QQ Bot** | QQ bot integration for group/private chat (Markdown / buttons / rich media) | ✅ **Completed** (v2.1.0) |
+| **WeChat** | Chat with your Agent directly in WeChat (workspaces / persisted sessions / media / approvals) | ✅ **Completed** (v1.0.0) |
 | **Platform Abstraction** | Platform-agnostic core (sessions / approvals / commands / digest) shared across IM channels | ✅ **Completed** (v2.0.0) |
-| **WeChat** | Chat with your Agent directly in WeChat | ✅ Supported (workspaces / persisted sessions / media / approvals) |
-| **QQ Bot** | QQ bot integration for group/private chat | ✅ **Completed** (v2.1.0) — Markdown / buttons / rich media |
-| **Feishu** | Feishu / Lark official persistent WebSocket bot | ✅ **Completed** (v2.3.0) — No-public-IP WS / Card Approvals |
-| **Telegram** | IM channel suited for self-hosting and overseas | ✅ **Completed** (v2.4.0) — Long Polling / Proxy / Native Menu / Inline Cards / Streaming |
-| **OpenClaw** | Connect with the OpenClaw ecosystem | Planned |
 
 ---
 
@@ -82,8 +86,8 @@ npm install -g @deepseek-ai/dsh
 # Install the latest version
 dsh plugin --profile web add @wenbin_wb/dsh-bridge
 
-# Or specify a version (e.g. 2.2.6)
-dsh plugin --profile web add @wenbin_wb/dsh-bridge@2.2.6
+# Or specify a version (e.g. 2.5.0)
+dsh plugin --profile web add @wenbin_wb/dsh-bridge@2.5.0
 ```
 
 > 💡 **No global install permission?** Use `npx`:
@@ -126,6 +130,39 @@ After upgrading, restart DSH, perform a **hard refresh** in your browser (Window
 ---
 
 ## Usage
+
+### 🔐 Access Security & Admin Guard (v2.5.0 Major Release)
+
+Go to Settings -> "Remote Access" -> "**Security**" tab to enable enterprise-grade protection with a single click.
+
+#### 1. 🛡️ 1st Line of Defense: Visitor Access Guard (Protects Web UI Entry)
+- **Flexible Scope Control**:
+  - `Protect All Channels`: LAN and all public tunnels require authentication;
+  - `Protect Public Tunnels Only (Recommended)`: LAN keeps zero-friction passwordless access, while public internet exposure requires authentication;
+  - `Protect LAN Only`: Enforces guard exclusively on local network.
+- **Three Verification Modes**:
+  - 🟢 **Scan QR Code Passwordless + Password Verification (Recommended)**: Console-generated QR codes automatically inject a 256-bit secure Token for instant 1-second passwordless access. Visitors manually typing IP/domain must enter the visitor access password;
+  - 🔑 **Password / PIN Only**: All external devices must manually enter the password;
+  - 🎫 **Secure Token Only**: Only devices with valid QR codes or Token links can enter.
+- **1-Click Token Rotation**: Click "🔄 Reset Security Token" to immediately invalidate all previously shared QR codes and URLs.
+
+#### 2. 🔒 2nd Line of Defense: Admin Console Anti-Tamper Guard (Protects Plugin Settings)
+- **Separated Admin Password**: Independent administrator password decoupled from visitor password; guests with access passwords cannot tamper with tunnels, bots, or tokens;
+- **Three Admin Policies**:
+  - 🔑 **Password Unlock (Recommended)**: Remote devices see a full-screen lock until the admin password is entered for a temporary session;
+  - 🛡️ **Host Computer Only (Highest Security)**: Remote devices are strictly blocked from viewing or changing network/bot/security settings — management is only allowed from the physical host (`127.0.0.1`);
+  - 🌐 **Open Mode**: Remote authenticated users can directly manage settings.
+
+#### 3. 🛟 Fail-safe Recovery System (Never Locked Out)
+- **Physical Host Privileges**: Host computer running DSH (`127.0.0.1` / `localhost`) has permanent physical privileges — **never requires access password, settings panel is never locked**;
+- **Emergency Terminal Command**: On headless Linux servers or in case of forgotten passwords, run a single command in your terminal:
+  ```bash
+  touch ~/.dsh/dsh-bridge/reset-auth
+  ```
+  The plugin instantly detects the marker, wipes all passwords and locks, deletes the marker, and restores default passwordless access;
+- **Built-in Recovery Guides**: Both visitor login pages and admin lock screens provide expandable `❓ Forgot Password?` help cards.
+
+---
 
 ### LAN Access
 
