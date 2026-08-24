@@ -103,8 +103,8 @@ npm install -g @deepseek-ai/dsh
 # 安装最新版
 dsh plugin --profile web add @wenbin_wb/dsh-bridge
 
-# 或指定版本（如 2.5.4）
-dsh plugin --profile web add @wenbin_wb/dsh-bridge@2.5.4
+# 或指定版本（如 2.5.5）
+dsh plugin --profile web add @wenbin_wb/dsh-bridge@2.5.5
 ```
 
 > 💡 **没有全局安装权限？** 使用 `npx` 方式：
