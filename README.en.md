@@ -212,9 +212,9 @@ Deeply tailored for smartphone screens and touch gestures, providing a clean and
 #### Chat & Session Experience
 
 <p align="center">
-  <img src="docs/screenshots/remote-web-mobile.jpg" width="32%" alt="Mobile New Session Home" />
-  <img src="docs/screenshots/mobile-chat.jpg" width="32%" alt="Mobile Active Chat View" />
-  <img src="docs/screenshots/mobile-drawer.jpg" width="32%" alt="Mobile Native Sidebar Drawer" />
+  <img src="docs/screenshots/remote-web-mobile.jpg" width="31%" alt="Mobile New Session Home" />
+  <img src="docs/screenshots/mobile-chat.jpg" width="31%" alt="Mobile Active Chat View" />
+  <img src="docs/screenshots/mobile-drawer.jpg" width="31%" alt="Mobile Native Sidebar Drawer" />
 </p>
 
 #### Remote Access & Plugin Settings Console

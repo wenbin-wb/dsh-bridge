@@ -212,9 +212,9 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 #### 对话与会话管理体验
 
 <p align="center">
-  <img src="docs/screenshots/remote-web-mobile.jpg" width="32%" alt="移动端新会话主页" />
-  <img src="docs/screenshots/mobile-chat.jpg" width="32%" alt="移动端已有对话交互" />
-  <img src="docs/screenshots/mobile-drawer.jpg" width="32%" alt="移动端原生抽屉侧边栏" />
+  <img src="docs/screenshots/remote-web-mobile.jpg" width="31%" alt="移动端新会话主页" />
+  <img src="docs/screenshots/mobile-chat.jpg" width="31%" alt="移动端已有对话交互" />
+  <img src="docs/screenshots/mobile-drawer.jpg" width="31%" alt="移动端原生抽屉侧边栏" />
 </p>
 
 #### 远程访问与插件设置中心
