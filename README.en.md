@@ -212,18 +212,23 @@ Deeply tailored for smartphone screens and touch gestures, providing a clean and
 #### Chat & Session Experience
 
 <p align="center">
-  <img src="docs/screenshots/remote-web-mobile.jpg" width="31%" alt="Mobile New Session Home" />
-  <img src="docs/screenshots/mobile-chat.jpg" width="31%" alt="Mobile Active Chat View" />
-  <img src="docs/screenshots/mobile-drawer.jpg" width="31%" alt="Mobile Native Sidebar Drawer" />
+  <img src="docs/screenshots/remote-web-mobile.jpg" width="29%" alt="Mobile New Session Home" />
+  &nbsp;&nbsp;&nbsp;
+  <img src="docs/screenshots/mobile-chat.jpg" width="29%" alt="Mobile Active Chat View" />
+  &nbsp;&nbsp;&nbsp;
+  <img src="docs/screenshots/mobile-drawer.jpg" width="29%" alt="Mobile Native Sidebar Drawer" />
 </p>
 
 #### Remote Access & Plugin Settings Console
 
 <p align="center">
-  <img src="docs/screenshots/mobile-settings-lan.jpg" width="24%" alt="LAN Access Console" />
-  <img src="docs/screenshots/mobile-settings-tunnel.jpg" width="24%" alt="Public Tunnel Settings" />
-  <img src="docs/screenshots/mobile-settings-im.jpg" width="24%" alt="IM Bot Platforms" />
-  <img src="docs/screenshots/mobile-settings-security.jpg" width="24%" alt="Global Access Security" />
+  <img src="docs/screenshots/mobile-settings-lan.jpg" width="22%" alt="LAN Access Console" />
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/mobile-settings-tunnel.jpg" width="22%" alt="Public Tunnel Settings" />
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/mobile-settings-im.jpg" width="22%" alt="IM Bot Platforms" />
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/mobile-settings-security.jpg" width="22%" alt="Global Access Security" />
 </p>
 
 ---

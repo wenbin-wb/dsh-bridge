@@ -212,18 +212,23 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 #### 对话与会话管理体验
 
 <p align="center">
-  <img src="docs/screenshots/remote-web-mobile.jpg" width="31%" alt="移动端新会话主页" />
-  <img src="docs/screenshots/mobile-chat.jpg" width="31%" alt="移动端已有对话交互" />
-  <img src="docs/screenshots/mobile-drawer.jpg" width="31%" alt="移动端原生抽屉侧边栏" />
+  <img src="docs/screenshots/remote-web-mobile.jpg" width="29%" alt="移动端新会话主页" />
+  &nbsp;&nbsp;&nbsp;
+  <img src="docs/screenshots/mobile-chat.jpg" width="29%" alt="移动端已有对话交互" />
+  &nbsp;&nbsp;&nbsp;
+  <img src="docs/screenshots/mobile-drawer.jpg" width="29%" alt="移动端原生抽屉侧边栏" />
 </p>
 
 #### 远程访问与插件设置中心
 
 <p align="center">
-  <img src="docs/screenshots/mobile-settings-lan.jpg" width="24%" alt="局域网访问控制台" />
-  <img src="docs/screenshots/mobile-settings-tunnel.jpg" width="24%" alt="公网隧道配置" />
-  <img src="docs/screenshots/mobile-settings-im.jpg" width="24%" alt="IM 机器人矩阵" />
-  <img src="docs/screenshots/mobile-settings-security.jpg" width="24%" alt="全局访问安全认证" />
+  <img src="docs/screenshots/mobile-settings-lan.jpg" width="22%" alt="局域网访问控制台" />
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/mobile-settings-tunnel.jpg" width="22%" alt="公网隧道配置" />
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/mobile-settings-im.jpg" width="22%" alt="IM 机器人矩阵" />
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/mobile-settings-security.jpg" width="22%" alt="全局访问安全认证" />
 </p>
 
 ---
