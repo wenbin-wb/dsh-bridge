@@ -41,6 +41,7 @@
   - **第二道防线（管理控制台防篡改）**：独立管理员密码，远程设备进入控制台全局锁定网络配置与 IM 机器人密钥，支持「需密码解锁 / 仅电脑本机管理 / 宽松直管」；
   - **三重容灾保命体系**：电脑本机（`127.0.0.1`）永久最高物理特权（永不自锁） + 终端 `touch ~/.dsh/dsh-bridge/reset-auth` 一秒救急重置 + 全界面忘记密码求助引导；
   - **金融级安全引擎**：PBKDF2 + SHA-256 加盐哈希安全存储、30 天 HttpOnly SameSite 会话、单 IP 连续 5 次错误封禁 60 秒防暴力破解。
+- **📱 移动端与触控交互深度适配**：针对手机端排版与触控操作深度优化。极简轻量顶栏、快速新建、滑动手势抽屉，以及全自适应设置中心（彻底告别文字挤压折行）
 - **局域网访问**：手机/平板扫码，同一 Wi-Fi 直接访问，躺着也能在手机上接着聊
 - **Cloudflare 隧道**：一键暴露公网地址，随时随地连接，出差在外、不在家也能接着干，无需自建公网服务器
 - **自建隧道**：连接自己的隧道服务器，获得固定域名（[搭建教程](docs/custom-tunnel.md)）
@@ -103,8 +104,8 @@ npm install -g @deepseek-ai/dsh
 # 安装最新版
 dsh plugin --profile web add @wenbin_wb/dsh-bridge
 
-# 或指定版本（如 2.5.5）
-dsh plugin --profile web add @wenbin_wb/dsh-bridge@2.5.5
+# 或指定版本（如 2.6.0）
+dsh plugin --profile web add @wenbin_wb/dsh-bridge@2.6.0
 ```
 
 > 💡 **没有全局安装权限？** 使用 `npx` 方式：
@@ -199,6 +200,34 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 
 ---
 
+### 📱 移动端与触控交互深度适配
+
+针对手机端屏幕与触控操作进行深度优化，手机扫码或公网访问时，无需额外配置即可获得流畅自然的交互体验：
+
+- **极简顶栏布局**：保留左侧菜单抽屉与右侧快速新建会话，顶部无冗余元素干扰，视野开阔通透；
+- **原生侧边栏抽屉**：完整复用 DSH 原生历史记录与工作区分类，支持搜索、视图选项切换及会话管理，点击会话即刻平滑切换；
+- **流式自适应设置面板**：重构手机端设置排版，选项与下拉框自适应纵向流式展开，药丸徽标与二维码自适应缩放，彻底解决文字挤压折行；
+- **手势与触屏友好**：支持屏幕左侧边缘向右滑动唤出抽屉、向左滑动收起，支持**长按任意会话项呼出操作菜单**（重命名/分叉/归档），大圆角输入区完美贴合移动端虚拟键盘。
+
+#### 对话与会话管理体验
+
+<p align="center">
+  <img src="docs/screenshots/remote-web-mobile.jpg" width="32%" alt="移动端新会话主页" />
+  <img src="docs/screenshots/mobile-chat.jpg" width="32%" alt="移动端已有对话交互" />
+  <img src="docs/screenshots/mobile-drawer.jpg" width="32%" alt="移动端原生抽屉侧边栏" />
+</p>
+
+#### 远程访问与插件设置中心
+
+<p align="center">
+  <img src="docs/screenshots/mobile-settings-lan.jpg" width="24%" alt="局域网访问控制台" />
+  <img src="docs/screenshots/mobile-settings-tunnel.jpg" width="24%" alt="公网隧道配置" />
+  <img src="docs/screenshots/mobile-settings-im.jpg" width="24%" alt="IM 机器人矩阵" />
+  <img src="docs/screenshots/mobile-settings-security.jpg" width="24%" alt="全局访问安全认证" />
+</p>
+
+---
+
 ### 局域网访问
 
 插件启动后自动开启，无需任何配置。打开设置页「远程访问」，用手机扫描二维码即可访问。
@@ -213,14 +242,6 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 4. 每次重启后 URL 会变化；点「重置链接」可主动获取新 URL
 
 ![公网隧道配置](docs/screenshots/tunnel-access.jpg)
-
-<details>
-  <summary>📱 点击展开手机公网访问 DeepSeek Harness 效果截图</summary>
-  <br/>
-  <p align="center">
-    <img src="docs/screenshots/remote-web-mobile.jpg" width="340" alt="手机公网访问 DeepSeek Harness 效果" />
-  </p>
-</details>
 
 ### 自建隧道
 

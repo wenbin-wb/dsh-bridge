@@ -158,6 +158,31 @@ test('ProxyServer end-to-end authentication: login, token redirect, and cookie p
     assert.ok(tokenCookie)
     assert.ok(tokenCookie.includes('dsh_bridge_auth='))
 
+    // H. PWA Manifest & App Icon API endpoints
+    const resManifest = await doRequest({
+      host: '127.0.0.1',
+      port: proxyPort,
+      path: '/manifest.webmanifest',
+      method: 'GET',
+    })
+    assert.equal(resManifest.statusCode, 200)
+    const manifestJson = JSON.parse(resManifest.body)
+    assert.equal(manifestJson.name, 'DeepSeek Harness')
+    assert.equal(manifestJson.display, 'standalone')
+
+    const resPwaIcon = await doRequest({
+      host: '127.0.0.1',
+      port: proxyPort,
+      path: '/__dsh_bridge__/pwa-icon.svg',
+      method: 'GET',
+    })
+    assert.equal(resPwaIcon.statusCode, 200)
+    assert.ok(resPwaIcon.body.includes('<svg'))
+
+    // I. Verified HTML head contains mobile viewport and PWA meta tags
+    assert.ok(resAuth.body.includes('viewport-fit=cover'))
+    assert.ok(resAuth.body.includes('apple-mobile-web-app-capable'))
+    assert.ok(resAuth.body.includes('/manifest.webmanifest'))
   } finally {
     await proxy.stop()
     await new Promise((resolve) => backend.close(resolve))

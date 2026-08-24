@@ -57,7 +57,7 @@ function semverGt(a, b) {
 }
 
 const s = {
-  card:     { background: 'var(--dsw-alias-bg-layer-2,#f9fafb)', border: '1px solid var(--dsw-alias-border-l2,#e5e7eb)', borderRadius: 12, padding: '16px 20px', marginBottom: 16 },
+  card:     { background: 'var(--dsw-alias-bg-layer-2,#f9fafb)', border: '1px solid var(--dsw-alias-border-l2,#e5e7eb)', borderRadius: 12, padding: '16px 18px', marginBottom: 16, boxSizing: 'border-box' },
   block:    { borderTop: '1px solid var(--dsw-alias-border-l2,#e5e7eb)', marginTop: 12, paddingTop: 12 },
   muted:    { color: 'var(--dsw-alias-label-tertiary,#8b93a1)', fontSize: 12, lineHeight: 1.5 },
   label:    { color: 'var(--dsw-alias-label-primary,currentColor)', fontSize: 13, fontWeight: 500 },
@@ -65,8 +65,8 @@ const s = {
   btnPri:   { font: 'inherit', cursor: 'pointer', border: 'none', background: 'var(--dsw-alias-brand-primary,#4f6ef7)', color: 'var(--dsw-alias-label-primary-foreground,#fff)', height: 32, padding: '0 14px', borderRadius: 999, fontSize: 13, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 4 },
   btnGhost: { font: 'inherit', cursor: 'pointer', border: '1px solid var(--dsw-alias-border-l2,#d1d5db)', background: 'var(--dsw-alias-bg-layer-2,#f9fafb)', color: 'var(--dsw-alias-label-primary,currentColor)', height: 32, padding: '0 14px', borderRadius: 999, fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 4, textDecoration: 'none' },
   btnLink:  { font: 'inherit', cursor: 'pointer', border: 'none', background: 'none', color: 'var(--dsw-alias-brand-primary,#4f6ef7)', fontSize: 12, padding: 0, display: 'inline-flex', alignItems: 'center', gap: 3, textDecoration: 'none' },
-  qr:       { width: 200, height: 200, borderRadius: 10, border: '1px solid var(--dsw-alias-border-l2,#e5e7eb)', margin: '8px 0', display: 'block', background: '#ffffff', padding: 6, boxSizing: 'border-box' },
-  tag:      { display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 999, fontSize: 12, fontWeight: 500 },
+  qr:       { width: 200, height: 200, maxWidth: '100%', borderRadius: 10, border: '1px solid var(--dsw-alias-border-l2,#e5e7eb)', margin: '8px 0', display: 'block', background: '#ffffff', padding: 6, boxSizing: 'border-box' },
+  tag:      { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap', flexShrink: 0, minWidth: 'max-content', lineHeight: 1.4 },
   input:    { width: '100%', font: 'inherit', fontSize: 13, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--dsw-alias-border-l2,#d1d5db)', background: 'var(--dsw-alias-bg-layer-2,#f9fafb)', color: 'var(--dsw-alias-label-primary,currentColor)', outline: 'none', boxSizing: 'border-box' },
   warn:     { background: 'var(--dsw-alias-state-warn-bg,#fffbeb)', border: '1px solid var(--dsw-alias-state-warn-border,#fde68a)', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: 'var(--dsw-alias-state-warn-primary,#92400e)', lineHeight: 1.6 },
   tip:      { background: 'var(--dsw-alias-bg-layer-2,#f9fafb)', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: 'var(--dsw-alias-label-secondary,#6b7280)', lineHeight: 1.6 },
@@ -218,18 +218,18 @@ function QrBlock({ url, qr, onReset, auth, onNavigateSecurity }) {
     auth?.enabled
       ? React.createElement('div', {
           style: {
-            display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, padding: '6px 10px',
             background: 'var(--dsw-alias-state-success-bg,#ecfdf5)',
             border: '1px solid var(--dsw-alias-state-success-primary,#10b981)',
             borderRadius: 8, fontSize: 12, color: 'var(--dsw-alias-state-success-primary,#059669)',
-            marginBottom: 8, fontWeight: 500,
+            marginBottom: 8, fontWeight: 500, flexWrap: 'wrap',
             cursor: onNavigateSecurity ? 'pointer' : 'default',
           },
           onClick: onNavigateSecurity,
           title: onNavigateSecurity ? '点击前往「安全认证」配置' : undefined,
         },
-          '🛡️ 访问安全认证已生效 · 扫码设备自动完成免密授权',
-          onNavigateSecurity && React.createElement('span', { style: { textDecoration: 'underline', fontSize: 11, marginLeft: 4 } }, '设置 ➔')
+          React.createElement('span', { style: { display: 'inline-flex', alignItems: 'center', gap: 4 } }, '🛡️ 访问安全认证已生效 · 扫码设备免密'),
+          onNavigateSecurity && React.createElement('span', { style: { textDecoration: 'underline', fontSize: 11, fontWeight: 600 } }, '设置 ➔')
         )
       : React.createElement('div', {
           style: { ...s.warn, cursor: onNavigateSecurity ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 },
@@ -239,18 +239,22 @@ function QrBlock({ url, qr, onReset, auth, onNavigateSecurity }) {
           React.createElement('span', null, '⚠️ 当前未开启访问认证，建议在「安全认证」开启密码或扫码保护。'),
           onNavigateSecurity && React.createElement('span', { style: { fontWeight: 600, textDecoration: 'underline', fontSize: 12, color: 'var(--dsw-alias-brand-primary,#4f6ef7)' } }, '去开启 ➔')
         ),
-    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 } },
-      React.createElement('code', { style: { ...s.code, flex: 1 } }, url),
-      React.createElement('button', {
-        style: { ...s.btnGhost, height: 26, padding: '0 10px', fontSize: 12, flexShrink: 0 },
-        onClick: copy,
-      }, copied ? '✓ 已复制' : '复制'),
-      React.createElement('button', {
-        style: { ...s.btnGhost, height: 26, padding: '0 10px', fontSize: 12, flexShrink: 0 },
-        onClick: toggleQr,
-      }, showQr ? '隐藏二维码' : '显示二维码'),
+    React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 } },
+      React.createElement('div', { style: { padding: '6px 10px', background: 'var(--dsw-alias-bg-layer-1,#ffffff)', border: '1px solid var(--dsw-alias-border-l2,#e5e7eb)', borderRadius: 8 } },
+        React.createElement('code', { style: { ...s.code, display: 'block', wordBreak: 'break-all', fontSize: 12, lineHeight: 1.5 } }, url),
+      ),
+      React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center' } },
+        React.createElement('button', {
+          style: { ...s.btnGhost, height: 28, padding: '0 12px', fontSize: 12, flex: '1 1 auto', justifyContent: 'center' },
+          onClick: copy,
+        }, copied ? '✓ 已复制' : '复制链接'),
+        React.createElement('button', {
+          style: { ...s.btnGhost, height: 28, padding: '0 12px', fontSize: 12, flex: '1 1 auto', justifyContent: 'center' },
+          onClick: toggleQr,
+        }, showQr ? '隐藏二维码' : '显示二维码'),
+      ),
     ),
-    showQr && qr && React.createElement('div', { style: { marginTop: 8 } },
+    showQr && qr && React.createElement('div', { style: { marginTop: 10 } },
       React.createElement('img', { src: qr, alt: 'QR', style: s.qr }),
       React.createElement('div', { style: { ...s.muted, marginTop: 4 } }, '请在私密环境下使用'),
     ),
@@ -352,8 +356,8 @@ const TunnelCard = React.memo(function TunnelCard({ title, desc, data, onStart, 
   const phase = state?.phase ?? 'idle';
 
   return React.createElement('div', { style: s.card },
-    React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
-      React.createElement('div', null,
+    React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 } },
+      React.createElement('div', { style: { flex: '1 1 auto', minWidth: 0 } },
         React.createElement('div', { style: s.label }, title),
         React.createElement('div', { style: { ...s.muted, marginTop: 2 } }, desc),
       ),
@@ -992,8 +996,8 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
     : '未连接';
 
   return React.createElement('div', { style: s.card },
-    React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
-      React.createElement('div', null,
+    React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 } },
+      React.createElement('div', { style: { flex: '1 1 auto', minWidth: 0 } },
         React.createElement('div', { style: { ...s.label, display: 'flex', alignItems: 'center', gap: 7 } },
           platformId === 'wechat' && React.createElement(Icons.wechat, { style: { color: '#07C160', width: 20, height: 20 } }),
           platformId === 'qq' && React.createElement(Icons.qq, { style: { color: '#12B7F5', width: 20, height: 20 } }),
@@ -1528,6 +1532,24 @@ function VersionBanner({ rpcCall }) {
             ),
           ),
 
+          // 简短更新内容 / Release Notes 亮点展示
+          info?.releaseNotes && React.createElement('div', {
+            style: {
+              fontSize: 12,
+              color: 'var(--dsw-alias-label-secondary,#374151)',
+              background: 'rgba(255, 255, 255, 0.75)',
+              border: '1px solid rgba(191, 219, 254, 0.7)',
+              borderRadius: 8,
+              padding: '8px 12px',
+              marginBottom: 10,
+              lineHeight: 1.6,
+              whiteSpace: 'pre-line',
+            },
+          },
+            React.createElement('div', { style: { fontWeight: 600, color: 'var(--dsw-alias-state-info-primary,#1e40af)', marginBottom: 2 } }, '✨ 更新亮点：'),
+            info.releaseNotes
+          ),
+
           upgradeResult && React.createElement('div', {
             style: {
               background: upgradeResult.ok ? 'var(--dsw-alias-state-success-bg,#ecfdf5)' : 'var(--dsw-alias-state-error-bg,#fef2f2)',
@@ -1575,6 +1597,8 @@ function TabBar({ active, onChange, dots }) {
     style: {
       display: 'flex', gap: 4, marginBottom: 20,
       borderBottom: '1px solid var(--dsw-alias-border-l2,#e5e7eb)',
+      overflowX: 'auto', WebkitOverflowScrolling: 'touch',
+      maxWidth: '100%', flexWrap: 'nowrap',
     },
   },
     TABS.map(({ id, label, icon: TabIcon }) => {
@@ -1585,7 +1609,7 @@ function TabBar({ active, onChange, dots }) {
         onClick: () => onChange(id),
         style: {
           font: 'inherit', cursor: 'pointer', border: 'none', background: 'none',
-          padding: '8px 16px', fontSize: 13, fontWeight: isActive ? 600 : 400,
+          padding: '8px 14px', fontSize: 13, fontWeight: isActive ? 600 : 400,
           color: isActive
             ? 'var(--dsw-alias-brand-primary,#4f6ef7)'
             : 'var(--dsw-alias-label-secondary,#6b7280)',
@@ -1593,9 +1617,9 @@ function TabBar({ active, onChange, dots }) {
             ? '2px solid var(--dsw-alias-brand-primary,#4f6ef7)'
             : '2px solid transparent',
           marginBottom: -1,
-          display: 'inline-flex', alignItems: 'center', gap: 7,
+          display: 'inline-flex', alignItems: 'center', gap: 6,
           transition: 'color .15s, border-color .15s',
-          whiteSpace: 'nowrap',
+          whiteSpace: 'nowrap', flexShrink: 0,
         },
       },
         TabIcon && React.createElement(TabIcon, {
@@ -2170,9 +2194,537 @@ function BridgePanel({ rpcCall }) {
   );
 }
 
+// ---- 移动端自适应与触控交互增强 ----
+
+function injectMobileStyles() {
+  if (typeof document === 'undefined') return;
+  if (document.getElementById('dsh-bridge-mobile-styles')) return;
+
+  const style = document.createElement('style');
+  style.id = 'dsh-bridge-mobile-styles';
+  style.textContent = `
+    /* DSH Bridge 移动端自适应与触控交互增强样式 */
+    :root {
+      --dsh-mobile-header-h: 52px;
+      --dsh-mobile-safe-top: env(safe-area-inset-top, 0px);
+      --dsh-mobile-safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    @media (max-width: 768px) {
+      /* 1. 主框架为 Header 腾出顶部空间 */
+      div[class*="_frame"] {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100vw !important;
+        height: 100dvh !important;
+        margin: 0 !important;
+        padding-top: var(--dsh-mobile-header-h) !important;
+        position: relative !important;
+        grid-template-columns: 1fr !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+      }
+
+      /* 2. 顶部原生导航条：100% 还原 DeepSeek App (左侧双横线，右侧(+)，中间留白，无多余设置按钮) */
+      .dsh-mobile-app-header {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        height: var(--dsh-mobile-header-h) !important;
+        padding-top: var(--dsh-mobile-safe-top) !important;
+        background: transparent !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+        z-index: 9998 !important;
+        box-sizing: border-box !important;
+        user-select: none !important;
+      }
+
+      /* 左侧双横线按钮 (DeepSeek App 原生图标) */
+      .dsh-header-menu-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: none;
+        background: transparent;
+        color: var(--dsw-alias-label-primary, #111827);
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-start;
+        cursor: pointer;
+        padding: 0;
+        transition: opacity 0.15s;
+      }
+      .dsh-header-menu-btn:active {
+        opacity: 0.6;
+      }
+
+      /* 右侧 (+) 新建会话按钮 (DeepSeek App 原生图标) */
+      .dsh-header-new-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: none;
+        background: transparent;
+        color: var(--dsw-alias-label-primary, #111827);
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+        cursor: pointer;
+        padding: 0;
+        transition: opacity 0.15s;
+      }
+      .dsh-header-new-btn:active {
+        opacity: 0.6;
+      }
+
+      /* 3. 中间主内容区与输入框 */
+      div[class*="_centerCol"] {
+        flex: 1 1 100% !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        display: flex !important;
+        height: 100% !important;
+      }
+
+      div[class*="_detailsCol"],
+      div[class*="toggleCluster"],
+      div[class*="W-zNGW_toggleCluster"] {
+        display: none !important;
+      }
+
+      /* 输入框底座：DeepSeek App 居中及底部固定 */
+      div[class*="wSkVaW_scrollBody"] {
+        padding-bottom: max(16px, env(safe-area-inset-bottom)) !important;
+      }
+
+      /* 输入卡片：DeepSeek App 圆角大胶囊造型 */
+      div[class*="uV2eYG_card"] {
+        border-radius: 26px !important;
+        padding: 14px 16px 12px !important;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05) !important;
+        border: 1px solid rgba(0, 0, 0, 0.07) !important;
+        background: var(--dsw-alias-bg-layer-2, #f4f4f7) !important;
+      }
+
+      /* 4. 原生侧边栏抽屉化 (Drawer) */
+      div[class*="_sidebarCol"] {
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+        bottom: 0 !important;
+        height: 100dvh !important;
+        width: 290px !important;
+        max-width: 82vw !important;
+        z-index: 10000 !important;
+        background: var(--dsw-alias-bg-layer-1, #ffffff) !important;
+        transform: translateX(-105%);
+        transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        overflow-y: auto !important;
+        border-right: 1px solid rgba(0, 0, 0, 0.06) !important;
+      }
+      body.dsh-drawer-open div[class*="_sidebarCol"] {
+        transform: translateX(0) !important;
+        box-shadow: 4px 0 28px rgba(0, 0, 0, 0.25) !important;
+      }
+
+      /* 抽屉内部：强制 100% 宽度，隐藏冗余折叠按钮 */
+      body.dsh-drawer-open div[class*="hHd-Xa_root"] {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+      div[class*="hHd-Xa_logoRow"] button[class*="hHd-Xa_toggle"] {
+        display: none !important;
+      }
+
+      /* 设置弹窗打开时解除抽屉隐藏限制 */
+      div[class*="_sidebarCol"]:has(div[class*="VOzbGW_overlay"]) {
+        transform: none !important;
+        width: 100vw !important;
+        max-width: 100vw !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        pointer-events: none !important;
+      }
+
+      /* 5. 半透明背景遮罩 */
+      .dsh-mobile-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        z-index: 9999;
+        display: none !important;
+      }
+      body.dsh-drawer-open .dsh-mobile-backdrop {
+        display: block !important;
+        pointer-events: auto !important;
+      }
+
+      /* 6. 设置中心全自适应适配 */
+      div[class*="VOzbGW_overlay"] {
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100vw !important;
+        height: 100dvh !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: rgba(0, 0, 0, 0.45) !important;
+        backdrop-filter: blur(4px) !important;
+        -webkit-backdrop-filter: blur(4px) !important;
+        z-index: 10002 !important;
+        padding: 10px !important;
+        box-sizing: border-box !important;
+        pointer-events: auto !important;
+      }
+      div[class*="VOzbGW_panel"] {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: 92dvh !important;
+        max-height: 92dvh !important;
+        display: flex !important;
+        flex-direction: row !important;
+        border-radius: 18px !important;
+        overflow: hidden !important;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25) !important;
+        background: var(--dsw-alias-bg-layer-1, #ffffff) !important;
+      }
+      nav[class*="VOzbGW_nav"] {
+        width: 78px !important;
+        min-width: 78px !important;
+        max-width: 78px !important;
+        padding: 10px 4px !important;
+        box-sizing: border-box !important;
+        border-right: 1px solid var(--dsw-alias-border-l2, #e5e7eb) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 6px !important;
+        overflow-y: auto !important;
+      }
+      nav[class*="VOzbGW_nav"] button[class*="VOzbGW_navCell"],
+      button[class*="VOzbGW_navCell"] {
+        padding: 8px 2px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
+        height: auto !important;
+        min-height: 48px !important;
+        gap: 4px !important;
+        border-radius: 10px !important;
+      }
+      span[class*="VOzbGW_navLabel"] {
+        font-size: 10.5px !important;
+        line-height: 1.2 !important;
+        white-space: normal !important;
+        word-break: break-all !important;
+        text-align: center !important;
+      }
+      div[class*="VOzbGW_content"] {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        width: calc(100% - 78px) !important;
+        max-width: calc(100% - 78px) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+      }
+      div[class*="VOzbGW_options"] {
+        flex: 1 1 auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        padding: 0 14px 20px !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+      }
+
+      /* 设置中心选项行手机自适应（垂直流式，防文字单字折行） */
+      div[class*="VOzbGW_options"] div[class*="_row"] {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+        width: 100% !important;
+        padding: 12px 0 !important;
+        box-sizing: border-box !important;
+      }
+      div[class*="VOzbGW_options"] div[class*="_rowText"] {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+      div[class*="VOzbGW_options"] button[class*="_selector"],
+      div[class*="VOzbGW_options"] select,
+      div[class*="VOzbGW_options"] input {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+      }
+
+      /* 7. 代码块、表格与徽标自适应 */
+      pre, code, pre > code, table {
+        max-width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        font-size: 12.5px !important;
+      }
+
+      /* 状态徽标与药丸按钮永不折字 */
+      span[style*="border-radius: 999"],
+      span[style*="border-radius:999"] {
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+        min-width: max-content !important;
+      }
+
+      /* 二维码与图片移动端弹性缩放 */
+      img[alt="QR"], img[src^="data:image"] {
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+      }
+
+      /* 8. 确保所有 Popover 弹出菜单、操作气泡、下拉框位于抽屉之上且支持触控交互 */
+      div[class*="_portal"],
+      div[class*="portal"],
+      div[class*="popup"],
+      div[class*="dropdown"],
+      div[class*="menu"],
+      div[role="menu"],
+      div[role="dialog"] {
+        z-index: 10005 !important;
+        pointer-events: auto !important;
+      }
+
+      /* 9. 移动端侧边栏：会话与工作区三点操作按钮始终清晰可见且易于点击 */
+      div[class*="sessionRow"] span[class*="rowActions"],
+      div[class*="sessionRow"] button[class*="iconButton"],
+      div[class*="treeBody"] button[class*="iconButton"] {
+        opacity: 0.8 !important;
+        display: inline-flex !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+      }
+      div[class*="sessionRow"]:active {
+        background: var(--dsw-alias-bg-layer-2, #f3f4f6) !important;
+      }
+
+      /* 全局 overlayLayer 绝不被染黑 */
+      div[class*="overlayLayer"],
+      div[class*="uV2eYG_overlayAnchor"] {
+        background: transparent !important;
+        pointer-events: none !important;
+      }
+      div[class*="overlayLayer"] > * {
+        pointer-events: auto !important;
+      }
+    }
+
+    @media (min-width: 769px) {
+      .dsh-mobile-app-header,
+      .dsh-mobile-backdrop {
+        display: none !important;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function setupMobileExperience() {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return;
+  injectMobileStyles();
+
+  // 1. 创建顶部 DeepSeek App 风格导航条 (Header: 左侧双横线，右侧(+)，中间留白，对话页无设置按钮)
+  let header = document.querySelector('.dsh-mobile-app-header');
+  if (!header) {
+    header = document.createElement('header');
+    header.className = 'dsh-mobile-app-header';
+
+    // 左侧双横线菜单按钮 (DeepSeek App 原生图标)：联动展开 DSH 原生侧边栏会话列表
+    const leftBtn = document.createElement('button');
+    leftBtn.className = 'dsh-header-menu-btn';
+    leftBtn.title = '打开菜单';
+    leftBtn.innerHTML = `
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+        <line x1="3" y1="8" x2="21" y2="8"></line>
+        <line x1="3" y1="15" x2="14" y2="15"></line>
+      </svg>
+    `;
+    leftBtn.onclick = () => {
+      const isOpen = document.body.classList.toggle('dsh-drawer-open');
+      if (isOpen) {
+        const collapsedToggle = document.querySelector('div[class*="hHd-Xa_collapsed"] button[class*="hHd-Xa_toggle"]');
+        if (collapsedToggle) collapsedToggle.click();
+      }
+    };
+
+    // 右侧 (+) 新建会话按钮 (DeepSeek App 圆形加号风格)
+    const rightBtn = document.createElement('button');
+    rightBtn.className = 'dsh-header-new-btn';
+    rightBtn.title = '新建会话';
+    rightBtn.innerHTML = `
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9.5"></circle>
+        <line x1="12" y1="8" x2="12" y2="16"></line>
+        <line x1="8" y1="12" x2="16" y2="12"></line>
+      </svg>
+    `;
+    rightBtn.onclick = () => {
+      const dshNewBtn = document.querySelector('button[aria-label="新建会话"]');
+      if (dshNewBtn) dshNewBtn.click();
+    };
+
+    header.appendChild(leftBtn);
+    header.appendChild(rightBtn);
+    document.body.appendChild(header);
+  }
+
+  // 2. 创建背景遮罩（用于抽屉侧边栏）
+  let backdrop = document.querySelector('.dsh-mobile-backdrop');
+  if (!backdrop) {
+    backdrop = document.createElement('div');
+    backdrop.className = 'dsh-mobile-backdrop';
+    backdrop.addEventListener('click', () => {
+      document.body.classList.remove('dsh-drawer-open');
+    });
+    document.body.appendChild(backdrop);
+  }
+
+  // 3. 点击抽屉内的会话项自动收起抽屉（排除搜索、工作区、操作菜单、设置、输入等交互）
+  let lastLongPressTime = 0;
+
+  document.addEventListener('click', (e) => {
+    if (!document.body.classList.contains('dsh-drawer-open')) return;
+
+    // 如果刚发生过长按（<= 600ms），拦截所有触发的后续 click
+    if (Date.now() - lastLongPressTime < 600) {
+      e.stopPropagation();
+      e.preventDefault();
+      return;
+    }
+
+    // 如果点击的是弹出层、菜单、下拉框、模态对话框内部，绝不收起抽屉
+    if (e.target.closest('div[class*="portal"], div[class*="_portal"], div[role="menu"], div[role="dialog"], div[class*="popup"], div[class*="dropdown"], div[class*="overlay"]')) {
+      return;
+    }
+
+    const sidebar = document.querySelector('div[class*="_sidebarCol"]');
+    if (sidebar && sidebar.contains(e.target)) {
+      // 如果点击的是搜索框、输入框、选择器等
+      if (e.target.closest('input, select, textarea, div[class*="searchInput"]')) {
+        return;
+      }
+
+      // 如果点击的是操作按钮、图标按钮（如三点菜单、添加工作区、视图选项、设置）
+      const btn = e.target.closest('button, [role="button"]');
+      if (btn) {
+        const label = btn.getAttribute('aria-label') || btn.innerText || '';
+        // 视图选项、添加工作区、操作菜单、设置、折叠切换等保留在抽屉内操作
+        if (
+          label.includes('操作') ||
+          label.includes('视图') ||
+          label.includes('添加') ||
+          label.includes('搜索') ||
+          label.includes('设置') ||
+          btn.matches('button[class*="toggle"], button[class*="trigger"], button[class*="iconButton"], button[class*="searchButton"]')
+        ) {
+          return;
+        }
+
+        // 如果点击的是新建会话按钮，开始新会话并收起抽屉
+        if (label.includes('新会话') || btn.matches('button[class*="newSession"]')) {
+          document.body.classList.remove('dsh-drawer-open');
+          return;
+        }
+      }
+
+      // 如果点击的是会话列表项本身（切换到该会话）
+      const sessionRow = e.target.closest('div[class*="sessionRow"], div[role="treeitem"]');
+      if (sessionRow) {
+        document.body.classList.remove('dsh-drawer-open');
+      }
+    }
+  }, true);
+
+  // 4. 移动端抽屉长按（Long Press >= 380ms）呼出操作菜单，以及左右滑动手势
+  let longPressTimer = null;
+  let touchStartX = 0;
+  let touchStartY = 0;
+
+  window.addEventListener('touchstart', (e) => {
+    if (e.touches && e.touches.length > 0) {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }
+
+    if (!document.body.classList.contains('dsh-drawer-open')) return;
+
+    const sidebar = document.querySelector('div[class*="_sidebarCol"]');
+    if (!sidebar || !sidebar.contains(e.target)) return;
+
+    const sessionRow = e.target.closest('div[class*="sessionRow"], div[role="treeitem"]');
+    if (!sessionRow) return;
+
+    longPressTimer = setTimeout(() => {
+      lastLongPressTime = Date.now();
+      try {
+        if (navigator.vibrate) navigator.vibrate(40);
+      } catch (_) {}
+
+      // 寻找该会话项内的三点操作按钮并触发点击
+      const actionBtn = sessionRow.querySelector('button[aria-label*="操作"], button[class*="iconButton"], button');
+      if (actionBtn) {
+        actionBtn.click();
+      }
+    }, 380);
+  }, { passive: true });
+
+  window.addEventListener('touchmove', (e) => {
+    if (longPressTimer && e.touches && e.touches.length > 0) {
+      const moveX = Math.abs(e.touches[0].clientX - touchStartX);
+      const moveY = Math.abs(e.touches[0].clientY - touchStartY);
+      if (moveX > 10 || moveY > 10) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+    }
+  }, { passive: true });
+
+  window.addEventListener('touchend', (e) => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+
+    if (!e.changedTouches || e.changedTouches.length === 0) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartX;
+    const deltaY = e.changedTouches[0].clientY - touchStartY;
+
+    if (Math.abs(deltaX) > 60 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+      if (deltaX > 0 && touchStartX <= 35) {
+        document.body.classList.add('dsh-drawer-open');
+        const collapsedToggle = document.querySelector('div[class*="hHd-Xa_collapsed"] button[class*="hHd-Xa_toggle"]');
+        if (collapsedToggle) collapsedToggle.click();
+      } else if (deltaX < 0 && document.body.classList.contains('dsh-drawer-open')) {
+        document.body.classList.remove('dsh-drawer-open');
+      }
+    }
+  }, { passive: true });
+}
+
 // ---- 插件入口 ----
 
 function apply(ctx) {
+  setupMobileExperience();
+
   const rpcCall = (endpoint, payload, signal) =>
     ctx.connection.rpc.call(BRIDGE_RPC_CHANNEL, endpoint, payload, signal);
 
@@ -2191,3 +2743,4 @@ function apply(ctx) {
 }
 
 export { name, inject, apply };
+

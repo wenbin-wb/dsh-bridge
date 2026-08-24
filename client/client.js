@@ -115,7 +115,7 @@ function semverGt(a, b) {
   return av.pre > bv.pre;
 }
 var s = {
-  card: { background: "var(--dsw-alias-bg-layer-2,#f9fafb)", border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", borderRadius: 12, padding: "16px 20px", marginBottom: 16 },
+  card: { background: "var(--dsw-alias-bg-layer-2,#f9fafb)", border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", borderRadius: 12, padding: "16px 18px", marginBottom: 16, boxSizing: "border-box" },
   block: { borderTop: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", marginTop: 12, paddingTop: 12 },
   muted: { color: "var(--dsw-alias-label-tertiary,#8b93a1)", fontSize: 12, lineHeight: 1.5 },
   label: { color: "var(--dsw-alias-label-primary,currentColor)", fontSize: 13, fontWeight: 500 },
@@ -123,8 +123,8 @@ var s = {
   btnPri: { font: "inherit", cursor: "pointer", border: "none", background: "var(--dsw-alias-brand-primary,#4f6ef7)", color: "var(--dsw-alias-label-primary-foreground,#fff)", height: 32, padding: "0 14px", borderRadius: 999, fontSize: 13, fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 4 },
   btnGhost: { font: "inherit", cursor: "pointer", border: "1px solid var(--dsw-alias-border-l2,#d1d5db)", background: "var(--dsw-alias-bg-layer-2,#f9fafb)", color: "var(--dsw-alias-label-primary,currentColor)", height: 32, padding: "0 14px", borderRadius: 999, fontSize: 13, display: "inline-flex", alignItems: "center", gap: 4, textDecoration: "none" },
   btnLink: { font: "inherit", cursor: "pointer", border: "none", background: "none", color: "var(--dsw-alias-brand-primary,#4f6ef7)", fontSize: 12, padding: 0, display: "inline-flex", alignItems: "center", gap: 3, textDecoration: "none" },
-  qr: { width: 200, height: 200, borderRadius: 10, border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", margin: "8px 0", display: "block", background: "#ffffff", padding: 6, boxSizing: "border-box" },
-  tag: { display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: 999, fontSize: 12, fontWeight: 500 },
+  qr: { width: 200, height: 200, maxWidth: "100%", borderRadius: 10, border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", margin: "8px 0", display: "block", background: "#ffffff", padding: 6, boxSizing: "border-box" },
+  tag: { display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "3px 10px", borderRadius: 999, fontSize: 12, fontWeight: 500, whiteSpace: "nowrap", flexShrink: 0, minWidth: "max-content", lineHeight: 1.4 },
   input: { width: "100%", font: "inherit", fontSize: 13, padding: "7px 10px", borderRadius: 8, border: "1px solid var(--dsw-alias-border-l2,#d1d5db)", background: "var(--dsw-alias-bg-layer-2,#f9fafb)", color: "var(--dsw-alias-label-primary,currentColor)", outline: "none", boxSizing: "border-box" },
   warn: { background: "var(--dsw-alias-state-warn-bg,#fffbeb)", border: "1px solid var(--dsw-alias-state-warn-border,#fde68a)", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "var(--dsw-alias-state-warn-primary,#92400e)", lineHeight: 1.6 },
   tip: { background: "var(--dsw-alias-bg-layer-2,#f9fafb)", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "var(--dsw-alias-label-secondary,#6b7280)", lineHeight: 1.6 }
@@ -281,10 +281,11 @@ function QrBlock({ url, qr, onReset, auth, onNavigateSecurity }) {
       "div",
       {
         style: {
-          display: "inline-flex",
+          display: "flex",
           alignItems: "center",
+          justifyContent: "space-between",
           gap: 6,
-          padding: "4px 10px",
+          padding: "6px 10px",
           background: "var(--dsw-alias-state-success-bg,#ecfdf5)",
           border: "1px solid var(--dsw-alias-state-success-primary,#10b981)",
           borderRadius: 8,
@@ -292,13 +293,14 @@ function QrBlock({ url, qr, onReset, auth, onNavigateSecurity }) {
           color: "var(--dsw-alias-state-success-primary,#059669)",
           marginBottom: 8,
           fontWeight: 500,
+          flexWrap: "wrap",
           cursor: onNavigateSecurity ? "pointer" : "default"
         },
         onClick: onNavigateSecurity,
         title: onNavigateSecurity ? "\u70B9\u51FB\u524D\u5F80\u300C\u5B89\u5168\u8BA4\u8BC1\u300D\u914D\u7F6E" : void 0
       },
-      "\u{1F6E1}\uFE0F \u8BBF\u95EE\u5B89\u5168\u8BA4\u8BC1\u5DF2\u751F\u6548 \xB7 \u626B\u7801\u8BBE\u5907\u81EA\u52A8\u5B8C\u6210\u514D\u5BC6\u6388\u6743",
-      onNavigateSecurity && React.createElement("span", { style: { textDecoration: "underline", fontSize: 11, marginLeft: 4 } }, "\u8BBE\u7F6E \u2794")
+      React.createElement("span", { style: { display: "inline-flex", alignItems: "center", gap: 4 } }, "\u{1F6E1}\uFE0F \u8BBF\u95EE\u5B89\u5168\u8BA4\u8BC1\u5DF2\u751F\u6548 \xB7 \u626B\u7801\u8BBE\u5907\u514D\u5BC6"),
+      onNavigateSecurity && React.createElement("span", { style: { textDecoration: "underline", fontSize: 11, fontWeight: 600 } }, "\u8BBE\u7F6E \u2794")
     ) : React.createElement(
       "div",
       {
@@ -311,20 +313,28 @@ function QrBlock({ url, qr, onReset, auth, onNavigateSecurity }) {
     ),
     React.createElement(
       "div",
-      { style: { display: "flex", alignItems: "center", gap: 8, marginTop: 6 } },
-      React.createElement("code", { style: { ...s.code, flex: 1 } }, url),
-      React.createElement("button", {
-        style: { ...s.btnGhost, height: 26, padding: "0 10px", fontSize: 12, flexShrink: 0 },
-        onClick: copy
-      }, copied ? "\u2713 \u5DF2\u590D\u5236" : "\u590D\u5236"),
-      React.createElement("button", {
-        style: { ...s.btnGhost, height: 26, padding: "0 10px", fontSize: 12, flexShrink: 0 },
-        onClick: toggleQr
-      }, showQr ? "\u9690\u85CF\u4E8C\u7EF4\u7801" : "\u663E\u793A\u4E8C\u7EF4\u7801")
+      { style: { display: "flex", flexDirection: "column", gap: 8, marginTop: 8 } },
+      React.createElement(
+        "div",
+        { style: { padding: "6px 10px", background: "var(--dsw-alias-bg-layer-1,#ffffff)", border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", borderRadius: 8 } },
+        React.createElement("code", { style: { ...s.code, display: "block", wordBreak: "break-all", fontSize: 12, lineHeight: 1.5 } }, url)
+      ),
+      React.createElement(
+        "div",
+        { style: { display: "flex", gap: 8, alignItems: "center" } },
+        React.createElement("button", {
+          style: { ...s.btnGhost, height: 28, padding: "0 12px", fontSize: 12, flex: "1 1 auto", justifyContent: "center" },
+          onClick: copy
+        }, copied ? "\u2713 \u5DF2\u590D\u5236" : "\u590D\u5236\u94FE\u63A5"),
+        React.createElement("button", {
+          style: { ...s.btnGhost, height: 28, padding: "0 12px", fontSize: 12, flex: "1 1 auto", justifyContent: "center" },
+          onClick: toggleQr
+        }, showQr ? "\u9690\u85CF\u4E8C\u7EF4\u7801" : "\u663E\u793A\u4E8C\u7EF4\u7801")
+      )
     ),
     showQr && qr && React.createElement(
       "div",
-      { style: { marginTop: 8 } },
+      { style: { marginTop: 10 } },
       React.createElement("img", { src: qr, alt: "QR", style: s.qr }),
       React.createElement("div", { style: { ...s.muted, marginTop: 4 } }, "\u8BF7\u5728\u79C1\u5BC6\u73AF\u5883\u4E0B\u4F7F\u7528")
     ),
@@ -445,10 +455,10 @@ var TunnelCard = React.memo(function TunnelCard2({ title, desc, data, onStart, o
     { style: s.card },
     React.createElement(
       "div",
-      { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
+      { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 } },
       React.createElement(
         "div",
-        null,
+        { style: { flex: "1 1 auto", minWidth: 0 } },
         React.createElement("div", { style: s.label }, title),
         React.createElement("div", { style: { ...s.muted, marginTop: 2 } }, desc)
       ),
@@ -1129,10 +1139,10 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
     { style: s.card },
     React.createElement(
       "div",
-      { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
+      { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 } },
       React.createElement(
         "div",
-        null,
+        { style: { flex: "1 1 auto", minWidth: 0 } },
         React.createElement(
           "div",
           { style: { ...s.label, display: "flex", alignItems: "center", gap: 7 } },
@@ -1737,6 +1747,25 @@ function VersionBanner({ rpcCall }) {
               ) : upgradeResult?.ok ? "\u2713 \u5DF2\u5B8C\u6210\u5347\u7EA7" : `\u4E00\u952E\u5347\u7EA7\u5230 v${info.latest}`
             )
           ),
+          // 简短更新内容 / Release Notes 亮点展示
+          info?.releaseNotes && React.createElement(
+            "div",
+            {
+              style: {
+                fontSize: 12,
+                color: "var(--dsw-alias-label-secondary,#374151)",
+                background: "rgba(255, 255, 255, 0.75)",
+                border: "1px solid rgba(191, 219, 254, 0.7)",
+                borderRadius: 8,
+                padding: "8px 12px",
+                marginBottom: 10,
+                lineHeight: 1.6,
+                whiteSpace: "pre-line"
+              }
+            },
+            React.createElement("div", { style: { fontWeight: 600, color: "var(--dsw-alias-state-info-primary,#1e40af)", marginBottom: 2 } }, "\u2728 \u66F4\u65B0\u4EAE\u70B9\uFF1A"),
+            info.releaseNotes
+          ),
           upgradeResult && React.createElement("div", {
             style: {
               background: upgradeResult.ok ? "var(--dsw-alias-state-success-bg,#ecfdf5)" : "var(--dsw-alias-state-error-bg,#fef2f2)",
@@ -1785,7 +1814,11 @@ function TabBar({ active, onChange, dots }) {
         display: "flex",
         gap: 4,
         marginBottom: 20,
-        borderBottom: "1px solid var(--dsw-alias-border-l2,#e5e7eb)"
+        borderBottom: "1px solid var(--dsw-alias-border-l2,#e5e7eb)",
+        overflowX: "auto",
+        WebkitOverflowScrolling: "touch",
+        maxWidth: "100%",
+        flexWrap: "nowrap"
       }
     },
     TABS.map(({ id, label, icon: TabIcon }) => {
@@ -1801,7 +1834,7 @@ function TabBar({ active, onChange, dots }) {
             cursor: "pointer",
             border: "none",
             background: "none",
-            padding: "8px 16px",
+            padding: "8px 14px",
             fontSize: 13,
             fontWeight: isActive ? 600 : 400,
             color: isActive ? "var(--dsw-alias-brand-primary,#4f6ef7)" : "var(--dsw-alias-label-secondary,#6b7280)",
@@ -1809,9 +1842,10 @@ function TabBar({ active, onChange, dots }) {
             marginBottom: -1,
             display: "inline-flex",
             alignItems: "center",
-            gap: 7,
+            gap: 6,
             transition: "color .15s, border-color .15s",
-            whiteSpace: "nowrap"
+            whiteSpace: "nowrap",
+            flexShrink: 0
           }
         },
         TabIcon && React.createElement(TabIcon, {
@@ -2442,7 +2476,485 @@ function BridgePanel({ rpcCall }) {
     )
   );
 }
+function injectMobileStyles() {
+  if (typeof document === "undefined") return;
+  if (document.getElementById("dsh-bridge-mobile-styles")) return;
+  const style = document.createElement("style");
+  style.id = "dsh-bridge-mobile-styles";
+  style.textContent = `
+    /* DSH Bridge \u79FB\u52A8\u7AEF\u81EA\u9002\u5E94\u4E0E\u89E6\u63A7\u4EA4\u4E92\u589E\u5F3A\u6837\u5F0F */
+    :root {
+      --dsh-mobile-header-h: 52px;
+      --dsh-mobile-safe-top: env(safe-area-inset-top, 0px);
+      --dsh-mobile-safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    @media (max-width: 768px) {
+      /* 1. \u4E3B\u6846\u67B6\u4E3A Header \u817E\u51FA\u9876\u90E8\u7A7A\u95F4 */
+      div[class*="_frame"] {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100vw !important;
+        height: 100dvh !important;
+        margin: 0 !important;
+        padding-top: var(--dsh-mobile-header-h) !important;
+        position: relative !important;
+        grid-template-columns: 1fr !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+      }
+
+      /* 2. \u9876\u90E8\u539F\u751F\u5BFC\u822A\u6761\uFF1A100% \u8FD8\u539F DeepSeek App (\u5DE6\u4FA7\u53CC\u6A2A\u7EBF\uFF0C\u53F3\u4FA7(+)\uFF0C\u4E2D\u95F4\u7559\u767D\uFF0C\u65E0\u591A\u4F59\u8BBE\u7F6E\u6309\u94AE) */
+      .dsh-mobile-app-header {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        height: var(--dsh-mobile-header-h) !important;
+        padding-top: var(--dsh-mobile-safe-top) !important;
+        background: transparent !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+        z-index: 9998 !important;
+        box-sizing: border-box !important;
+        user-select: none !important;
+      }
+
+      /* \u5DE6\u4FA7\u53CC\u6A2A\u7EBF\u6309\u94AE (DeepSeek App \u539F\u751F\u56FE\u6807) */
+      .dsh-header-menu-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: none;
+        background: transparent;
+        color: var(--dsw-alias-label-primary, #111827);
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-start;
+        cursor: pointer;
+        padding: 0;
+        transition: opacity 0.15s;
+      }
+      .dsh-header-menu-btn:active {
+        opacity: 0.6;
+      }
+
+      /* \u53F3\u4FA7 (+) \u65B0\u5EFA\u4F1A\u8BDD\u6309\u94AE (DeepSeek App \u539F\u751F\u56FE\u6807) */
+      .dsh-header-new-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: none;
+        background: transparent;
+        color: var(--dsw-alias-label-primary, #111827);
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+        cursor: pointer;
+        padding: 0;
+        transition: opacity 0.15s;
+      }
+      .dsh-header-new-btn:active {
+        opacity: 0.6;
+      }
+
+      /* 3. \u4E2D\u95F4\u4E3B\u5185\u5BB9\u533A\u4E0E\u8F93\u5165\u6846 */
+      div[class*="_centerCol"] {
+        flex: 1 1 100% !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        display: flex !important;
+        height: 100% !important;
+      }
+
+      div[class*="_detailsCol"],
+      div[class*="toggleCluster"],
+      div[class*="W-zNGW_toggleCluster"] {
+        display: none !important;
+      }
+
+      /* \u8F93\u5165\u6846\u5E95\u5EA7\uFF1ADeepSeek App \u5C45\u4E2D\u53CA\u5E95\u90E8\u56FA\u5B9A */
+      div[class*="wSkVaW_scrollBody"] {
+        padding-bottom: max(16px, env(safe-area-inset-bottom)) !important;
+      }
+
+      /* \u8F93\u5165\u5361\u7247\uFF1ADeepSeek App \u5706\u89D2\u5927\u80F6\u56CA\u9020\u578B */
+      div[class*="uV2eYG_card"] {
+        border-radius: 26px !important;
+        padding: 14px 16px 12px !important;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05) !important;
+        border: 1px solid rgba(0, 0, 0, 0.07) !important;
+        background: var(--dsw-alias-bg-layer-2, #f4f4f7) !important;
+      }
+
+      /* 4. \u539F\u751F\u4FA7\u8FB9\u680F\u62BD\u5C49\u5316 (Drawer) */
+      div[class*="_sidebarCol"] {
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+        bottom: 0 !important;
+        height: 100dvh !important;
+        width: 290px !important;
+        max-width: 82vw !important;
+        z-index: 10000 !important;
+        background: var(--dsw-alias-bg-layer-1, #ffffff) !important;
+        transform: translateX(-105%);
+        transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        overflow-y: auto !important;
+        border-right: 1px solid rgba(0, 0, 0, 0.06) !important;
+      }
+      body.dsh-drawer-open div[class*="_sidebarCol"] {
+        transform: translateX(0) !important;
+        box-shadow: 4px 0 28px rgba(0, 0, 0, 0.25) !important;
+      }
+
+      /* \u62BD\u5C49\u5185\u90E8\uFF1A\u5F3A\u5236 100% \u5BBD\u5EA6\uFF0C\u9690\u85CF\u5197\u4F59\u6298\u53E0\u6309\u94AE */
+      body.dsh-drawer-open div[class*="hHd-Xa_root"] {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+      div[class*="hHd-Xa_logoRow"] button[class*="hHd-Xa_toggle"] {
+        display: none !important;
+      }
+
+      /* \u8BBE\u7F6E\u5F39\u7A97\u6253\u5F00\u65F6\u89E3\u9664\u62BD\u5C49\u9690\u85CF\u9650\u5236 */
+      div[class*="_sidebarCol"]:has(div[class*="VOzbGW_overlay"]) {
+        transform: none !important;
+        width: 100vw !important;
+        max-width: 100vw !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        pointer-events: none !important;
+      }
+
+      /* 5. \u534A\u900F\u660E\u80CC\u666F\u906E\u7F69 */
+      .dsh-mobile-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        z-index: 9999;
+        display: none !important;
+      }
+      body.dsh-drawer-open .dsh-mobile-backdrop {
+        display: block !important;
+        pointer-events: auto !important;
+      }
+
+      /* 6. \u8BBE\u7F6E\u4E2D\u5FC3\u5168\u81EA\u9002\u5E94\u9002\u914D */
+      div[class*="VOzbGW_overlay"] {
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100vw !important;
+        height: 100dvh !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: rgba(0, 0, 0, 0.45) !important;
+        backdrop-filter: blur(4px) !important;
+        -webkit-backdrop-filter: blur(4px) !important;
+        z-index: 10002 !important;
+        padding: 10px !important;
+        box-sizing: border-box !important;
+        pointer-events: auto !important;
+      }
+      div[class*="VOzbGW_panel"] {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: 92dvh !important;
+        max-height: 92dvh !important;
+        display: flex !important;
+        flex-direction: row !important;
+        border-radius: 18px !important;
+        overflow: hidden !important;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25) !important;
+        background: var(--dsw-alias-bg-layer-1, #ffffff) !important;
+      }
+      nav[class*="VOzbGW_nav"] {
+        width: 78px !important;
+        min-width: 78px !important;
+        max-width: 78px !important;
+        padding: 10px 4px !important;
+        box-sizing: border-box !important;
+        border-right: 1px solid var(--dsw-alias-border-l2, #e5e7eb) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 6px !important;
+        overflow-y: auto !important;
+      }
+      nav[class*="VOzbGW_nav"] button[class*="VOzbGW_navCell"],
+      button[class*="VOzbGW_navCell"] {
+        padding: 8px 2px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
+        height: auto !important;
+        min-height: 48px !important;
+        gap: 4px !important;
+        border-radius: 10px !important;
+      }
+      span[class*="VOzbGW_navLabel"] {
+        font-size: 10.5px !important;
+        line-height: 1.2 !important;
+        white-space: normal !important;
+        word-break: break-all !important;
+        text-align: center !important;
+      }
+      div[class*="VOzbGW_content"] {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        width: calc(100% - 78px) !important;
+        max-width: calc(100% - 78px) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+      }
+      div[class*="VOzbGW_options"] {
+        flex: 1 1 auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        padding: 0 14px 20px !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+      }
+
+      /* \u8BBE\u7F6E\u4E2D\u5FC3\u9009\u9879\u884C\u624B\u673A\u81EA\u9002\u5E94\uFF08\u5782\u76F4\u6D41\u5F0F\uFF0C\u9632\u6587\u5B57\u5355\u5B57\u6298\u884C\uFF09 */
+      div[class*="VOzbGW_options"] div[class*="_row"] {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+        width: 100% !important;
+        padding: 12px 0 !important;
+        box-sizing: border-box !important;
+      }
+      div[class*="VOzbGW_options"] div[class*="_rowText"] {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+      div[class*="VOzbGW_options"] button[class*="_selector"],
+      div[class*="VOzbGW_options"] select,
+      div[class*="VOzbGW_options"] input {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+      }
+
+      /* 7. \u4EE3\u7801\u5757\u3001\u8868\u683C\u4E0E\u5FBD\u6807\u81EA\u9002\u5E94 */
+      pre, code, pre > code, table {
+        max-width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        font-size: 12.5px !important;
+      }
+
+      /* \u72B6\u6001\u5FBD\u6807\u4E0E\u836F\u4E38\u6309\u94AE\u6C38\u4E0D\u6298\u5B57 */
+      span[style*="border-radius: 999"],
+      span[style*="border-radius:999"] {
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+        min-width: max-content !important;
+      }
+
+      /* \u4E8C\u7EF4\u7801\u4E0E\u56FE\u7247\u79FB\u52A8\u7AEF\u5F39\u6027\u7F29\u653E */
+      img[alt="QR"], img[src^="data:image"] {
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+      }
+
+      /* 8. \u786E\u4FDD\u6240\u6709 Popover \u5F39\u51FA\u83DC\u5355\u3001\u64CD\u4F5C\u6C14\u6CE1\u3001\u4E0B\u62C9\u6846\u4F4D\u4E8E\u62BD\u5C49\u4E4B\u4E0A\u4E14\u652F\u6301\u89E6\u63A7\u4EA4\u4E92 */
+      div[class*="_portal"],
+      div[class*="portal"],
+      div[class*="popup"],
+      div[class*="dropdown"],
+      div[class*="menu"],
+      div[role="menu"],
+      div[role="dialog"] {
+        z-index: 10005 !important;
+        pointer-events: auto !important;
+      }
+
+      /* 9. \u79FB\u52A8\u7AEF\u4FA7\u8FB9\u680F\uFF1A\u4F1A\u8BDD\u4E0E\u5DE5\u4F5C\u533A\u4E09\u70B9\u64CD\u4F5C\u6309\u94AE\u59CB\u7EC8\u6E05\u6670\u53EF\u89C1\u4E14\u6613\u4E8E\u70B9\u51FB */
+      div[class*="sessionRow"] span[class*="rowActions"],
+      div[class*="sessionRow"] button[class*="iconButton"],
+      div[class*="treeBody"] button[class*="iconButton"] {
+        opacity: 0.8 !important;
+        display: inline-flex !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+      }
+      div[class*="sessionRow"]:active {
+        background: var(--dsw-alias-bg-layer-2, #f3f4f6) !important;
+      }
+
+      /* \u5168\u5C40 overlayLayer \u7EDD\u4E0D\u88AB\u67D3\u9ED1 */
+      div[class*="overlayLayer"],
+      div[class*="uV2eYG_overlayAnchor"] {
+        background: transparent !important;
+        pointer-events: none !important;
+      }
+      div[class*="overlayLayer"] > * {
+        pointer-events: auto !important;
+      }
+    }
+
+    @media (min-width: 769px) {
+      .dsh-mobile-app-header,
+      .dsh-mobile-backdrop {
+        display: none !important;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+function setupMobileExperience() {
+  if (typeof document === "undefined" || typeof window === "undefined") return;
+  injectMobileStyles();
+  let header = document.querySelector(".dsh-mobile-app-header");
+  if (!header) {
+    header = document.createElement("header");
+    header.className = "dsh-mobile-app-header";
+    const leftBtn = document.createElement("button");
+    leftBtn.className = "dsh-header-menu-btn";
+    leftBtn.title = "\u6253\u5F00\u83DC\u5355";
+    leftBtn.innerHTML = `
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+        <line x1="3" y1="8" x2="21" y2="8"></line>
+        <line x1="3" y1="15" x2="14" y2="15"></line>
+      </svg>
+    `;
+    leftBtn.onclick = () => {
+      const isOpen = document.body.classList.toggle("dsh-drawer-open");
+      if (isOpen) {
+        const collapsedToggle = document.querySelector('div[class*="hHd-Xa_collapsed"] button[class*="hHd-Xa_toggle"]');
+        if (collapsedToggle) collapsedToggle.click();
+      }
+    };
+    const rightBtn = document.createElement("button");
+    rightBtn.className = "dsh-header-new-btn";
+    rightBtn.title = "\u65B0\u5EFA\u4F1A\u8BDD";
+    rightBtn.innerHTML = `
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9.5"></circle>
+        <line x1="12" y1="8" x2="12" y2="16"></line>
+        <line x1="8" y1="12" x2="16" y2="12"></line>
+      </svg>
+    `;
+    rightBtn.onclick = () => {
+      const dshNewBtn = document.querySelector('button[aria-label="\u65B0\u5EFA\u4F1A\u8BDD"]');
+      if (dshNewBtn) dshNewBtn.click();
+    };
+    header.appendChild(leftBtn);
+    header.appendChild(rightBtn);
+    document.body.appendChild(header);
+  }
+  let backdrop = document.querySelector(".dsh-mobile-backdrop");
+  if (!backdrop) {
+    backdrop = document.createElement("div");
+    backdrop.className = "dsh-mobile-backdrop";
+    backdrop.addEventListener("click", () => {
+      document.body.classList.remove("dsh-drawer-open");
+    });
+    document.body.appendChild(backdrop);
+  }
+  let lastLongPressTime = 0;
+  document.addEventListener("click", (e) => {
+    if (!document.body.classList.contains("dsh-drawer-open")) return;
+    if (Date.now() - lastLongPressTime < 600) {
+      e.stopPropagation();
+      e.preventDefault();
+      return;
+    }
+    if (e.target.closest('div[class*="portal"], div[class*="_portal"], div[role="menu"], div[role="dialog"], div[class*="popup"], div[class*="dropdown"], div[class*="overlay"]')) {
+      return;
+    }
+    const sidebar = document.querySelector('div[class*="_sidebarCol"]');
+    if (sidebar && sidebar.contains(e.target)) {
+      if (e.target.closest('input, select, textarea, div[class*="searchInput"]')) {
+        return;
+      }
+      const btn = e.target.closest('button, [role="button"]');
+      if (btn) {
+        const label = btn.getAttribute("aria-label") || btn.innerText || "";
+        if (label.includes("\u64CD\u4F5C") || label.includes("\u89C6\u56FE") || label.includes("\u6DFB\u52A0") || label.includes("\u641C\u7D22") || label.includes("\u8BBE\u7F6E") || btn.matches('button[class*="toggle"], button[class*="trigger"], button[class*="iconButton"], button[class*="searchButton"]')) {
+          return;
+        }
+        if (label.includes("\u65B0\u4F1A\u8BDD") || btn.matches('button[class*="newSession"]')) {
+          document.body.classList.remove("dsh-drawer-open");
+          return;
+        }
+      }
+      const sessionRow = e.target.closest('div[class*="sessionRow"], div[role="treeitem"]');
+      if (sessionRow) {
+        document.body.classList.remove("dsh-drawer-open");
+      }
+    }
+  }, true);
+  let longPressTimer = null;
+  let touchStartX = 0;
+  let touchStartY = 0;
+  window.addEventListener("touchstart", (e) => {
+    if (e.touches && e.touches.length > 0) {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }
+    if (!document.body.classList.contains("dsh-drawer-open")) return;
+    const sidebar = document.querySelector('div[class*="_sidebarCol"]');
+    if (!sidebar || !sidebar.contains(e.target)) return;
+    const sessionRow = e.target.closest('div[class*="sessionRow"], div[role="treeitem"]');
+    if (!sessionRow) return;
+    longPressTimer = setTimeout(() => {
+      lastLongPressTime = Date.now();
+      try {
+        if (navigator.vibrate) navigator.vibrate(40);
+      } catch (_) {
+      }
+      const actionBtn = sessionRow.querySelector('button[aria-label*="\u64CD\u4F5C"], button[class*="iconButton"], button');
+      if (actionBtn) {
+        actionBtn.click();
+      }
+    }, 380);
+  }, { passive: true });
+  window.addEventListener("touchmove", (e) => {
+    if (longPressTimer && e.touches && e.touches.length > 0) {
+      const moveX = Math.abs(e.touches[0].clientX - touchStartX);
+      const moveY = Math.abs(e.touches[0].clientY - touchStartY);
+      if (moveX > 10 || moveY > 10) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+    }
+  }, { passive: true });
+  window.addEventListener("touchend", (e) => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+    if (!e.changedTouches || e.changedTouches.length === 0) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartX;
+    const deltaY = e.changedTouches[0].clientY - touchStartY;
+    if (Math.abs(deltaX) > 60 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+      if (deltaX > 0 && touchStartX <= 35) {
+        document.body.classList.add("dsh-drawer-open");
+        const collapsedToggle = document.querySelector('div[class*="hHd-Xa_collapsed"] button[class*="hHd-Xa_toggle"]');
+        if (collapsedToggle) collapsedToggle.click();
+      } else if (deltaX < 0 && document.body.classList.contains("dsh-drawer-open")) {
+        document.body.classList.remove("dsh-drawer-open");
+      }
+    }
+  }, { passive: true });
+}
 function apply(ctx) {
+  setupMobileExperience();
   const rpcCall = (endpoint, payload, signal) => ctx.connection.rpc.call(BRIDGE_RPC_CHANNEL, endpoint, payload, signal);
   ctx.slots.inject(
     "settings.section",

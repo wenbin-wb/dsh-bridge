@@ -41,6 +41,7 @@
   - **2nd Line of Defense (Admin Console Guard)**: Separated administrator password and visitor password; global console lockout for remote devices to prevent unauthorized configuration changes (Password Unlock / Local Host Only / Open);
   - **Fail-safe Recovery System (Triple Protection)**: Host machine (`127.0.0.1`) enjoys permanent physical privileges (never locked out) + terminal command `touch ~/.dsh/dsh-bridge/reset-auth` for instant emergency recovery + built-in "Forgot Password" guides;
   - **Financial-grade Security Engine**: PBKDF2 + SHA-256 salted password hashing, 30-day HttpOnly SameSite session protection, IP brute-force rate limiter (5 failed attempts trigger 60s cooldown).
+- **📱 Mobile Browser & Touch Adaptation**: Specially crafted layout for smartphone viewports. Clean header with drawer & quick-new button, touch gestures, and responsive settings cards without text-wrapping issues
 - **LAN Access**: Scan QR code with your smartphone/tablet, direct access on the same Wi-Fi — keep the conversation going from your phone
 - **Cloudflare Tunnel**: One-click public internet exposure, connect from anywhere without a public server of your own — keep working even when you're away from home
 - **Custom Tunnel**: Connect to your own tunnel server with a fixed domain ([Setup Guide](docs/custom-tunnel.md))
@@ -103,8 +104,8 @@ npm install -g @deepseek-ai/dsh
 # Install the latest version
 dsh plugin --profile web add @wenbin_wb/dsh-bridge
 
-# Or install a specific version (e.g. 2.5.5)
-dsh plugin --profile web add @wenbin_wb/dsh-bridge@2.5.5
+# Or install a specific version (e.g. 2.6.0)
+dsh plugin --profile web add @wenbin_wb/dsh-bridge@2.6.0
 ```
 
 > 💡 **No global install permission?** Use `npx`:
@@ -199,6 +200,34 @@ Go to Settings -> "Remote Access" -> "**Security**" tab to enable enterprise-gra
 
 ---
 
+### 📱 Mobile Browser & Touch Adaptation
+
+Deeply tailored for smartphone screens and touch gestures, providing a clean and intuitive mobile experience via LAN or public tunnels without installing extra client apps:
+
+- **Minimalist Top Navigation**: Left drawer toggle and right `(+)` quick-new session button, keeping the screen clean and content-focused;
+- **Native Sidebar Drawer**: Full access to DSH session history, workspace folders, search, view options, and session actions;
+- **Fluid Responsive Settings**: Redesigned settings layout with vertical flow, auto-scaling QR codes, and tag badges without cramped word wrapping;
+- **Touch Gesture Support**: Swipe right from the left edge (<=35px) to open the drawer, swipe left to dismiss, and **long-press on any session item to bring up context actions** (Rename/Fork/Archive).
+
+#### Chat & Session Experience
+
+<p align="center">
+  <img src="docs/screenshots/remote-web-mobile.jpg" width="32%" alt="Mobile New Session Home" />
+  <img src="docs/screenshots/mobile-chat.jpg" width="32%" alt="Mobile Active Chat View" />
+  <img src="docs/screenshots/mobile-drawer.jpg" width="32%" alt="Mobile Native Sidebar Drawer" />
+</p>
+
+#### Remote Access & Plugin Settings Console
+
+<p align="center">
+  <img src="docs/screenshots/mobile-settings-lan.jpg" width="24%" alt="LAN Access Console" />
+  <img src="docs/screenshots/mobile-settings-tunnel.jpg" width="24%" alt="Public Tunnel Settings" />
+  <img src="docs/screenshots/mobile-settings-im.jpg" width="24%" alt="IM Bot Platforms" />
+  <img src="docs/screenshots/mobile-settings-security.jpg" width="24%" alt="Global Access Security" />
+</p>
+
+---
+
 ### LAN Access
 
 Automatically active when the plugin starts, zero configuration needed. Open Settings -> "Remote Access", and scan the QR code with your phone.
@@ -213,14 +242,6 @@ Automatically active when the plugin starts, zero configuration needed. Open Set
 4. The URL changes on each restart; click "Reset URL" to request a new URL
 
 ![Public Tunnel Settings](docs/screenshots/tunnel-access.jpg)
-
-<details>
-  <summary>📱 Click to expand mobile browser public access screenshot</summary>
-  <br/>
-  <p align="center">
-    <img src="docs/screenshots/remote-web-mobile.jpg" width="340" alt="Mobile Public Access Demo" />
-  </p>
-</details>
 
 ### Custom Tunnel
 
