@@ -103,8 +103,8 @@ npm install -g @deepseek-ai/dsh
 # Install the latest version
 dsh plugin --profile web add @wenbin_wb/dsh-bridge
 
-# Or specify a version (e.g. 2.5.0)
-dsh plugin --profile web add @wenbin_wb/dsh-bridge@2.5.0
+# Or install a specific version (e.g. 2.5.4)
+dsh plugin --profile web add @wenbin_wb/dsh-bridge@2.5.4
 ```
 
 > 💡 **No global install permission?** Use `npx`:

@@ -1,6 +1,6 @@
 {
   "name": "@wenbin_wb/dsh-bridge",
-  "version": "2.5.3",
+  "version": "2.5.4",
   "description": "手机扫码即可在移动端/公网继续用 DeepSeek Harness，人不在电脑前也能接着干。一键局域网二维码、Cloudflare 公网隧道、自建隧道与微信 / QQ / 飞书 / Telegram Bot（多工作区/会话持久化/媒体/卡片审批/流式输出），无需自己搭公网服务器。",
   "type": "module",
   "main": "lib/index.js",
@@ -28,17 +28,23 @@
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
-    "@deepseek-ai/dsh-llm": "0.1.0-rc.6",
     "qrcode": "^1.5.3",
     "ws": "^8.18.0"
   },
   "devDependencies": {
+    "@deepseek-ai/dsh-llm": "0.1.0-rc.6",
     "@larksuiteoapi/node-sdk": "^1.73.0",
     "esbuild": "^0.25.9",
     "puppeteer-core": "^25.8.0"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "^4.0.1"
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-llm": ">=0.1.0-rc.6"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-llm": {
+      "optional": true
+    }
   },
   "engines": {
     "node": "^22.19.0 || >=24.0.0"
