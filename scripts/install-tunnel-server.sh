@@ -141,6 +141,17 @@ if $need_node; then
   [ "$VER" -ge 18 ] && ok "Node.js $(node -v) 安装完成" || die "Node.js 安装失败"
 fi
 
+if ! command -v npm &>/dev/null; then
+  info "安装 npm..."
+  if command -v apt-get &>/dev/null; then
+    apt-get update -qq &>/dev/null && apt-get install -y npm &>/dev/null || true
+  elif command -v dnf &>/dev/null; then
+    dnf install -y npm &>/dev/null || true
+  elif command -v yum &>/dev/null; then
+    yum install -y npm &>/dev/null || true
+  fi
+fi
+
 # ── 3/4 部署服务端 ───────────────────────────────────────────────────────────
 step "3/4  部署服务端"
 
@@ -392,7 +403,12 @@ cat > "$INSTALL_DIR/package.json" << 'EOF'
 EOF
 
 info "安装依赖（ws）..."
-cd "$INSTALL_DIR" && npm install ws --save --loglevel=error &>/dev/null
+cd "$INSTALL_DIR"
+if ! npm install ws --save --registry=https://registry.npmmirror.com --loglevel=error &>/dev/null; then
+  if ! npm install ws --save --loglevel=error &>/dev/null; then
+    npm install ws --save --registry=https://registry.npmmirror.com || die "依赖 ws 安装失败，请检查服务器网络连接与 npm 环境"
+  fi
+fi
 ok "依赖安装完成"
 
 # ── systemd ──────────────────────────────────────────────────────────────────
