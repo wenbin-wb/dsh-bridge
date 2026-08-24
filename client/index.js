@@ -1,5 +1,26 @@
 // dsh-bridge 客户端插件：设置页「远程访问」面板
 
+// 兼容非 HTTPS 环境（如手机局域网 HTTP 访问）：为非安全上下文补齐 crypto.randomUUID
+if (typeof window !== 'undefined') {
+  if (!window.crypto) {
+    window.crypto = {};
+  }
+  if (!window.crypto.randomUUID) {
+    window.crypto.randomUUID = function() {
+      if (typeof window.crypto.getRandomValues === 'function') {
+        return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, function(c) {
+          return (c ^ window.crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> (c / 4)).toString(16);
+        });
+      }
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = (Math.random() * 16) | 0;
+        var v = c === 'x' ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      });
+    };
+  }
+}
+
 import { BRIDGE_RPC_CHANNEL, BRIDGE_ENDPOINTS } from '../lib/bridge-rpc-constants.js';
 
 const GITHUB_URL = 'https://github.com/wenbin-wb/dsh-bridge';
@@ -1624,15 +1645,63 @@ function BridgePanel({ rpcCall }) {
   const [unlockErr, setUnlockErr]         = React.useState(null);
   const [unlocking, setUnlocking]         = React.useState(false);
   const [showForgotGuide, setShowForgotGuide] = React.useState(false);
+  const [showUnlockModal, setShowUnlockModal] = React.useState(false);
 
-  const authRpcCall = React.useCallback((endpoint, payload = {}, signal) => {
+  // 本机物理访问自动静默获取 adminToken，免输密码直通管理（支持 3080 原生端口与 3082 代理端口）
+  const fetchLoopbackToken = React.useCallback(async () => {
+    if (!isLocalhost) return null;
+    const currentPort = typeof window !== 'undefined' ? (window.location.port || (window.location.protocol === 'https:' ? '443' : '80')) : '3082';
+    const proxyPort = status?.proxy?.port || 3082;
+    const candidateUrls = [
+      '/__dsh_bridge__/loopback-token',
+      `http://127.0.0.1:${proxyPort}/__dsh_bridge__/loopback-token`,
+      `http://localhost:${proxyPort}/__dsh_bridge__/loopback-token`,
+      'http://127.0.0.1:3082/__dsh_bridge__/loopback-token',
+    ];
+    const uniqueUrls = [...new Set(candidateUrls)];
+
+    for (const url of uniqueUrls) {
+      try {
+        const res = await fetch(url, { method: 'POST' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.ok && data.adminToken) {
+            setAdminToken(data.adminToken);
+            setAdminUnlocked(true);
+            return data.adminToken;
+          }
+        }
+      } catch {}
+    }
+    return null;
+  }, [isLocalhost, status?.proxy?.port]);
+
+  React.useEffect(() => {
+    if (isLocalhost && !adminUnlocked) {
+      fetchLoopbackToken();
+    }
+  }, [isLocalhost, adminUnlocked, fetchLoopbackToken]);
+
+  const authRpcCall = React.useCallback(async (endpoint, payload = {}, signal) => {
+    let token = adminToken;
+    if (isLocalhost && !token) {
+      token = await fetchLoopbackToken();
+    }
     const enriched = {
       ...payload,
-      ...(adminToken ? { adminToken } : {}),
+      ...(token ? { adminToken: token } : {}),
       ...(isLocalhost ? { isLocalhost: true } : {}),
     };
-    return rpcCall(endpoint, enriched, signal);
-  }, [rpcCall, adminToken, isLocalhost]);
+    const res = await rpcCall(endpoint, enriched, signal);
+    if (res?.ok === false) {
+      const msg = res?.error?.message || '';
+      if (msg.includes('管理员权限') || msg.includes('管理密码解锁')) {
+        setUnlockErr(msg);
+        setShowUnlockModal(true);
+      }
+    }
+    return res;
+  }, [rpcCall, adminToken, isLocalhost, fetchLoopbackToken]);
 
   const handleUnlockAdmin = React.useCallback(async (e) => {
     e?.preventDefault?.();
@@ -1644,6 +1713,8 @@ function BridgePanel({ rpcCall }) {
         setAdminToken(res.value?.adminToken || '');
         setAdminUnlocked(true);
         setUnlockPassword('');
+        setShowUnlockModal(false);
+        setErr(null);
       } else {
         setUnlockErr(res?.error?.message || '管理员密码错误');
       }
@@ -1967,11 +2038,36 @@ function BridgePanel({ rpcCall }) {
     );
   }
 
-  return React.createElement('div', { style: { maxWidth: 620 } },
-    err && React.createElement('div', {
-      style: { ...s.card, background: 'var(--dsw-alias-state-error-bg,#fef2f2)', color: 'var(--dsw-alias-state-error-primary,#dc2626)', fontSize: 13, marginBottom: 16 },
-    }, err),
+  const isInterceptionErr = err && (err.includes('管理员权限') || err.includes('管理密码解锁'));
 
+  return React.createElement('div', { style: { maxWidth: 620, position: 'relative' } },
+    // 错误横幅（如果是权限拦截，直接提供醒目的输入密码解锁按钮）
+    err && React.createElement('div', {
+      style: {
+        ...s.card,
+        background: 'var(--dsw-alias-state-error-bg,#fef2f2)',
+        color: 'var(--dsw-alias-state-error-primary,#dc2626)',
+        fontSize: 13,
+        marginBottom: 16,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 10,
+      },
+    },
+      React.createElement('span', { style: { flex: '1 1 auto' } }, err),
+      isInterceptionErr && React.createElement('button', {
+        type: 'button',
+        style: { ...s.btnPri, background: '#dc2626', color: '#ffffff', height: 26, fontSize: 12, padding: '0 10px', flexShrink: 0 },
+        onClick: () => {
+          setUnlockErr(err);
+          setShowUnlockModal(true);
+        },
+      }, '🔑 立即输入管理密码解锁'),
+    ),
+
+    // 管理员解锁状态提示条
     !isLocalhost && adminUnlocked && React.createElement('div', {
       style: {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -1987,11 +2083,90 @@ function BridgePanel({ rpcCall }) {
       }, '🔒 重新锁定后台'),
     ),
 
+    // 未解锁时的顶部引导条
+    !isLocalhost && !adminUnlocked && auth?.enabled && policy !== 'open' && React.createElement('div', {
+      style: {
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '8px 14px', background: 'var(--dsw-alias-state-warn-bg,#fffbeb)',
+        border: '1px solid var(--dsw-alias-state-warn-border,#fde68a)', borderRadius: 8,
+        marginBottom: 14, fontSize: 12, color: 'var(--dsw-alias-state-warn-primary,#92400e)',
+      },
+    },
+      React.createElement('span', null, '🔒 后台管理权限未解锁（修改敏感配置需先解锁）'),
+      React.createElement('button', {
+        type: 'button',
+        style: { ...s.btnPri, height: 24, fontSize: 11, padding: '0 10px', background: '#d97706' },
+        onClick: () => setShowUnlockModal(true),
+      }, '🔑 解锁管理权限'),
+    ),
+
     React.createElement(VersionBanner, { rpcCall: authRpcCall }),
 
     React.createElement(TabBar, { active: activeTab, onChange: setActiveTab, dots }),
 
     tabContent,
+
+    // 全局交互式解锁弹窗 Modal
+    showUnlockModal && React.createElement('div', {
+      style: {
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 99999,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+      },
+      onClick: (e) => { if (e.target === e.currentTarget) setShowUnlockModal(false); },
+    },
+      React.createElement('div', {
+        style: {
+          background: 'var(--dsw-alias-bg-layer-1,#ffffff)', borderRadius: 14,
+          padding: '24px 24px', maxWidth: 420, width: '100%',
+          boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)', border: '1px solid var(--dsw-alias-border-l2,#e5e7eb)',
+        },
+      },
+        React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 } },
+          React.createElement('div', { style: { fontSize: 16, fontWeight: 600, color: 'var(--dsw-alias-label-primary,currentColor)', display: 'flex', alignItems: 'center', gap: 8 } },
+            '🔒 解锁后台管理权限'
+          ),
+          React.createElement('button', {
+            type: 'button',
+            style: { border: 'none', background: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--dsw-alias-label-tertiary,#9ca3af)', padding: 0 },
+            onClick: () => setShowUnlockModal(false),
+          }, '✕'),
+        ),
+        React.createElement('div', { style: { fontSize: 13, color: 'var(--dsw-alias-label-secondary,#4b5563)', marginBottom: 16, lineHeight: 1.5 } },
+          '当前操作需要后台管理员权限。为保护您的网络配置与机器人平台安全，请输入管理密码解锁：'
+        ),
+        React.createElement('form', {
+          onSubmit: handleUnlockAdmin,
+          style: { display: 'flex', flexDirection: 'column', gap: 12 },
+        },
+          React.createElement('input', {
+            type: 'password',
+            style: s.input,
+            placeholder: '请输入后台管理密码',
+            value: unlockPassword,
+            onChange: (e) => setUnlockPassword(e.target.value),
+            autoFocus: true,
+          }),
+          unlockErr && React.createElement('div', {
+            style: { fontSize: 12, color: 'var(--dsw-alias-state-error-primary,#dc2626)' },
+          }, unlockErr),
+          React.createElement('div', { style: { display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 } },
+            React.createElement('button', {
+              type: 'button',
+              style: s.btnGhost,
+              onClick: () => setShowUnlockModal(false),
+            }, '取消'),
+            React.createElement('button', {
+              type: 'submit',
+              style: { ...s.btnPri, background: '#4f6ef7', color: '#fff' },
+              disabled: unlocking || !unlockPassword,
+            }, unlocking ? '验证中…' : '立即解锁'),
+          ),
+        ),
+        React.createElement('div', { style: { marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--dsw-alias-border-l2,#f3f4f6)', fontSize: 11, color: 'var(--dsw-alias-label-tertiary,#9ca3af)', textAlign: 'center', lineHeight: 1.5 } },
+          '💡 提示：若未单独配置管理密码，请输入初次设置的访问密码；电脑本机（127.0.0.1）访问享有免密管理特权。'
+        ),
+      ),
+    ),
   );
 }
 

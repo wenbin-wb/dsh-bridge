@@ -163,12 +163,28 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
   - 🎫 **仅专属 Token 免密**：仅允许通过控制台生成的二维码或带 Token 的专属链接进入。
 - **一键轮换凭据**：点击「🔄 重置安全 Token」即可使之前分享的旧二维码和链接立即全部失效。
 
+<details>
+  <summary>📱 点击展开外部访问安全认证登录页截图</summary>
+  <br/>
+  <p align="center">
+    <img src="docs/screenshots/remote-auth-login.jpg" width="600" alt="外部访问安全认证登录页" />
+  </p>
+</details>
+
 #### 2. 🔒 第二道防线：管理后台防篡改（保护谁能改插件设置）
 - **独立管理员密码**：访客访问密码与管理控制密码彻底分离，即使将访问密码告诉外部朋友，对方也无法查看或篡改您的插件设置；
 - **三种后台权限策略**：
   - 🔑 **需密码解锁 (默认推荐)**：远程设备进入控制台时全屏锁定，输入管理密码后解锁临时会话；
   - 🛡️ **仅限电脑本机管理 (最高安全)**：远程设备一律禁止查看与修改任何网络、机器人配置与 Token，仅允许在电脑本机（`127.0.0.1`）操作；
   - 🌐 **宽松模式**：允许通过访客认证的远程设备直接管理。
+
+<details>
+  <summary>🖥️ 点击展开远程设备管理控制台防篡改锁定截图</summary>
+  <br/>
+  <p align="center">
+    <img src="docs/screenshots/admin-lock-screen.jpg" width="600" alt="管理控制台防篡改锁定" />
+  </p>
+</details>
 
 #### 3. 🛟 三重容灾保命体系（永不自锁）
 - **物理机免密直通**：运行 DSH 的宿主电脑（`127.0.0.1` / `localhost`）享有全局最高物理特权，**永不要求输入访问密码，设置面板永不会被锁定**；
@@ -197,6 +213,14 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 4. 每次重启后 URL 会变化；点「重置链接」可主动获取新 URL
 
 ![公网隧道配置](docs/screenshots/tunnel-access.jpg)
+
+<details>
+  <summary>📱 点击展开手机公网访问 DeepSeek Harness 效果截图</summary>
+  <br/>
+  <p align="center">
+    <img src="docs/screenshots/remote-web-mobile.jpg" width="340" alt="手机公网访问 DeepSeek Harness 效果" />
+  </p>
+</details>
 
 ### 自建隧道
 
@@ -425,8 +449,6 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 ```bash
 git clone https://github.com/wenbin-wb/dsh-bridge.git
 cd dsh-bridge
-npm install
-
 # 修改 client/index.js 后重新构建
 npm run build:client
 
@@ -436,6 +458,37 @@ dsh plugin --profile web add .
 
 ---
 
+## 常见问题 (FAQ)
+
+<details>
+  <summary><b>Q1: 远程或局域网访问时提示「加载提供方目录失败: settings are unavailable in this browser」？</b></summary>
+  <br/>
+
+  - **原因**：这是 DeepSeek Harness (DSH) 官方底层的安全机制。为了防止网络上的恶意设备窃取用户的 API Key 与模型凭据，DSH 将模型 Provider/Credentials 配置接口严格限制为仅限本地回环（`127.0.0.1`）调用。
+  - **建议**：
+    1. **推荐使用方式**：在电脑本机（`127.0.0.1:3080`）一次性配置好模型与 API Key，之后在手机端/远程设备可以 100% 正常创建会话、聊天与指挥 Agent 干活；
+    2. **公网隧道访问**：使用插件自带的 Cloudflare 隧道（`https://*.trycloudflare.com`，自带 HTTPS 安全上下文）可获得最好的兼容性；
+    3. **SSH 端口转发**：如需在手机端修改 API 配置，可通过 SSH 隧道（`ssh -L 3082:127.0.0.1:3082 user@ip`）映射为本地 localhost 访问。
+</details>
+
+<details>
+  <summary><b>Q2: 远程访问时修改配置提示「需要管理员权限」或被锁定？</b></summary>
+  <br/>
+
+  - **原因**：插件内置了「管理后台防篡改」安全保护，防止外部访客窥探或篡改您的公网隧道和机器人 Token。
+  - **解决方法**：
+    1. 在弹出的「🔒 解锁后台管理权限」对话框中输入您设置的后台管理密码即可解锁（若未单独设置管理密码，请输入初始访问密码）；
+    2. **电脑本机（127.0.0.1）访问享有物理免锁特权**，自动免密直通；
+    3. 若极端情况下忘记密码，在服务器/宿主电脑终端执行单行救急指令：
+       ```bash
+       touch ~/.dsh/dsh-bridge/reset-auth
+       ```
+       插件将在毫秒级自动清空密码恢复初始免密状态。
+</details>
+
+---
+
 ## 许可证
 
 MIT © [wenbin-wb](https://github.com/wenbin-wb)
+

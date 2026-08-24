@@ -68,6 +68,25 @@ var BRIDGE_ENDPOINTS = {
 };
 
 // client/index.js
+if (typeof window !== "undefined") {
+  if (!window.crypto) {
+    window.crypto = {};
+  }
+  if (!window.crypto.randomUUID) {
+    window.crypto.randomUUID = function() {
+      if (typeof window.crypto.getRandomValues === "function") {
+        return ("10000000-1000-4000-8000" + -1e11).replace(/[018]/g, function(c) {
+          return (c ^ window.crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16);
+        });
+      }
+      return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) {
+        var r = Math.random() * 16 | 0;
+        var v = c === "x" ? r : r & 3 | 8;
+        return v.toString(16);
+      });
+    };
+  }
+}
 var GITHUB_URL = "https://github.com/wenbin-wb/dsh-bridge";
 var RELEASES_URL = "https://github.com/wenbin-wb/dsh-bridge/releases";
 var ISSUES_URL = "https://github.com/wenbin-wb/dsh-bridge/issues/new";
@@ -1830,14 +1849,59 @@ function BridgePanel({ rpcCall }) {
   const [unlockErr, setUnlockErr] = React.useState(null);
   const [unlocking, setUnlocking] = React.useState(false);
   const [showForgotGuide, setShowForgotGuide] = React.useState(false);
-  const authRpcCall = React.useCallback((endpoint, payload = {}, signal) => {
+  const [showUnlockModal, setShowUnlockModal] = React.useState(false);
+  const fetchLoopbackToken = React.useCallback(async () => {
+    if (!isLocalhost) return null;
+    const currentPort = typeof window !== "undefined" ? window.location.port || (window.location.protocol === "https:" ? "443" : "80") : "3082";
+    const proxyPort = status?.proxy?.port || 3082;
+    const candidateUrls = [
+      "/__dsh_bridge__/loopback-token",
+      `http://127.0.0.1:${proxyPort}/__dsh_bridge__/loopback-token`,
+      `http://localhost:${proxyPort}/__dsh_bridge__/loopback-token`,
+      "http://127.0.0.1:3082/__dsh_bridge__/loopback-token"
+    ];
+    const uniqueUrls = [...new Set(candidateUrls)];
+    for (const url of uniqueUrls) {
+      try {
+        const res = await fetch(url, { method: "POST" });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.ok && data.adminToken) {
+            setAdminToken(data.adminToken);
+            setAdminUnlocked(true);
+            return data.adminToken;
+          }
+        }
+      } catch {
+      }
+    }
+    return null;
+  }, [isLocalhost, status?.proxy?.port]);
+  React.useEffect(() => {
+    if (isLocalhost && !adminUnlocked) {
+      fetchLoopbackToken();
+    }
+  }, [isLocalhost, adminUnlocked, fetchLoopbackToken]);
+  const authRpcCall = React.useCallback(async (endpoint, payload = {}, signal) => {
+    let token = adminToken;
+    if (isLocalhost && !token) {
+      token = await fetchLoopbackToken();
+    }
     const enriched = {
       ...payload,
-      ...adminToken ? { adminToken } : {},
+      ...token ? { adminToken: token } : {},
       ...isLocalhost ? { isLocalhost: true } : {}
     };
-    return rpcCall(endpoint, enriched, signal);
-  }, [rpcCall, adminToken, isLocalhost]);
+    const res = await rpcCall(endpoint, enriched, signal);
+    if (res?.ok === false) {
+      const msg = res?.error?.message || "";
+      if (msg.includes("\u7BA1\u7406\u5458\u6743\u9650") || msg.includes("\u7BA1\u7406\u5BC6\u7801\u89E3\u9501")) {
+        setUnlockErr(msg);
+        setShowUnlockModal(true);
+      }
+    }
+    return res;
+  }, [rpcCall, adminToken, isLocalhost, fetchLoopbackToken]);
   const handleUnlockAdmin = React.useCallback(async (e) => {
     e?.preventDefault?.();
     setUnlocking(true);
@@ -1848,6 +1912,8 @@ function BridgePanel({ rpcCall }) {
         setAdminToken(res.value?.adminToken || "");
         setAdminUnlocked(true);
         setUnlockPassword("");
+        setShowUnlockModal(false);
+        setErr(null);
       } else {
         setUnlockErr(res?.error?.message || "\u7BA1\u7406\u5458\u5BC6\u7801\u9519\u8BEF");
       }
@@ -2204,12 +2270,38 @@ function BridgePanel({ rpcCall }) {
       )
     );
   }
+  const isInterceptionErr = err && (err.includes("\u7BA1\u7406\u5458\u6743\u9650") || err.includes("\u7BA1\u7406\u5BC6\u7801\u89E3\u9501"));
   return React.createElement(
     "div",
-    { style: { maxWidth: 620 } },
-    err && React.createElement("div", {
-      style: { ...s.card, background: "var(--dsw-alias-state-error-bg,#fef2f2)", color: "var(--dsw-alias-state-error-primary,#dc2626)", fontSize: 13, marginBottom: 16 }
-    }, err),
+    { style: { maxWidth: 620, position: "relative" } },
+    // 错误横幅（如果是权限拦截，直接提供醒目的输入密码解锁按钮）
+    err && React.createElement(
+      "div",
+      {
+        style: {
+          ...s.card,
+          background: "var(--dsw-alias-state-error-bg,#fef2f2)",
+          color: "var(--dsw-alias-state-error-primary,#dc2626)",
+          fontSize: 13,
+          marginBottom: 16,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 10
+        }
+      },
+      React.createElement("span", { style: { flex: "1 1 auto" } }, err),
+      isInterceptionErr && React.createElement("button", {
+        type: "button",
+        style: { ...s.btnPri, background: "#dc2626", color: "#ffffff", height: 26, fontSize: 12, padding: "0 10px", flexShrink: 0 },
+        onClick: () => {
+          setUnlockErr(err);
+          setShowUnlockModal(true);
+        }
+      }, "\u{1F511} \u7ACB\u5373\u8F93\u5165\u7BA1\u7406\u5BC6\u7801\u89E3\u9501")
+    ),
+    // 管理员解锁状态提示条
     !isLocalhost && adminUnlocked && React.createElement(
       "div",
       {
@@ -2232,9 +2324,122 @@ function BridgePanel({ rpcCall }) {
         onClick: handleLockAdmin
       }, "\u{1F512} \u91CD\u65B0\u9501\u5B9A\u540E\u53F0")
     ),
+    // 未解锁时的顶部引导条
+    !isLocalhost && !adminUnlocked && auth?.enabled && policy !== "open" && React.createElement(
+      "div",
+      {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "8px 14px",
+          background: "var(--dsw-alias-state-warn-bg,#fffbeb)",
+          border: "1px solid var(--dsw-alias-state-warn-border,#fde68a)",
+          borderRadius: 8,
+          marginBottom: 14,
+          fontSize: 12,
+          color: "var(--dsw-alias-state-warn-primary,#92400e)"
+        }
+      },
+      React.createElement("span", null, "\u{1F512} \u540E\u53F0\u7BA1\u7406\u6743\u9650\u672A\u89E3\u9501\uFF08\u4FEE\u6539\u654F\u611F\u914D\u7F6E\u9700\u5148\u89E3\u9501\uFF09"),
+      React.createElement("button", {
+        type: "button",
+        style: { ...s.btnPri, height: 24, fontSize: 11, padding: "0 10px", background: "#d97706" },
+        onClick: () => setShowUnlockModal(true)
+      }, "\u{1F511} \u89E3\u9501\u7BA1\u7406\u6743\u9650")
+    ),
     React.createElement(VersionBanner, { rpcCall: authRpcCall }),
     React.createElement(TabBar, { active: activeTab, onChange: setActiveTab, dots }),
-    tabContent
+    tabContent,
+    // 全局交互式解锁弹窗 Modal
+    showUnlockModal && React.createElement(
+      "div",
+      {
+        style: {
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.5)",
+          zIndex: 99999,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 16
+        },
+        onClick: (e) => {
+          if (e.target === e.currentTarget) setShowUnlockModal(false);
+        }
+      },
+      React.createElement(
+        "div",
+        {
+          style: {
+            background: "var(--dsw-alias-bg-layer-1,#ffffff)",
+            borderRadius: 14,
+            padding: "24px 24px",
+            maxWidth: 420,
+            width: "100%",
+            boxShadow: "0 20px 25px -5px rgba(0,0,0,0.2)",
+            border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)"
+          }
+        },
+        React.createElement(
+          "div",
+          { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 } },
+          React.createElement(
+            "div",
+            { style: { fontSize: 16, fontWeight: 600, color: "var(--dsw-alias-label-primary,currentColor)", display: "flex", alignItems: "center", gap: 8 } },
+            "\u{1F512} \u89E3\u9501\u540E\u53F0\u7BA1\u7406\u6743\u9650"
+          ),
+          React.createElement("button", {
+            type: "button",
+            style: { border: "none", background: "none", cursor: "pointer", fontSize: 18, color: "var(--dsw-alias-label-tertiary,#9ca3af)", padding: 0 },
+            onClick: () => setShowUnlockModal(false)
+          }, "\u2715")
+        ),
+        React.createElement(
+          "div",
+          { style: { fontSize: 13, color: "var(--dsw-alias-label-secondary,#4b5563)", marginBottom: 16, lineHeight: 1.5 } },
+          "\u5F53\u524D\u64CD\u4F5C\u9700\u8981\u540E\u53F0\u7BA1\u7406\u5458\u6743\u9650\u3002\u4E3A\u4FDD\u62A4\u60A8\u7684\u7F51\u7EDC\u914D\u7F6E\u4E0E\u673A\u5668\u4EBA\u5E73\u53F0\u5B89\u5168\uFF0C\u8BF7\u8F93\u5165\u7BA1\u7406\u5BC6\u7801\u89E3\u9501\uFF1A"
+        ),
+        React.createElement(
+          "form",
+          {
+            onSubmit: handleUnlockAdmin,
+            style: { display: "flex", flexDirection: "column", gap: 12 }
+          },
+          React.createElement("input", {
+            type: "password",
+            style: s.input,
+            placeholder: "\u8BF7\u8F93\u5165\u540E\u53F0\u7BA1\u7406\u5BC6\u7801",
+            value: unlockPassword,
+            onChange: (e) => setUnlockPassword(e.target.value),
+            autoFocus: true
+          }),
+          unlockErr && React.createElement("div", {
+            style: { fontSize: 12, color: "var(--dsw-alias-state-error-primary,#dc2626)" }
+          }, unlockErr),
+          React.createElement(
+            "div",
+            { style: { display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 4 } },
+            React.createElement("button", {
+              type: "button",
+              style: s.btnGhost,
+              onClick: () => setShowUnlockModal(false)
+            }, "\u53D6\u6D88"),
+            React.createElement("button", {
+              type: "submit",
+              style: { ...s.btnPri, background: "#4f6ef7", color: "#fff" },
+              disabled: unlocking || !unlockPassword
+            }, unlocking ? "\u9A8C\u8BC1\u4E2D\u2026" : "\u7ACB\u5373\u89E3\u9501")
+          )
+        ),
+        React.createElement(
+          "div",
+          { style: { marginTop: 14, paddingTop: 10, borderTop: "1px solid var(--dsw-alias-border-l2,#f3f4f6)", fontSize: 11, color: "var(--dsw-alias-label-tertiary,#9ca3af)", textAlign: "center", lineHeight: 1.5 } },
+          "\u{1F4A1} \u63D0\u793A\uFF1A\u82E5\u672A\u5355\u72EC\u914D\u7F6E\u7BA1\u7406\u5BC6\u7801\uFF0C\u8BF7\u8F93\u5165\u521D\u6B21\u8BBE\u7F6E\u7684\u8BBF\u95EE\u5BC6\u7801\uFF1B\u7535\u8111\u672C\u673A\uFF08127.0.0.1\uFF09\u8BBF\u95EE\u4EAB\u6709\u514D\u5BC6\u7BA1\u7406\u7279\u6743\u3002"
+        )
+      )
+    )
   );
 }
 function apply(ctx) {

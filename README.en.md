@@ -163,12 +163,28 @@ Go to Settings -> "Remote Access" -> "**Security**" tab to enable enterprise-gra
   - 🎫 **Secure Token Only**: Only devices with valid QR codes or Token links can enter.
 - **1-Click Token Rotation**: Click "🔄 Reset Security Token" to immediately invalidate all previously shared QR codes and URLs.
 
+<details>
+  <summary>📱 Click to expand visitor access login page screenshot</summary>
+  <br/>
+  <p align="center">
+    <img src="docs/screenshots/remote-auth-login.jpg" width="600" alt="Visitor Access Login Page" />
+  </p>
+</details>
+
 #### 2. 🔒 2nd Line of Defense: Admin Console Anti-Tamper Guard (Protects Plugin Settings)
 - **Separated Admin Password**: Independent administrator password decoupled from visitor password; guests with access passwords cannot tamper with tunnels, bots, or tokens;
 - **Three Admin Policies**:
   - 🔑 **Password Unlock (Recommended)**: Remote devices see a full-screen lock until the admin password is entered for a temporary session;
   - 🛡️ **Host Computer Only (Highest Security)**: Remote devices are strictly blocked from viewing or changing network/bot/security settings — management is only allowed from the physical host (`127.0.0.1`);
   - 🌐 **Open Mode**: Remote authenticated users can directly manage settings.
+
+<details>
+  <summary>🖥️ Click to expand remote admin console anti-tamper lock screenshot</summary>
+  <br/>
+  <p align="center">
+    <img src="docs/screenshots/admin-lock-screen.jpg" width="600" alt="Admin Console Anti-Tamper Lock" />
+  </p>
+</details>
 
 #### 3. 🛟 Fail-safe Recovery System (Never Locked Out)
 - **Physical Host Privileges**: Host computer running DSH (`127.0.0.1` / `localhost`) has permanent physical privileges — **never requires access password, settings panel is never locked**;
@@ -197,6 +213,14 @@ Automatically active when the plugin starts, zero configuration needed. Open Set
 4. The URL changes on each restart; click "Reset URL" to request a new URL
 
 ![Public Tunnel Settings](docs/screenshots/tunnel-access.jpg)
+
+<details>
+  <summary>📱 Click to expand mobile browser public access screenshot</summary>
+  <br/>
+  <p align="center">
+    <img src="docs/screenshots/remote-web-mobile.jpg" width="340" alt="Mobile Public Access Demo" />
+  </p>
+</details>
 
 ### Custom Tunnel
 
@@ -436,6 +460,37 @@ dsh plugin --profile web add .
 
 ---
 
+## FAQ (Frequently Asked Questions)
+
+<details>
+  <summary><b>Q1: Getting "Failed to load provider directory: settings are unavailable in this browser" when accessing remotely?</b></summary>
+  <br/>
+
+  - **Reason**: This is an upstream security feature in DeepSeek Harness (DSH). To prevent malicious network devices from intercepting API keys and model credentials, DSH restricts the provider catalog & credential modification API exclusively to loopback (`127.0.0.1`).
+  - **Recommendations**:
+    1. **Recommended Workflow**: Configure your LLM models & API keys once on your desktop computer (`127.0.0.1:3080`). Afterward, you can create sessions, chat, and control agents from your mobile device with 100% full functionality;
+    2. **Cloudflare Tunnel**: Accessing through the built-in Cloudflare Tunnel (`https://*.trycloudflare.com`) provides a secure HTTPS context for maximum mobile browser compatibility;
+    3. **SSH Port Forwarding**: If you must modify API keys remotely from a phone, use SSH local port forwarding (`ssh -L 3082:127.0.0.1:3082 user@ip`) to map the connection to localhost.
+</details>
+
+<details>
+  <summary><b>Q2: Prompted with "Admin permission required" or settings locked when modifying config remotely?</b></summary>
+  <br/>
+
+  - **Reason**: The plugin incorporates an Anti-Tamper Guard to prevent unauthorized visitors from viewing or tampering with tunnels and bot tokens.
+  - **Solution**:
+    1. Enter your admin password in the interactive **"🔒 Unlock Admin Console"** dialog to unlock the session (if you haven't set a separate admin password, enter your initial access password);
+    2. **Host computer (127.0.0.1) access has permanent physical privileges** and is never locked;
+    3. In case of forgotten passwords, execute a single emergency command in your host terminal:
+       ```bash
+       touch ~/.dsh/dsh-bridge/reset-auth
+       ```
+       The plugin will instantly clear passwords and restore default passwordless access.
+</details>
+
+---
+
 ## License
 
 MIT © [wenbin-wb](https://github.com/wenbin-wb)
+

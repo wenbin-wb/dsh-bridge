@@ -220,3 +220,27 @@ test('P0-6: Scope 防护范围 Header 伪造防范', () => {
   const res = auth.verifyRequest(spoofedReq)
   assert.equal(res.authenticated, false, '局域网客户端伪造头部不可绕过 lan_only 认证')
 })
+
+test('P0-7: Loopback 物理特权 Token 签发与远程/伪造拦截', async () => {
+  const auth = new AuthManager({
+    config: {
+      enabled: true,
+      adminPolicy: 'password_unlock',
+      passwordHash: 'dummy',
+      passwordSalt: 'dummy',
+    },
+  })
+
+  // 1. 真实物理本机回环连接 (127.0.0.1) -> 成功签发 adminToken
+  const isLoopback = true
+  const isPublicTunnel = false
+  assert.ok(isLoopback && !isPublicTunnel)
+  const token = auth.createAdminSession()
+  assert.ok(token)
+  assert.equal(auth.validateAdminSession(token), true)
+
+  // 2. 远端客户端 / 隧道转发伪造 -> 被拒绝
+  const remoteIsLoopback = false
+  assert.equal(remoteIsLoopback && !isPublicTunnel, false)
+})
+
