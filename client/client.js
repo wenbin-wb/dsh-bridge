@@ -1893,9 +1893,9 @@ function VersionBanner({ rpcCall }) {
             {
               style: {
                 fontSize: 12,
-                color: "var(--dsw-alias-label-secondary,#374151)",
-                background: "rgba(255, 255, 255, 0.75)",
-                border: "1px solid rgba(191, 219, 254, 0.7)",
+                color: "var(--dsw-alias-label-primary, #374151)",
+                background: "var(--dsw-alias-bg-layer-2, rgba(255, 255, 255, 0.85))",
+                border: "1px solid var(--dsw-alias-state-info-border, rgba(191, 219, 254, 0.8))",
                 borderRadius: 8,
                 padding: "8px 12px",
                 marginBottom: 10,
@@ -1903,7 +1903,7 @@ function VersionBanner({ rpcCall }) {
                 whiteSpace: "pre-line"
               }
             },
-            React.createElement("div", { style: { fontWeight: 600, color: "var(--dsw-alias-state-info-primary,#1e40af)", marginBottom: 2 } }, "\u2728 \u66F4\u65B0\u4EAE\u70B9\uFF1A"),
+            React.createElement("div", { style: { fontWeight: 600, color: "var(--dsw-alias-state-info-primary, #2563eb)", marginBottom: 2 } }, "\u2728 \u66F4\u65B0\u4EAE\u70B9\uFF1A"),
             info.releaseNotes
           ),
           upgradeResult && React.createElement("div", {
