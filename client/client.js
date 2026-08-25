@@ -40,6 +40,8 @@ var BRIDGE_ENDPOINTS = {
   startCloudflared: "startCloudflared",
   stopCloudflared: "stopCloudflared",
   resetCloudflared: "resetCloudflared",
+  saveCloudflaredConfig: "saveCloudflaredConfig",
+  setTunnelAutoStart: "setTunnelAutoStart",
   saveCustomTunnelConfig: "saveCustomTunnelConfig",
   checkVersion: "checkVersion",
   upgradePlugin: "upgradePlugin",
@@ -447,7 +449,19 @@ var CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm2({ serve
     )
   );
 });
-var TunnelCard = React.memo(function TunnelCard2({ title, desc, data, onStart, onStop, onReset, auth, onNavigateSecurity, children }) {
+var TunnelCard = React.memo(function TunnelCard2({
+  title,
+  desc,
+  data,
+  autoStart,
+  onToggleAutoStart,
+  onStart,
+  onStop,
+  onReset,
+  auth,
+  onNavigateSecurity,
+  children
+}) {
   const { running, configured, url, qr, state } = data ?? {};
   const phase = state?.phase ?? "idle";
   return React.createElement(
@@ -462,7 +476,32 @@ var TunnelCard = React.memo(function TunnelCard2({ title, desc, data, onStart, o
         React.createElement("div", { style: s.label }, title),
         React.createElement("div", { style: { ...s.muted, marginTop: 2 } }, desc)
       ),
-      React.createElement(StatusTag, { running })
+      React.createElement(
+        "div",
+        { style: { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 } },
+        React.createElement(StatusTag, { running }),
+        onToggleAutoStart && React.createElement(
+          "label",
+          {
+            style: {
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              fontSize: 11,
+              color: "var(--dsw-alias-label-secondary,#6b7280)",
+              cursor: "pointer",
+              userSelect: "none"
+            },
+            title: "DSH \u542F\u52A8\u65F6\u81EA\u52A8\u6062\u590D\u8BE5\u96A7\u9053\u7684\u8FD0\u884C\u72B6\u6001"
+          },
+          React.createElement("input", {
+            type: "checkbox",
+            checked: Boolean(autoStart),
+            onChange: (e) => onToggleAutoStart(e.target.checked)
+          }),
+          "\u968F DSH \u542F\u52A8\u81EA\u52A8\u5F00\u542F"
+        )
+      )
     ),
     children,
     phase !== "idle" && phase !== "ready" && React.createElement("div", {
@@ -485,6 +524,107 @@ var TunnelCard = React.memo(function TunnelCard2({ title, desc, data, onStart, o
         title: configured === false ? "\u8BF7\u5148\u4FDD\u5B58\u670D\u52A1\u5668\u914D\u7F6E" : ""
       }, phase === "connecting" ? "\u8FDE\u63A5\u4E2D\u2026" : phase === "downloading" ? "\u4E0B\u8F7D\u4E2D\u2026" : "\u5F00\u542F"),
       running && onStop && React.createElement("button", { style: s.btnGhost, onClick: onStop }, "\u5173\u95ED")
+    )
+  );
+});
+var CloudflareConfigForm = React.memo(function CloudflareConfigForm2({ token, hostname, onSave }) {
+  const [open, setOpen] = React.useState(Boolean(token || hostname));
+  const [tokenVal, setTokenVal] = React.useState(token || "");
+  const [hostnameVal, setHostnameVal] = React.useState(hostname || "");
+  const [saving, setSaving] = React.useState(false);
+  const [msg, setMsg] = React.useState(null);
+  React.useEffect(() => {
+    setTokenVal(token || "");
+    setHostnameVal(hostname || "");
+  }, [token, hostname]);
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setMsg(null);
+    try {
+      await onSave({ token: tokenVal, hostname: hostnameVal });
+      setMsg({ ok: true, text: "\u2713 \u56FA\u5B9A\u57DF\u540D\u914D\u7F6E\u5DF2\u4FDD\u5B58" });
+    } catch (err) {
+      setMsg({ ok: false, text: err.message || "\u4FDD\u5B58\u5931\u8D25" });
+    } finally {
+      setSaving(false);
+    }
+  };
+  return React.createElement(
+    "div",
+    {
+      style: {
+        ...s.block,
+        borderTop: "1px solid var(--dsw-alias-border-secondary, #e5e7eb)",
+        paddingTop: 10,
+        marginTop: 10
+      }
+    },
+    React.createElement(
+      "div",
+      {
+        style: { display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", userSelect: "none" },
+        onClick: () => setOpen((v) => !v)
+      },
+      React.createElement(
+        "div",
+        { style: { fontSize: 12, fontWeight: 500, color: "var(--dsw-alias-brand-primary, #3b82f6)" } },
+        "\u2699\uFE0F \u9AD8\u7EA7\u914D\u7F6E\uFF1A\u56FA\u5B9A\u57DF\u540D (Cloudflare Token) ",
+        (token || hostname) && React.createElement("span", { style: { fontSize: 11, color: "var(--dsw-alias-state-success-primary, #059669)", fontWeight: 400 } }, "\u25CF \u5DF2\u914D\u7F6E\u56FA\u5B9A\u57DF\u540D")
+      ),
+      React.createElement("span", { style: { fontSize: 11, color: "var(--dsw-alias-label-secondary, #9ca3af)" } }, open ? "\u25B4 \u6298\u53E0" : "\u25BE \u5C55\u5F00")
+    ),
+    open && React.createElement(
+      "form",
+      { onSubmit: handleSave, style: { marginTop: 10 } },
+      React.createElement(
+        "div",
+        { style: { fontSize: 12, color: "var(--dsw-alias-label-secondary, #6b7280)", marginBottom: 8, lineHeight: 1.5 } },
+        "\u5728 Cloudflare Zero Trust \u63A7\u5236\u53F0\u521B\u5EFA Tunnel \u5373\u53EF\u83B7\u53D6\u4E13\u5C5E Token \u5E76\u7ED1\u5B9A\u81EA\u5DF1\u7684\u57DF\u540D\uFF08\u5982 dsh.yourname.com\uFF09\uFF0C\u6BCF\u6B21\u91CD\u542F URL \u6C38\u4E0D\u53D8\u66F4\u3002\u4E0D\u586B\u5219\u4F7F\u7528\u9ED8\u8BA4\u514D\u767B\u5F55\u4E34\u65F6\u968F\u673A\u57DF\u540D\u3002"
+      ),
+      React.createElement(
+        "div",
+        { style: { marginBottom: 8 } },
+        React.createElement("input", {
+          style: s.input,
+          type: "text",
+          placeholder: "\u81EA\u5B9A\u4E49\u56FA\u5B9A\u57DF\u540D (\u4F8B\u5982: dsh.yourdomain.com)",
+          value: hostnameVal,
+          onChange: (e) => setHostnameVal(e.target.value)
+        })
+      ),
+      React.createElement(
+        "div",
+        { style: { marginBottom: 8 } },
+        React.createElement("input", {
+          style: s.input,
+          type: "password",
+          placeholder: "Tunnel Token (\u4F8B\u5982: eyJhIjoi...)",
+          value: tokenVal,
+          onChange: (e) => setTokenVal(e.target.value)
+        })
+      ),
+      React.createElement(
+        "div",
+        { style: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" } },
+        React.createElement("button", {
+          type: "submit",
+          style: { ...s.btnPri, height: 28, fontSize: 12, padding: "0 12px" },
+          disabled: saving
+        }, saving ? "\u4FDD\u5B58\u4E2D\u2026" : "\u4FDD\u5B58\u56FA\u5B9A\u57DF\u540D\u914D\u7F6E"),
+        (tokenVal || hostnameVal) && React.createElement("button", {
+          type: "button",
+          style: { ...s.btnGhost, height: 28, fontSize: 12, padding: "0 10px" },
+          onClick: () => {
+            setTokenVal("");
+            setHostnameVal("");
+            onSave({ token: "", hostname: "" });
+          }
+        }, "\u6E05\u9664"),
+        msg && React.createElement("span", {
+          style: { fontSize: 12, color: msg.ok ? "var(--dsw-alias-state-success-primary, #059669)" : "var(--dsw-alias-state-error-primary, #dc2626)" }
+        }, msg.text)
+      )
     )
   );
 });
@@ -2031,8 +2171,20 @@ function BridgePanel({ rpcCall }) {
     () => act(BRIDGE_ENDPOINTS.stopCloudflared).then(() => act(BRIDGE_ENDPOINTS.startCloudflared)),
     [act]
   );
+  const onToggleCloudflaredAutoStart = React.useCallback(
+    (autoStart) => act(BRIDGE_ENDPOINTS.setTunnelAutoStart, { tunnel: "cloudflared", autoStart }),
+    [act]
+  );
+  const saveCloudflaredConfig = React.useCallback(
+    ({ token, hostname }) => act(BRIDGE_ENDPOINTS.saveCloudflaredConfig, { token, hostname }),
+    [act]
+  );
   const onStartCustom = React.useCallback(() => act(BRIDGE_ENDPOINTS.startCustomTunnel), [act]);
   const onStopCustom = React.useCallback(() => act(BRIDGE_ENDPOINTS.stopCustomTunnel), [act]);
+  const onToggleCustomAutoStart = React.useCallback(
+    (autoStart) => act(BRIDGE_ENDPOINTS.setTunnelAutoStart, { tunnel: "customTunnel", autoStart }),
+    [act]
+  );
   const saveConfig = React.useCallback(
     (serverUrl, accessToken) => act(BRIDGE_ENDPOINTS.saveCustomTunnelConfig, { serverUrl, accessToken }),
     [act]
@@ -2066,21 +2218,31 @@ function BridgePanel({ rpcCall }) {
     tabContent = React.createElement(
       React.Fragment,
       null,
-      React.createElement(TunnelCard, {
-        title: "Cloudflare \u96A7\u9053",
-        desc: "\u4E00\u952E\u83B7\u53D6\u516C\u7F51\u5730\u5740\uFF08\u91CD\u542F\u540E URL \u4F1A\u53D8\u5316\uFF09",
-        data: {
-          running: status?.cloudflared?.running,
-          url: status?.cloudflared?.url,
-          qr: status?.cloudflared?.qr,
-          state: status?.cloudflared?.state
+      React.createElement(
+        TunnelCard,
+        {
+          title: "Cloudflare \u96A7\u9053",
+          desc: status?.cloudflared?.tokenConfigured ? "\u56FA\u5B9A\u57DF\u540D\u6A21\u5F0F\uFF08Token \u8FD0\u884C \xB7 \u91CD\u542F URL \u4FDD\u6301\u4E0D\u53D8\uFF09" : "\u4E00\u952E\u83B7\u53D6\u516C\u7F51\u5730\u5740\uFF08\u514D\u767B\u5F55\u4E34\u65F6\u968F\u673A\u57DF\u540D\uFF09",
+          data: {
+            running: status?.cloudflared?.running,
+            url: status?.cloudflared?.url,
+            qr: status?.cloudflared?.qr,
+            state: status?.cloudflared?.state
+          },
+          autoStart: status?.cloudflared?.autoStart,
+          onToggleAutoStart: onToggleCloudflaredAutoStart,
+          auth: status?.auth,
+          onNavigateSecurity: navSecurity,
+          onStart: onStartCloudflared,
+          onStop: onStopCloudflared,
+          onReset: status?.cloudflared?.running ? onResetCloudflared : null
         },
-        auth: status?.auth,
-        onNavigateSecurity: navSecurity,
-        onStart: onStartCloudflared,
-        onStop: onStopCloudflared,
-        onReset: status?.cloudflared?.running ? onResetCloudflared : null
-      }),
+        React.createElement(CloudflareConfigForm, {
+          token: status?.cloudflared?.token ?? "",
+          hostname: status?.cloudflared?.hostname ?? "",
+          onSave: saveCloudflaredConfig
+        })
+      ),
       React.createElement(
         TunnelCard,
         {
@@ -2093,6 +2255,8 @@ function BridgePanel({ rpcCall }) {
             qr: ct?.qr,
             state: ct?.state
           },
+          autoStart: ct?.autoStart,
+          onToggleAutoStart: onToggleCustomAutoStart,
           auth: status?.auth,
           onNavigateSecurity: navSecurity,
           onStart: onStartCustom,

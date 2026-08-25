@@ -104,8 +104,8 @@ npm install -g @deepseek-ai/dsh
 # Install the latest version
 dsh plugin --profile web add @wenbin_wb/dsh-bridge
 
-# Or install a specific version (e.g. 2.6.0)
-dsh plugin --profile web add @wenbin_wb/dsh-bridge@2.6.0
+# Or install a specific version (e.g. 2.6.1)
+dsh plugin --profile web add @wenbin_wb/dsh-bridge@2.6.1
 ```
 
 > 💡 **No global install permission?** Use `npx`:
@@ -241,10 +241,17 @@ Automatically active when the plugin starts, zero configuration needed. Open Set
 
 ### Cloudflare Tunnel
 
-1. Click the "Start" button in the "Cloudflare Tunnel" card
-2. On first use, cloudflared (~30MB) will be automatically downloaded from GitHub
-3. Once downloaded, it starts automatically and displays a public URL and QR code within seconds
-4. The URL changes on each restart; click "Reset URL" to request a new URL
+Supports both **Quick Tunnel (zero config)** and **Cloudflare Token Named Tunnel (fixed domain)**, with optional automatic start on DSH boot:
+
+- **Mode 1: Instant Quick Tunnel (Default)**
+  1. Click the "Start" button in the "Cloudflare Tunnel" card;
+  2. On first use, cloudflared (~30MB) will be automatically downloaded from GitHub;
+  3. Displays a public URL and QR code within seconds (changes on restart or click "Reset URL").
+
+- **Mode 2: Cloudflare Token Named Tunnel (Permanent Fixed Domain · 100% Free)**
+  1. Create a free tunnel on the [Cloudflare Zero Trust Console](https://one.dash.cloudflare.com/) and bind your custom domain (e.g. `dsh.yourdomain.com`);
+  2. Expand the **"⚙️ Advanced: Fixed Domain (Cloudflare Token)"** form at the bottom of the card, enter your domain and Tunnel Token, then save;
+  3. Check **"Auto-start with DSH"** — the tunnel will automatically recover on DSH restarts with a **permanently fixed URL**!
 
 ![Public Tunnel Settings](docs/screenshots/tunnel-access.jpg)
 

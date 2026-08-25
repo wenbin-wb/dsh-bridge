@@ -1,8 +1,8 @@
 {
   "name": "@wenbin_wb/dsh-bridge",
-  "version": "2.6.0",
+  "version": "2.6.1",
   "description": "手机扫码即可在移动端/公网继续用 DeepSeek Harness，人不在电脑前也能接着干。一键局域网二维码、Cloudflare 公网隧道、自建隧道与微信 / QQ / 飞书 / Telegram Bot（多工作区/会话持久化/媒体/卡片审批/流式输出），无需自己搭公网服务器。",
-  "releaseNotes": "【v2.6.0 移动端交互重构与长按菜单】\n• 📱 深度重构移动端触控交互，极简通透顶栏与大圆角输入胶囊\n• 🖐️ 侧边栏支持长按（Long Press）呼出操作菜单（重命名/分叉/归档），边缘滑动开闭抽屉\n• 🛠️ 彻底修复「运行中」等状态药丸徽标在手机屏幕下的换行问题\n• ⚡ 优化版本检查与升级提示，直观展示新版本更新内容亮点",
+  "releaseNotes": "【v2.6.1 公网隧道自启与固定域名】\n• 🔄 支持公网隧道（Cloudflare/自建）开机自启与重启状态记忆\n• 🌐 支持 Cloudflare 命名隧道（Token 模式），永久固定专属域名永不变更\n• ⚙️ 控制台新增「随 DSH 启动自动开启」开关与高级 Token 配置",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

@@ -351,7 +351,19 @@ const CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm({ serv
   );
 });
 
-const TunnelCard = React.memo(function TunnelCard({ title, desc, data, onStart, onStop, onReset, auth, onNavigateSecurity, children }) {
+const TunnelCard = React.memo(function TunnelCard({
+  title,
+  desc,
+  data,
+  autoStart,
+  onToggleAutoStart,
+  onStart,
+  onStop,
+  onReset,
+  auth,
+  onNavigateSecurity,
+  children
+}) {
   const { running, configured, url, qr, state } = data ?? {};
   const phase = state?.phase ?? 'idle';
 
@@ -361,7 +373,28 @@ const TunnelCard = React.memo(function TunnelCard({ title, desc, data, onStart, 
         React.createElement('div', { style: s.label }, title),
         React.createElement('div', { style: { ...s.muted, marginTop: 2 } }, desc),
       ),
-      React.createElement(StatusTag, { running }),
+      React.createElement('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 } },
+        React.createElement(StatusTag, { running }),
+        onToggleAutoStart && React.createElement('label', {
+          style: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            fontSize: 11,
+            color: 'var(--dsw-alias-label-secondary,#6b7280)',
+            cursor: 'pointer',
+            userSelect: 'none',
+          },
+          title: 'DSH 启动时自动恢复该隧道的运行状态',
+        },
+          React.createElement('input', {
+            type: 'checkbox',
+            checked: Boolean(autoStart),
+            onChange: (e) => onToggleAutoStart(e.target.checked),
+          }),
+          '随 DSH 启动自动开启',
+        ),
+      ),
     ),
     children,
     phase !== 'idle' && phase !== 'ready' && React.createElement('div', {
@@ -381,6 +414,96 @@ const TunnelCard = React.memo(function TunnelCard({ title, desc, data, onStart, 
         title: configured === false ? '请先保存服务器配置' : '',
       }, phase === 'connecting' ? '连接中…' : phase === 'downloading' ? '下载中…' : '开启'),
       running && onStop && React.createElement('button', { style: s.btnGhost, onClick: onStop }, '关闭'),
+    ),
+  );
+});
+
+// Cloudflare 命名隧道（固定域名 / Token）高级配置表单
+const CloudflareConfigForm = React.memo(function CloudflareConfigForm({ token, hostname, onSave }) {
+  const [open, setOpen] = React.useState(Boolean(token || hostname));
+  const [tokenVal, setTokenVal] = React.useState(token || '');
+  const [hostnameVal, setHostnameVal] = React.useState(hostname || '');
+  const [saving, setSaving] = React.useState(false);
+  const [msg, setMsg] = React.useState(null);
+
+  React.useEffect(() => {
+    setTokenVal(token || '');
+    setHostnameVal(hostname || '');
+  }, [token, hostname]);
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setMsg(null);
+    try {
+      await onSave({ token: tokenVal, hostname: hostnameVal });
+      setMsg({ ok: true, text: '✓ 固定域名配置已保存' });
+    } catch (err) {
+      setMsg({ ok: false, text: err.message || '保存失败' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return React.createElement('div', {
+    style: {
+      ...s.block,
+      borderTop: '1px solid var(--dsw-alias-border-secondary, #e5e7eb)',
+      paddingTop: 10,
+      marginTop: 10,
+    },
+  },
+    React.createElement('div', {
+      style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' },
+      onClick: () => setOpen(v => !v),
+    },
+      React.createElement('div', { style: { fontSize: 12, fontWeight: 500, color: 'var(--dsw-alias-brand-primary, #3b82f6)' } },
+        '⚙️ 高级配置：固定域名 (Cloudflare Token) ',
+        (token || hostname) && React.createElement('span', { style: { fontSize: 11, color: 'var(--dsw-alias-state-success-primary, #059669)', fontWeight: 400 } }, '● 已配置固定域名')
+      ),
+      React.createElement('span', { style: { fontSize: 11, color: 'var(--dsw-alias-label-secondary, #9ca3af)' } }, open ? '▴ 折叠' : '▾ 展开'),
+    ),
+    open && React.createElement('form', { onSubmit: handleSave, style: { marginTop: 10 } },
+      React.createElement('div', { style: { fontSize: 12, color: 'var(--dsw-alias-label-secondary, #6b7280)', marginBottom: 8, lineHeight: 1.5 } },
+        '在 Cloudflare Zero Trust 控制台创建 Tunnel 即可获取专属 Token 并绑定自己的域名（如 dsh.yourname.com），每次重启 URL 永不变更。不填则使用默认免登录临时随机域名。'
+      ),
+      React.createElement('div', { style: { marginBottom: 8 } },
+        React.createElement('input', {
+          style: s.input,
+          type: 'text',
+          placeholder: '自定义固定域名 (例如: dsh.yourdomain.com)',
+          value: hostnameVal,
+          onChange: (e) => setHostnameVal(e.target.value),
+        }),
+      ),
+      React.createElement('div', { style: { marginBottom: 8 } },
+        React.createElement('input', {
+          style: s.input,
+          type: 'password',
+          placeholder: 'Tunnel Token (例如: eyJhIjoi...)',
+          value: tokenVal,
+          onChange: (e) => setTokenVal(e.target.value),
+        }),
+      ),
+      React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' } },
+        React.createElement('button', {
+          type: 'submit',
+          style: { ...s.btnPri, height: 28, fontSize: 12, padding: '0 12px' },
+          disabled: saving,
+        }, saving ? '保存中…' : '保存固定域名配置'),
+        (tokenVal || hostnameVal) && React.createElement('button', {
+          type: 'button',
+          style: { ...s.btnGhost, height: 28, fontSize: 12, padding: '0 10px' },
+          onClick: () => {
+            setTokenVal('');
+            setHostnameVal('');
+            onSave({ token: '', hostname: '' });
+          },
+        }, '清除'),
+        msg && React.createElement('span', {
+          style: { fontSize: 12, color: msg.ok ? 'var(--dsw-alias-state-success-primary, #059669)' : 'var(--dsw-alias-state-error-primary, #dc2626)' },
+        }, msg.text),
+      ),
     ),
   );
 });
@@ -1824,8 +1947,18 @@ function BridgePanel({ rpcCall }) {
   const onResetCloudflared = React.useCallback(() =>
     act(BRIDGE_ENDPOINTS.stopCloudflared).then(() => act(BRIDGE_ENDPOINTS.startCloudflared))
   , [act]);
+  const onToggleCloudflaredAutoStart = React.useCallback((autoStart) =>
+    act(BRIDGE_ENDPOINTS.setTunnelAutoStart, { tunnel: 'cloudflared', autoStart })
+  , [act]);
+  const saveCloudflaredConfig = React.useCallback(({ token, hostname }) =>
+    act(BRIDGE_ENDPOINTS.saveCloudflaredConfig, { token, hostname })
+  , [act]);
+
   const onStartCustom = React.useCallback(() => act(BRIDGE_ENDPOINTS.startCustomTunnel), [act]);
   const onStopCustom  = React.useCallback(() => act(BRIDGE_ENDPOINTS.stopCustomTunnel), [act]);
+  const onToggleCustomAutoStart = React.useCallback((autoStart) =>
+    act(BRIDGE_ENDPOINTS.setTunnelAutoStart, { tunnel: 'customTunnel', autoStart })
+  , [act]);
   const saveConfig = React.useCallback((serverUrl, accessToken) =>
     act(BRIDGE_ENDPOINTS.saveCustomTunnelConfig, { serverUrl, accessToken })
   , [act]);
@@ -1865,19 +1998,29 @@ function BridgePanel({ rpcCall }) {
     tabContent = React.createElement(React.Fragment, null,
       React.createElement(TunnelCard, {
         title: 'Cloudflare 隧道',
-        desc: '一键获取公网地址（重启后 URL 会变化）',
+        desc: status?.cloudflared?.tokenConfigured
+          ? '固定域名模式（Token 运行 · 重启 URL 保持不变）'
+          : '一键获取公网地址（免登录临时随机域名）',
         data: {
           running: status?.cloudflared?.running,
           url: status?.cloudflared?.url,
           qr: status?.cloudflared?.qr,
           state: status?.cloudflared?.state,
         },
+        autoStart: status?.cloudflared?.autoStart,
+        onToggleAutoStart: onToggleCloudflaredAutoStart,
         auth: status?.auth,
         onNavigateSecurity: navSecurity,
         onStart: onStartCloudflared,
         onStop:  onStopCloudflared,
         onReset: status?.cloudflared?.running ? onResetCloudflared : null,
-      }),
+      },
+        React.createElement(CloudflareConfigForm, {
+          token: status?.cloudflared?.token ?? '',
+          hostname: status?.cloudflared?.hostname ?? '',
+          onSave: saveCloudflaredConfig,
+        }),
+      ),
       React.createElement(TunnelCard, {
         title: '自建隧道',
         desc: '连接自己部署的隧道服务器，获得固定域名',
@@ -1888,6 +2031,8 @@ function BridgePanel({ rpcCall }) {
           qr: ct?.qr,
           state: ct?.state,
         },
+        autoStart: ct?.autoStart,
+        onToggleAutoStart: onToggleCustomAutoStart,
         auth: status?.auth,
         onNavigateSecurity: navSecurity,
         onStart: onStartCustom,

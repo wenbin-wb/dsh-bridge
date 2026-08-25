@@ -104,8 +104,8 @@ npm install -g @deepseek-ai/dsh
 # 安装最新版
 dsh plugin --profile web add @wenbin_wb/dsh-bridge
 
-# 或指定版本（如 2.6.0）
-dsh plugin --profile web add @wenbin_wb/dsh-bridge@2.6.0
+# 或指定版本（如 2.6.1）
+dsh plugin --profile web add @wenbin_wb/dsh-bridge@2.6.1
 ```
 
 > 💡 **没有全局安装权限？** 使用 `npx` 方式：
@@ -241,10 +241,17 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 
 ### Cloudflare 隧道
 
-1. 点击「Cloudflare 隧道」卡片中的「开启」按钮
-2. 首次使用会自动从 GitHub 下载 cloudflared（约 30MB）
-3. 下载完成后自动启动，几秒内显示公网 URL 和二维码
-4. 每次重启后 URL 会变化；点「重置链接」可主动获取新 URL
+支持**免登录临时隧道**与**专属 Token 固定域名隧道**双模式，支持随 DSH 启动自动开启：
+
+- **模式 1：极速免登录临时隧道（默认）**
+  1. 直接点击「Cloudflare 隧道」卡片中的「开启」按钮；
+  2. 首次使用会自动从 GitHub 下载 cloudflared（约 30MB）；
+  3. 几秒内自动生成公网 URL 和二维码，点「重置链接」可随时换新。
+
+- **模式 2：Cloudflare Token 固定域名（永久不变，完全免费）**
+  1. 在 [Cloudflare Zero Trust 控制台](https://one.dash.cloudflare.com/) 免费创建 Tunnel 并绑定域名（如 `dsh.yourdomain.com`）；
+  2. 展开卡片底部的 **「⚙️ 高级配置：固定域名 (Cloudflare Token)」**，填入自定义域名与 Tunnel Token 并保存；
+  3. 勾选 **「随 DSH 启动自动开启」**，每次 DSH 重启即可自动恢复隧道，**URL 永久固定不变**！
 
 ![公网隧道配置](docs/screenshots/tunnel-access.jpg)
 
