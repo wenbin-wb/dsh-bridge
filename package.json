@@ -1,8 +1,8 @@
 {
   "name": "@wenbin_wb/dsh-bridge",
-  "version": "2.7.1",
+  "version": "2.8.0",
   "description": "手机扫码即可在移动端/公网继续用 DeepSeek Harness，人不在电脑前也能接着干。一键局域网二维码、Cloudflare 公网隧道、自建隧道与微信 / QQ / 飞书 / Telegram Bot（多工作区/会话持久化/媒体/卡片审批/流式输出），无需自己搭公网服务器。",
-  "releaseNotes": "【v2.7.1 Windows 一键升级与自建协议修复】\n• 🛠️ 修复 Windows 平台下一键升级触发 `spawn EINVAL` 的问题\n• 🌐 修复自建隧道 WebSocket (ws/wss) 协议诊断报错的问题\n• 🛡️ 强化 Gateway 启动并发锁与会话恢复防抖",
+  "releaseNotes": "【v2.8.0 移动端体验革新、远程工作区管理与全面安全加固】\n• 🗂️ 远程工作区网页选择器：移动端/远程点击添加工作区自动呼出网页端目录浏览器，本机电脑智能无感分流原生系统选择器\n• 📱 移动端视觉与布局体验深度优化：顶部导航栏居中动态标题、第二行徽标与极简下载图标两端排布、底部工具栏防重叠自适应\n• 🔐 全方位安全加固：RPC 端点鉴权、路径穿越与系统核心目录防御、滑动窗口限流与 IM 权限拦截",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

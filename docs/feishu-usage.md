@@ -86,6 +86,7 @@
 | `/new <词> @N` | 在指定工作区新建会话 | `/new 帮我写个脚本 @1` |
 | `/rename <新标题>` | 重命名当前活动会话 | `/rename 优化登录交互` |
 | `/workspaces` | 查看所有已注册的工作区列表 | `/workspaces` |
+| `/addworkspace <路径>` | 注册添加新的电脑工作区目录 | `/addworkspace D:\projects\app` |
 | `/status` | 查看 Agent 运行状态看板 | `/status` |
 | `/stop` | 中断停止当前正在执行的任务 | `/stop` |
 | `/end` | 结束当前会话回到空闲状态 | `/end` |

@@ -50,6 +50,10 @@ var BRIDGE_ENDPOINTS = {
   importBackup: "importBackup",
   diagnoseNetwork: "diagnoseNetwork",
   getSystemMetrics: "getSystemMetrics",
+  // 远程工作区管理与目录浏览
+  listRemoteDirectories: "listRemoteDirectories",
+  addRemoteWorkspace: "addRemoteWorkspace",
+  listWorkspaces: "listWorkspaces",
   // 访问安全认证（密码保护 / 扫码免密 Token）
   authGetStatus: "authGetStatus",
   authUpdateConfig: "authUpdateConfig",
@@ -94,6 +98,37 @@ if (typeof window !== "undefined") {
     };
   }
 }
+var _globalAdminToken = "";
+function setGlobalAdminToken(t) {
+  _globalAdminToken = t || "";
+  if (typeof window !== "undefined") {
+    try {
+      if (t) sessionStorage.setItem("dsh_admin_token", t);
+      else sessionStorage.removeItem("dsh_admin_token");
+    } catch {
+    }
+  }
+}
+function getGlobalAdminToken() {
+  if (_globalAdminToken) return _globalAdminToken;
+  if (typeof window !== "undefined") {
+    try {
+      const saved = sessionStorage.getItem("dsh_admin_token");
+      if (saved) {
+        _globalAdminToken = saved;
+        return saved;
+      }
+    } catch {
+    }
+  }
+  return "";
+}
+function isLocalEnvironment() {
+  if (typeof window === "undefined") return true;
+  const host = window.location.hostname || "";
+  const proto = window.location.protocol || "";
+  return host === "127.0.0.1" || host === "localhost" || host === "::1" || host === "" || proto === "file:" || proto === "vscode-webview:" || proto === "app:" || typeof window.__DSH_ELECTRON__ !== "undefined" || typeof navigator !== "undefined" && navigator.userAgent && navigator.userAgent.includes("Electron");
+}
 var GITHUB_URL = "https://github.com/wenbin-wb/dsh-bridge";
 var RELEASES_URL = "https://github.com/wenbin-wb/dsh-bridge/releases";
 var ISSUES_URL = "https://github.com/wenbin-wb/dsh-bridge/issues/new";
@@ -106,7 +141,7 @@ function upgradeCommands(latest) {
   ];
 }
 var name = "dsh-bridge";
-var inject = ["slots", "connection"];
+var inject = ["slots", "connection", "workspaces", "sessions"];
 function semverGt(a, b) {
   const parse = (v) => {
     const [main = "", pre = ""] = String(v).split("-");
@@ -2085,6 +2120,91 @@ function RestartDshCard({ rpcCall }) {
     )
   );
 }
+function RemoteWorkspaceCard({ rpcCall }) {
+  const [workspaces, setWorkspaces] = React.useState([]);
+  const [loading, setLoading] = React.useState(false);
+  const load = React.useCallback(async () => {
+    if (!rpcCall) return;
+    setLoading(true);
+    try {
+      const res = await rpcCall(BRIDGE_ENDPOINTS.listWorkspaces, {});
+      const list = res?.value || res;
+      if (Array.isArray(list)) setWorkspaces(list);
+      else if (list?.workspaces && Array.isArray(list.workspaces)) setWorkspaces(list.workspaces);
+    } catch {
+    } finally {
+      setLoading(false);
+    }
+  }, [rpcCall]);
+  React.useEffect(() => {
+    load();
+  }, [load]);
+  return React.createElement(
+    "div",
+    { style: { ...s.card, marginBottom: 16 } },
+    React.createElement(
+      "div",
+      {
+        style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 8 }
+      },
+      React.createElement(
+        "div",
+        null,
+        React.createElement(
+          "div",
+          { style: { ...s.label, fontSize: 13, display: "flex", alignItems: "center", gap: 6 } },
+          "\u{1F5C2}\uFE0F \u8FDC\u7A0B\u5DE5\u4F5C\u533A\u7BA1\u7406 (\u76EE\u5F55\u6D4F\u89C8\u5668)"
+        ),
+        React.createElement(
+          "div",
+          { style: { ...s.muted, marginTop: 3 } },
+          "\u5728\u79FB\u52A8\u7AEF\u6216\u8FDC\u7A0B\u8BBE\u5907\u4E0A\u53EF\u89C6\u70B9\u9009\u7535\u8111\u4E0A\u7684\u6587\u4EF6\u5939\u6216\u76F4\u63A5\u8F93\u5165\u8DEF\u5F84\u6DFB\u52A0\u81F3 DSH\u3002"
+        )
+      ),
+      React.createElement("button", {
+        type: "button",
+        style: { ...s.btnPri, height: 32, fontSize: 12, padding: "0 14px" },
+        onClick: () => {
+          if (typeof window.__dshOpenRemoteWorkspaceModal === "function") {
+            window.__dshOpenRemoteWorkspaceModal();
+          } else if (typeof showRemoteWorkspaceDialog === "function") {
+            showRemoteWorkspaceDialog(rpcCall, () => load());
+          }
+        }
+      }, "+ \u8FDC\u7A0B\u6DFB\u52A0\u5DE5\u4F5C\u533A")
+    ),
+    workspaces.length > 0 ? React.createElement(
+      "div",
+      {
+        style: { display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }
+      },
+      workspaces.map((ws, i) => React.createElement(
+        "div",
+        {
+          key: ws.path || i,
+          style: {
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "7px 12px",
+            background: "var(--dsw-alias-bg-layer-1,#ffffff)",
+            border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)",
+            borderRadius: 8,
+            fontSize: 12
+          }
+        },
+        React.createElement(
+          "div",
+          { style: { display: "flex", alignItems: "center", gap: 8, overflow: "hidden" } },
+          React.createElement("span", { style: { fontWeight: 600, color: "var(--dsw-alias-brand-primary,#4f6ef7)", flexShrink: 0 } }, `@${i + 1} ${ws.title || ""}`),
+          React.createElement("span", { style: { ...s.code, color: "var(--dsw-alias-label-tertiary,#6b7280)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, ws.path)
+        )
+      ))
+    ) : React.createElement("div", {
+      style: { ...s.muted, marginTop: 6, padding: "10px 14px", background: "var(--dsw-alias-bg-layer-1,#ffffff)", border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", borderRadius: 8, textAlign: "center" }
+    }, loading ? "\u6B63\u5728\u8BFB\u53D6\u5DE5\u4F5C\u533A\u5217\u8868\u2026" : "\u6682\u65E0\u5DF2\u6CE8\u518C\u5DE5\u4F5C\u533A\uFF0C\u70B9\u51FB\u53F3\u4E0A\u89D2\u300C+ \u8FDC\u7A0B\u6DFB\u52A0\u5DE5\u4F5C\u533A\u300D\u5373\u53EF\u6D4F\u89C8\u6DFB\u52A0\u3002")
+  );
+}
 function VersionBanner({ rpcCall }) {
   const [info, setInfo] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
@@ -2522,6 +2642,7 @@ function BridgePanel({ rpcCall }) {
           const data = await res.json();
           if (data?.ok && data.adminToken) {
             setAdminToken(data.adminToken);
+            setGlobalAdminToken(data.adminToken);
             setAdminUnlocked(true);
             return data.adminToken;
           }
@@ -2537,7 +2658,7 @@ function BridgePanel({ rpcCall }) {
     }
   }, [isLocalhost, adminUnlocked, fetchLoopbackToken]);
   const authRpcCall = React.useCallback(async (endpoint, payload = {}, signal) => {
-    let token = adminToken;
+    let token = adminToken || getGlobalAdminToken();
     if (isLocalhost && !token) {
       token = await fetchLoopbackToken();
     }
@@ -2563,7 +2684,9 @@ function BridgePanel({ rpcCall }) {
     try {
       const res = await rpcCall(BRIDGE_ENDPOINTS.authAdminUnlock, { password: unlockPassword });
       if (res?.ok) {
-        setAdminToken(res.value?.adminToken || "");
+        const token = res.value?.adminToken || "";
+        setAdminToken(token);
+        setGlobalAdminToken(token);
         setAdminUnlocked(true);
         setUnlockPassword("");
         setShowUnlockModal(false);
@@ -2585,6 +2708,7 @@ function BridgePanel({ rpcCall }) {
     } catch {
     }
     setAdminToken("");
+    setGlobalAdminToken("");
     setAdminUnlocked(false);
   }, [rpcCall, adminToken]);
   const loadInFlightRef = React.useRef(false);
@@ -2761,6 +2885,7 @@ function BridgePanel({ rpcCall }) {
       React.Fragment,
       null,
       React.createElement(SystemMetricsWidget, { metrics: status?.system }),
+      React.createElement(RemoteWorkspaceCard, { rpcCall: authRpcCall }),
       React.createElement(NetworkDiagnosticWidget, { rpcCall: authRpcCall }),
       React.createElement(BackupRestoreWidget, {
         rpcCall: authRpcCall,
@@ -3188,6 +3313,7 @@ function injectMobileStyles() {
         z-index: 9998 !important;
         box-sizing: border-box !important;
         user-select: none !important;
+        pointer-events: none !important;
       }
 
       /* \u5DE6\u4FA7\u53CC\u6A2A\u7EBF\u6309\u94AE (DeepSeek App \u539F\u751F\u56FE\u6807) */
@@ -3204,6 +3330,7 @@ function injectMobileStyles() {
         cursor: pointer;
         padding: 0;
         transition: opacity 0.15s;
+        pointer-events: auto !important;
       }
       .dsh-header-menu-btn:active {
         opacity: 0.6;
@@ -3223,9 +3350,27 @@ function injectMobileStyles() {
         cursor: pointer;
         padding: 0;
         transition: opacity 0.15s;
+        pointer-events: auto !important;
       }
       .dsh-header-new-btn:active {
         opacity: 0.6;
+      }
+
+      /* \u4E2D\u95F4\u52A8\u6001\u4F1A\u8BDD\u6807\u9898 (\u5355\u884C\u5C45\u4E2D\u6253\u70B9\u622A\u65AD\uFF0C100% \u8FD8\u539F\u539F\u751F App \u5BFC\u822A\u4F53\u9A8C) */
+      .dsh-mobile-header-title {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        text-align: center !important;
+        font-size: 15px !important;
+        font-weight: 600 !important;
+        color: var(--dsw-alias-label-primary, #111827) !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+        padding: 0 10px !important;
+        user-select: none !important;
+        pointer-events: none !important;
+        letter-spacing: -0.2px !important;
       }
 
       /* 3. \u4E2D\u95F4\u4E3B\u5185\u5BB9\u533A\u4E0E\u8F93\u5165\u6846 */
@@ -3244,6 +3389,110 @@ function injectMobileStyles() {
         display: none !important;
       }
 
+      /* 3.1 \u4F1A\u8BDD\u5BF9\u8BDD\u5934\u90E8\u9876\u680F\uFF1A\u79FB\u52A8\u7AEF\u9632\u6324\u538B\u4E0E\u7A7A\u95F4\u91CA\u653E\u4F18\u5316\uFF08\u4E25\u683C\u6392\u9664 .dsh-mobile-app-header\uFF09 */
+      div[class*="_centerCol"] header,
+      header[class*="wSkVaW_header"] {
+        padding: 4px 16px 2px 16px !important;
+        position: relative !important;
+        overflow: visible !important;
+      }
+
+      div[class*="wSkVaW_titleRow"],
+      div[class*="titleRow"] {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 8px !important;
+        min-height: 32px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+      }
+
+      /* \u79FB\u52A8\u7AEF\u5C06\u539F\u6709\u5D4C\u5165\u5728\u5185\u5BB9\u533A\u7684\u957F\u9762\u5305\u5C51\u6807\u9898\u9690\u85CF\uFF08\u5DF2\u7EDF\u4E00\u63D0\u5347\u81F3\u9876\u90E8\u5BFC\u822A\u680F\u6B63\u4E2D\uFF09\uFF0C\u5F7B\u5E95\u91CA\u653E\u7B2C\u4E8C\u884C\u7A7A\u95F4 */
+      nav[class*="wSkVaW_crumbs"],
+      nav[class*="crumbs"],
+      div[class*="wSkVaW_crumbs"],
+      div[class*="crumbs"],
+      [class*="wSkVaW_crumbs"] {
+        display: none !important;
+      }
+
+      /* \u5B50\u4EE3\u7406/\u667A\u80FD\u4F53\u6A21\u5F0F\u80F6\u56CA (Actions)\uFF1A\u7D27\u51D1\u5706\u89D2\u80F6\u56CA */
+      div[class*="wSkVaW_headerActions"],
+      div[class*="headerActions"] {
+        flex: 0 0 auto !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+        margin-left: 0 !important;
+      }
+
+      button[class*="h8S2Va_trigger"],
+      button[class*="subagent"] {
+        min-height: 26px !important;
+        height: 26px !important;
+        padding: 2px 8px !important;
+        font-size: 11.5px !important;
+        line-height: 16px !important;
+        border-radius: 13px !important;
+        background: var(--dsw-alias-bg-layer-2, rgba(0, 0, 0, 0.04)) !important;
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+      }
+
+      /* Session Log \u5BFC\u51FA\u4E0B\u8F7D\u6309\u94AE (Utilities)\uFF1A\u5728\u79FB\u52A8\u7AEF\u6781\u7B80\u4E3A 28px \u5706\u5F62\u7EAF\u56FE\u6807\u6309\u94AE\uFF0C\u9690\u85CF\u957F\u6587\u672C\uFF0C\u6781\u5927\u91CA\u653E\u9876\u90E8\u7A7A\u95F4 */
+      div[class*="wSkVaW_headerUtilities"],
+      div[class*="headerUtilities"] {
+        flex: 0 0 auto !important;
+        margin-left: 4px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+      }
+
+      button[class*="nL4_yW_sessionLogButton"],
+      button[class*="sessionLogButton"] {
+        min-width: 28px !important;
+        width: 28px !important;
+        height: 28px !important;
+        padding: 0 !important;
+        border-radius: 50% !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-shrink: 0 !important;
+        border: 1px solid var(--dsw-alias-border-l2, rgba(0, 0, 0, 0.1)) !important;
+        background: var(--dsw-alias-bg-layer-2, rgba(0, 0, 0, 0.03)) !important;
+        color: var(--dsw-alias-label-secondary, #6b7280) !important;
+        margin-left: 0 !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+      }
+
+      button[class*="nL4_yW_sessionLogButton"]:hover:not(:disabled),
+      button[class*="sessionLogButton"]:hover:not(:disabled) {
+        background: var(--dsw-alias-interactive-bg-hover, rgba(0, 0, 0, 0.06)) !important;
+        color: var(--dsw-alias-label-primary, #111827) !important;
+      }
+
+      button[class*="nL4_yW_sessionLogButton"] span,
+      button[class*="sessionLogButton"] span {
+        display: none !important;
+      }
+
+      button[class*="nL4_yW_sessionLogButton"] svg,
+      button[class*="sessionLogButton"] svg {
+        width: 13px !important;
+        height: 13px !important;
+        margin: 0 !important;
+      }
+
+      /* \u5B50\u4EE3\u7406\u5C55\u5F00\u83DC\u5355\u5728\u79FB\u52A8\u7AEF\u53F3\u5BF9\u9F50\u4E0E\u5BBD\u5EA6\u81EA\u9002\u5E94 */
+      div[class*="h8S2Va_menu"] {
+        max-width: calc(100vw - 32px) !important;
+        left: auto !important;
+        right: 0 !important;
+      }
+
       /* \u8F93\u5165\u6846\u5E95\u5EA7\uFF1ADeepSeek App \u5C45\u4E2D\u53CA\u5E95\u90E8\u56FA\u5B9A */
       div[class*="wSkVaW_scrollBody"] {
         padding-bottom: max(16px, env(safe-area-inset-bottom)) !important;
@@ -3256,6 +3505,67 @@ function injectMobileStyles() {
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05) !important;
         border: 1px solid rgba(0, 0, 0, 0.07) !important;
         background: var(--dsw-alias-bg-layer-2, #f4f4f7) !important;
+      }
+
+      /* \u8F93\u5165\u6846\u5E95\u90E8\u5DE5\u5177\u680F\uFF1A\u5F39\u6027\u81EA\u9002\u5E94\uFF0C\u5F7B\u5E95\u675C\u7EDD\u6743\u9650\u9009\u62E9\u5668(Full access)\u4E0E\u6A21\u578B\u9009\u62E9\u5668\u91CD\u53E0\u78B0\u649E */
+      div[class*="uV2eYG_row"] {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 6px !important;
+        width: 100% !important;
+        padding: 2px 2px 4px !important;
+        box-sizing: border-box !important;
+      }
+
+      div[class*="uV2eYG_tools"] {
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        flex: 0 0 auto !important;
+        min-width: 0 !important;
+      }
+
+      div[class*="uV2eYG_modes"] {
+        display: flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+        flex: 0 0 auto !important;
+        min-width: 0 !important;
+      }
+
+      button[class*="Sh0Q9G_trigger"] {
+        flex: 0 0 auto !important;
+        min-width: 0 !important;
+      }
+
+      div[class*="uV2eYG_trailing"] {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-end !important;
+        gap: 6px !important;
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+      }
+
+      div[class*="_7KE1Ra_root"] {
+        flex: 0 1 auto !important;
+        min-width: 0 !important;
+        max-width: 180px !important;
+      }
+
+      button[class*="_7KE1Ra_trigger"] {
+        max-width: 100% !important;
+        min-width: 0 !important;
+        flex: 1 1 auto !important;
+        padding: 0 4px 0 6px !important;
+      }
+
+      span[class*="_7KE1Ra_triggerLabel"] {
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+        min-width: 0 !important;
       }
 
       /* 4. \u539F\u751F\u4FA7\u8FB9\u680F\u62BD\u5C49\u5316 (Drawer) */
@@ -3474,6 +3784,86 @@ function injectMobileStyles() {
       }
     }
 
+    /* \u8FDC\u7A0B\u5DE5\u4F5C\u533A\u9009\u62E9\u5F39\u7A97\u79FB\u52A8\u7AEF/\u684C\u9762\u7AEF\u81EA\u9002\u5E94\u6837\u5F0F */
+    #dsh-remote-workspace-modal {
+      position: fixed !important;
+      inset: 0 !important;
+      z-index: 100000 !important;
+      background: rgba(0, 0, 0, 0.65) !important;
+      backdrop-filter: blur(5px) !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      padding: 16px !important;
+      box-sizing: border-box !important;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+      color: var(--dsw-alias-label-primary, #111827) !important;
+    }
+
+    .dsh-ws-dialog-card {
+      background: var(--dsw-alias-bg-layer-1, #ffffff) !important;
+      border: 1px solid var(--dsw-alias-border-l1, #e5e7eb) !important;
+      border-radius: 16px !important;
+      width: 100% !important;
+      max-width: 620px !important;
+      max-height: 88vh !important;
+      display: flex !important;
+      flex-direction: column !important;
+      box-shadow: 0 25px 35px -5px rgba(0,0,0,0.3), 0 12px 16px -5px rgba(0,0,0,0.2) !important;
+      overflow: hidden !important;
+      animation: dshModalFadeIn 0.2s ease-out !important;
+    }
+
+    .dsh-ws-chips-scroll {
+      display: flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+      overflow-x: auto !important;
+      white-space: nowrap !important;
+      scrollbar-width: none !important;
+      -ms-overflow-style: none !important;
+      -webkit-overflow-scrolling: touch !important;
+      padding: 2px 0 !important;
+    }
+    .dsh-ws-chips-scroll::-webkit-scrollbar {
+      display: none !important;
+    }
+
+    @media (max-width: 640px) {
+      #dsh-remote-workspace-modal {
+        align-items: flex-end !important;
+        padding: 0 !important;
+      }
+
+      .dsh-ws-dialog-card {
+        max-height: 92dvh !important;
+        height: 92dvh !important;
+        border-bottom-left-radius: 0 !important;
+        border-bottom-right-radius: 0 !important;
+        border-left: none !important;
+        border-right: none !important;
+        border-bottom: none !important;
+        max-width: 100vw !important;
+        width: 100vw !important;
+        margin: 0 !important;
+        animation: dshBottomSheetUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+      }
+
+      .dsh-ws-drag-handle {
+        display: block !important;
+      }
+    }
+
+    @keyframes dshModalFadeIn {
+      from { opacity: 0; transform: scale(0.96); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes dshBottomSheetUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
     @media (min-width: 769px) {
       .dsh-mobile-app-header,
       .dsh-mobile-backdrop {
@@ -3483,10 +3873,11 @@ function injectMobileStyles() {
   `;
   document.head.appendChild(style);
 }
-function setupMobileExperience() {
+function setupMobileExperience(rpcCall, ctx) {
   if (typeof document === "undefined" || typeof window === "undefined") return;
   injectMobileStyles();
   let header = document.querySelector(".dsh-mobile-app-header");
+  let titleEl = document.querySelector(".dsh-mobile-header-title");
   if (!header) {
     header = document.createElement("header");
     header.className = "dsh-mobile-app-header";
@@ -3506,6 +3897,9 @@ function setupMobileExperience() {
         if (collapsedToggle) collapsedToggle.click();
       }
     };
+    titleEl = document.createElement("div");
+    titleEl.className = "dsh-mobile-header-title";
+    titleEl.innerText = "\u65B0\u4F1A\u8BDD";
     const rightBtn = document.createElement("button");
     rightBtn.className = "dsh-header-new-btn";
     rightBtn.title = "\u65B0\u5EFA\u4F1A\u8BDD";
@@ -3521,8 +3915,25 @@ function setupMobileExperience() {
       if (dshNewBtn) dshNewBtn.click();
     };
     header.appendChild(leftBtn);
+    header.appendChild(titleEl);
     header.appendChild(rightBtn);
     document.body.appendChild(header);
+  }
+  const syncMobileTitle = () => {
+    if (!titleEl) titleEl = document.querySelector(".dsh-mobile-header-title");
+    if (!titleEl) return;
+    const snap = ctx?.sessions?.list?.getSnapshot?.();
+    if (!snap) return;
+    const cur = snap.current ? snap.byId?.[snap.current] : null;
+    if (!cur || cur.blank) {
+      titleEl.innerText = "\u65B0\u4F1A\u8BDD";
+    } else {
+      titleEl.innerText = cur.displayTitle || cur.title || "\u4F1A\u8BDD";
+    }
+  };
+  syncMobileTitle();
+  if (typeof ctx?.sessions?.list?.subscribe === "function") {
+    ctx.sessions.list.subscribe(syncMobileTitle);
   }
   let backdrop = document.querySelector(".dsh-mobile-backdrop");
   if (!backdrop) {
@@ -3619,10 +4030,617 @@ function setupMobileExperience() {
       }
     }
   }, { passive: true });
+  document.addEventListener("click", (e) => {
+    if (isLocalEnvironment()) return;
+    const btn = e.target.closest('button, [role="button"], a');
+    if (!btn) return;
+    if (btn.closest("#dsh-remote-workspace-modal")) return;
+    const label = (btn.getAttribute("aria-label") || btn.innerText || btn.title || "").trim();
+    const isAddWorkspace = label === "\u6DFB\u52A0\u5DE5\u4F5C\u533A" || label === "\u65B0\u5EFA\u5DE5\u4F5C\u533A" || label === "\u6253\u5F00\u5DE5\u4F5C\u533A" || label === "\u6253\u5F00\u6587\u4EF6\u5939" || label === "Add Workspace" || label === "Open Folder" || label.includes("\u6DFB\u52A0\u5DE5\u4F5C\u533A") || label.includes("\u6253\u5F00\u5DE5\u4F5C\u533A") || label.includes("\u6253\u5F00\u6587\u4EF6\u5939") || btn.matches('button[aria-label*="\u5DE5\u4F5C\u533A"][aria-label*="\u6DFB\u52A0"], button[aria-label*="\u5DE5\u4F5C\u533A"][aria-label*="\u6253\u5F00"]');
+    if (isAddWorkspace) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      if (typeof window.__dshOpenRemoteWorkspaceModal === "function") {
+        window.__dshOpenRemoteWorkspaceModal();
+      }
+    }
+  }, true);
+}
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicked, onCancel) {
+  if (typeof document === "undefined" || typeof window === "undefined") return;
+  const existing = document.getElementById("dsh-remote-workspace-modal");
+  if (existing) existing.remove();
+  const overlay = document.createElement("div");
+  overlay.id = "dsh-remote-workspace-modal";
+  overlay.style.cssText = `
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--dsw-alias-label-primary, #111827);
+  `;
+  const modal = document.createElement("div");
+  modal.className = "dsh-ws-dialog-card";
+  let currentPath = "";
+  let parentPath = null;
+  let breadcrumbs = [];
+  let entries = [];
+  let roots = [];
+  let drives = [];
+  let workspaces = [];
+  let filterQuery = "";
+  let showManualInput = false;
+  let isLoading = false;
+  let isSubmitting = false;
+  let statusMessage = null;
+  let isErrorMessage = false;
+  function closeModal() {
+    document.removeEventListener("keydown", handleKeydown);
+    overlay.style.opacity = "0";
+    overlay.style.transition = "opacity 0.15s ease";
+    setTimeout(() => overlay.remove(), 150);
+    if (typeof onCancel === "function") {
+      try {
+        onCancel();
+      } catch (e) {
+      }
+    }
+  }
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) closeModal();
+  });
+  const handleKeydown = (e) => {
+    if (e.key === "Escape") {
+      closeModal();
+    }
+  };
+  document.addEventListener("keydown", handleKeydown);
+  function render() {
+    const filteredEntries = (entries || []).filter((e) => {
+      if (!filterQuery.trim()) return true;
+      return e.name.toLowerCase().includes(filterQuery.trim().toLowerCase());
+    });
+    modal.innerHTML = `
+      <!-- \u79FB\u52A8\u7AEF\u9876\u90E8\u4E0B\u62C9\u6307\u793A\u6761 -->
+      <div class="dsh-ws-drag-handle" style="width: 36px; height: 4px; background: var(--dsw-alias-border-l2, #d1d5db); border-radius: 2px; margin: 8px auto 0 auto; display: none;"></div>
+
+      <!-- \u5F39\u7A97\u9876\u90E8\u6807\u9898\u680F -->
+      <div style="padding: 12px 16px; border-bottom: 1px solid var(--dsw-alias-border-l2, #e5e7eb); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; background: var(--dsw-alias-bg-layer-2, #f9fafb);">
+        <div style="display: flex; align-items: center; gap: 8px; overflow: hidden;">
+          <span style="font-size: 20px; flex-shrink: 0;">\u{1F5C2}\uFE0F</span>
+          <div style="overflow: hidden;">
+            <div style="font-size: 15px; font-weight: 600; color: var(--dsw-alias-label-primary, #111827); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">\u9009\u62E9\u7535\u8111\u5DE5\u4F5C\u533A</div>
+            <div style="font-size: 11px; color: var(--dsw-alias-label-tertiary, #6b7280); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">\u70B9\u51FB\u8FDB\u5165\u6587\u4EF6\u5939\uFF0C\u6216\u70B9\u51FB\u300C+ \u9009\u4E3A\u5DE5\u4F5C\u533A\u300D\u76F4\u63A5\u6DFB\u52A0\u5E76\u5207\u6362</div>
+          </div>
+        </div>
+        <button id="dsh-ws-close-btn" style="border: none; background: none; font-size: 18px; cursor: pointer; color: var(--dsw-alias-label-tertiary, #9ca3af); padding: 4px 8px; border-radius: 6px; line-height: 1; flex-shrink: 0;">\u2715</button>
+      </div>
+
+      <div style="padding: 12px 16px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 10px;">
+        <!-- \u63D0\u793A\u4FE1\u606F\u6A2A\u5E45 -->
+        ${statusMessage ? `
+          <div style="padding: 8px 12px; border-radius: 8px; font-size: 12px; line-height: 1.5; font-weight: 500; display: flex; align-items: center; gap: 8px; ${isErrorMessage ? "background: var(--dsw-alias-state-error-bg, #fef2f2); border: 1px solid var(--dsw-alias-state-error-border, #fecaca); color: var(--dsw-alias-state-error-primary, #dc2626);" : "background: var(--dsw-alias-state-success-bg, #ecfdf5); border: 1px solid var(--dsw-alias-state-success-border, #a7f3d0); color: var(--dsw-alias-state-success-primary, #059669);"}">
+            <span>${isErrorMessage ? "\u26A0\uFE0F" : "\u{1F389}"}</span>
+            <span>${escapeHtml(statusMessage)}</span>
+          </div>
+        ` : ""}
+
+        <!-- \u5FEB\u901F\u76F4\u8FBE\u4E0E\u78C1\u76D8\u6A2A\u5411\u6ED1\u52A8\u680F (\u6781\u7B80\u7701\u7A7A\u95F4) -->
+        <div class="dsh-ws-chips-scroll">
+          ${(drives || []).map((d) => {
+      const isActive = currentPath.startsWith(d.path) || currentPath === d.path;
+      return `
+              <button class="dsh-ws-quick-btn" data-path="${escapeHtml(d.path)}" style="border: 1px solid ${isActive ? "var(--dsw-alias-brand-primary, #4f6ef7)" : "var(--dsw-alias-border-l2, #d1d5db)"}; background: ${isActive ? "var(--dsw-alias-brand-primary, #4f6ef7)" : "var(--dsw-alias-bg-layer-2, #f9fafb)"}; color: ${isActive ? "#fff" : "var(--dsw-alias-label-primary, #111827)"}; border-radius: 14px; padding: 4px 10px; font-size: 11px; cursor: pointer; font-weight: 500; flex-shrink: 0; transition: all 0.1s;">
+                \u{1F4BE} ${escapeHtml(d.name)}
+              </button>
+            `;
+    }).join("")}
+          <span style="color: var(--dsw-alias-border-l2, #d1d5db); margin: 0 1px; flex-shrink: 0;">|</span>
+          ${(roots || []).map((r) => {
+      const isActive = currentPath === r.path;
+      return `
+              <button class="dsh-ws-quick-btn" data-path="${escapeHtml(r.path)}" style="border: 1px solid ${isActive ? "var(--dsw-alias-brand-primary, #4f6ef7)" : "var(--dsw-alias-border-l2, #d1d5db)"}; background: ${isActive ? "var(--dsw-alias-state-info-bg, #eff6ff)" : "var(--dsw-alias-bg-layer-2, #f9fafb)"}; color: ${isActive ? "var(--dsw-alias-brand-primary, #4f6ef7)" : "var(--dsw-alias-label-secondary, #374151)"}; border-radius: 14px; padding: 4px 10px; font-size: 11px; cursor: pointer; font-weight: 500; flex-shrink: 0;">
+                ${escapeHtml(r.name)}
+              </button>
+            `;
+    }).join("")}
+        </div>
+
+        <!-- \u4EA4\u4E92\u5F0F\u9762\u5305\u5C51\u8DEF\u5F84\u5BFC\u822A\u6761 (Breadcrumbs Bar) -->
+        <div style="background: var(--dsw-alias-bg-layer-3, #f3f4f6); border: 1px solid var(--dsw-alias-border-l2, #e5e7eb); border-radius: 10px; padding: 6px 10px; display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+          <div class="dsh-ws-chips-scroll" style="flex: 1;">
+            <span style="font-size: 12px; margin-right: 2px; flex-shrink: 0;">\u{1F4C2}</span>
+            ${(breadcrumbs || []).map((crumb, idx) => {
+      const isLast = idx === breadcrumbs.length - 1;
+      return `
+                <button class="dsh-ws-crumb-btn" data-path="${escapeHtml(crumb.path)}" style="border: none; background: ${isLast ? "var(--dsw-alias-bg-layer-1, #fff)" : "transparent"}; color: ${isLast ? "var(--dsw-alias-brand-primary, #4f6ef7)" : "var(--dsw-alias-label-secondary, #4b5563)"}; font-family: ui-monospace, Menlo, monospace; font-size: 11px; font-weight: ${isLast ? "700" : "500"}; padding: 3px 6px; border-radius: 4px; cursor: pointer; text-decoration: ${isLast ? "none" : "underline"}; text-underline-offset: 2px; flex-shrink: 0; box-shadow: ${isLast ? "0 1px 2px rgba(0,0,0,0.06)" : "none"};">
+                  ${escapeHtml(crumb.name)}
+                </button>
+                ${!isLast ? `<span style="color: var(--dsw-alias-label-tertiary, #9ca3af); font-size: 11px; font-weight: 600; flex-shrink: 0;">/</span>` : ""}
+              `;
+    }).join("")}
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
+            ${parentPath ? `
+              <button id="dsh-ws-up-btn" data-path="${escapeHtml(parentPath)}" title="\u8FD4\u56DE\u4E0A\u4E00\u7EA7" style="border: 1px solid var(--dsw-alias-border-l2, #d1d5db); background: var(--dsw-alias-bg-layer-1, #fff); color: var(--dsw-alias-label-primary, #111827); padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 2px;">
+                \u2B06\uFE0F \u4E0A\u7EA7
+              </button>
+            ` : ""}
+            <button id="dsh-ws-refresh-btn" title="\u5237\u65B0\u76EE\u5F55" style="border: 1px solid var(--dsw-alias-border-l2, #d1d5db); background: var(--dsw-alias-bg-layer-1, #fff); color: var(--dsw-alias-label-primary, #111827); padding: 3px 6px; border-radius: 6px; font-size: 11px; cursor: pointer;">
+              \u{1F504}
+            </button>
+          </div>
+        </div>
+
+        <!-- \u5F53\u524D\u6240\u5728\u76EE\u5F55\u786E\u8BA4\u5361\u7247 (Primary Action Card) -->
+        <div style="background: var(--dsw-alias-state-info-bg, #eff6ff); border: 1px solid var(--dsw-alias-state-info-border, #bfdbfe); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+            <span style="font-size: 11px; font-weight: 600; color: var(--dsw-alias-brand-primary, #2563eb); flex-shrink: 0;">\u5F53\u524D\u76EE\u5F55:</span>
+            <span style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--dsw-alias-label-primary, #1e3a8a); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; text-align: right; font-weight: 600;">${escapeHtml(currentPath)}</span>
+          </div>
+          <button id="dsh-ws-add-current-btn" style="border: none; background: var(--dsw-alias-brand-primary, #2563eb); color: #fff; height: 36px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; box-shadow: 0 2px 4px rgba(37,99,235,0.25); transition: opacity 0.1s;" ${isSubmitting ? "disabled" : ""}>
+            ${isSubmitting ? "\u6B63\u5728\u6DFB\u52A0\u5E76\u5207\u6362\u2026" : "\u{1F449} \u8BBE\u4E3A\u5F53\u524D\u5DE5\u4F5C\u533A\u5E76\u8FDB\u5165"}
+          </button>
+        </div>
+
+        <!-- \u5B50\u76EE\u5F55\u5217\u8868\u4E0E\u8FC7\u6EE4\u680F -->
+        <div style="border: 1px solid var(--dsw-alias-border-l2, #e5e7eb); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; background: var(--dsw-alias-bg-layer-1, #fff);">
+          <!-- \u5B9E\u65F6\u8FC7\u6EE4\u641C\u7D22\u6846 -->
+          <div style="padding: 7px 10px; background: var(--dsw-alias-bg-layer-2, #f9fafb); border-bottom: 1px solid var(--dsw-alias-border-l2, #e5e7eb); display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+            <div style="display: flex; align-items: center; gap: 6px; flex: 1;">
+              <span style="font-size: 11px; color: var(--dsw-alias-label-tertiary, #9ca3af);">\u{1F50D}</span>
+              <input id="dsh-ws-filter-input" type="text" value="${escapeHtml(filterQuery)}" placeholder="\u8FC7\u6EE4\u5B50\u6587\u4EF6\u5939\u2026" style="border: none; background: transparent; font-size: 12px; width: 100%; color: var(--dsw-alias-label-primary, #111827); outline: none;" />
+            </div>
+            <span style="font-size: 10px; color: var(--dsw-alias-label-tertiary, #6b7280); flex-shrink: 0;">
+              ${filteredEntries.length} \u4E2A\u6587\u4EF6\u5939
+            </span>
+          </div>
+
+          <!-- \u5B50\u6587\u4EF6\u5939\u6EDA\u52A8\u5217\u8868 (\u79FB\u52A8\u7AEF\u8212\u9002\u5927\u70B9\u6309\u533A\u57DF) -->
+          <div style="max-height: 240px; min-height: 120px; overflow-y: auto; padding: 2px 0;">
+            ${isLoading ? `
+              <div style="padding: 32px; text-align: center; font-size: 12px; color: var(--dsw-alias-label-tertiary, #6b7280); display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                <span style="font-size: 20px;">\u23F3</span>
+                <span>\u6B63\u5728\u8BFB\u53D6\u76EE\u5F55\u5185\u5BB9\u2026</span>
+              </div>
+            ` : filteredEntries.length === 0 ? `
+              <div style="padding: 26px 16px; text-align: center; font-size: 12px; color: var(--dsw-alias-label-tertiary, #6b7280); display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                <span style="font-size: 22px;">\u{1F4C1}</span>
+                <span>${filterQuery ? "\u672A\u627E\u5230\u5339\u914D\u7684\u5B50\u6587\u4EF6\u5939" : "\u5F53\u524D\u6587\u4EF6\u5939\u4E0B\u6CA1\u6709\u66F4\u591A\u5B50\u6587\u4EF6\u5939"}</span>
+                <span style="font-size: 11px; color: var(--dsw-alias-label-tertiary, #9ca3af);">\uFF08\u76F4\u63A5\u70B9\u51FB\u4E0A\u65B9\u84DD\u8272\u6309\u94AE\u5373\u53EF\u8FDB\u5165\u5F53\u524D\u76EE\u5F55\uFF09</span>
+              </div>
+            ` : filteredEntries.map((e) => `
+              <div class="dsh-ws-entry-row" data-path="${escapeHtml(e.path)}" style="display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; border-bottom: 1px solid var(--dsw-alias-border-l2, #f3f4f6); cursor: pointer; font-size: 12px; transition: background 0.1s; min-height: 40px;">
+                <div class="dsh-ws-drill-btn" data-path="${escapeHtml(e.path)}" style="display: flex; align-items: center; gap: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; padding: 2px 0;">
+                  <span style="font-size: 16px; flex-shrink: 0;">\u{1F4C1}</span>
+                  <span style="font-family: ui-monospace, Menlo, monospace; font-weight: 500; color: var(--dsw-alias-label-primary, #111827); overflow: hidden; text-overflow: ellipsis;">${escapeHtml(e.name)}</span>
+                  <span style="color: var(--dsw-alias-label-tertiary, #9ca3af); font-size: 12px; margin-left: 2px; flex-shrink: 0;">\u203A</span>
+                </div>
+                <button class="dsh-ws-pick-entry-btn" data-path="${escapeHtml(e.path)}" title="\u76F4\u63A5\u6DFB\u52A0\u6B64\u5B50\u6587\u4EF6\u5939\u4E3A\u5DE5\u4F5C\u533A\u5E76\u8FDB\u5165" style="border: 1px solid var(--dsw-alias-state-success-border, #a7f3d0); background: var(--dsw-alias-state-success-bg, #ecfdf5); color: var(--dsw-alias-state-success-primary, #059669); padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0; margin-left: 8px; white-space: nowrap; transition: all 0.1s;">
+                  + \u9009\u4E3A\u5DE5\u4F5C\u533A
+                </button>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+
+        <!-- \u624B\u52A8\u8F93\u5165\u8DEF\u5F84\u6298\u53E0\u533A -->
+        <div>
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <button id="dsh-ws-toggle-manual" style="border: none; background: none; color: var(--dsw-alias-label-tertiary, #6b7280); font-size: 11px; cursor: pointer; padding: 2px 0; text-decoration: underline;">
+              ${showManualInput ? "\u25BC \u6536\u8D77\u7EDD\u5BF9\u8DEF\u5F84\u624B\u52A8\u8F93\u5165" : "\u25B6 \u624B\u52A8\u7C98\u8D34/\u8F93\u5165\u7EDD\u5BF9\u8DEF\u5F84"}
+            </button>
+          </div>
+          ${showManualInput ? `
+            <div style="margin-top: 6px; display: flex; gap: 6px;">
+              <input id="dsh-ws-manual-input" type="text" value="${escapeHtml(currentPath)}" placeholder="\u8F93\u5165\u7535\u8111\u7EDD\u5BF9\u8DEF\u5F84\uFF0C\u4F8B\u5982 C:\\Projects\\my-app" style="flex: 1; font-family: ui-monospace, Menlo, monospace; font-size: 11px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--dsw-alias-border-l2, #d1d5db); background: var(--dsw-alias-bg-layer-1, #fff); color: var(--dsw-alias-label-primary, #111827); outline: none;" />
+              <button id="dsh-ws-manual-jump-btn" style="border: 1px solid var(--dsw-alias-border-l2, #d1d5db); background: var(--dsw-alias-bg-layer-2, #f9fafb); color: var(--dsw-alias-label-primary, #111827); padding: 0 10px; border-radius: 8px; font-size: 11px; cursor: pointer; white-space: nowrap;">
+                \u524D\u5F80
+              </button>
+              <button id="dsh-ws-manual-add-btn" style="border: none; background: var(--dsw-alias-brand-primary, #4f6ef7); color: #fff; padding: 0 12px; border-radius: 8px; font-size: 11px; font-weight: 500; cursor: pointer; white-space: nowrap;">
+                \u6DFB\u52A0\u5E76\u8FDB\u5165
+              </button>
+            </div>
+          ` : ""}
+        </div>
+
+        <!-- \u5DF2\u5728 DSH \u6CE8\u518C\u7684\u5DE5\u4F5C\u533A\u5C55\u793A (\u652F\u6301\u4E00\u952E\u5207\u6362) -->
+        ${workspaces && workspaces.length > 0 ? `
+          <div style="padding-top: 2px;">
+            <div style="font-size: 11px; font-weight: 600; color: var(--dsw-alias-label-tertiary, #6b7280); margin-bottom: 4px;">\u5DF2\u6CE8\u518C\u5DE5\u4F5C\u533A (${workspaces.length} \u4E2A\uFF0C\u70B9\u51FB\u76F4\u63A5\u5207\u6362)\uFF1A</div>
+            <div style="display: flex; flex-direction: column; gap: 4px; max-height: 80px; overflow-y: auto;">
+              ${workspaces.map((w, i) => `
+                <div class="dsh-ws-registered-row" data-ws-id="${escapeHtml(w.id || "")}" data-ws-path="${escapeHtml(w.path)}" style="display: flex; align-items: center; justify-content: space-between; background: var(--dsw-alias-bg-layer-2, #f9fafb); border: 1px solid var(--dsw-alias-border-l2, #e5e7eb); border-radius: 6px; padding: 4px 8px; font-size: 11px; cursor: pointer; transition: background 0.1s;">
+                  <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">
+                    <span style="font-weight: 600; color: var(--dsw-alias-brand-primary, #4f6ef7);">@${i + 1} ${escapeHtml(w.title || "")}</span>
+                    <span style="color: var(--dsw-alias-label-tertiary, #6b7280); margin-left: 6px; font-family: ui-monospace, Menlo, monospace; font-size: 10px;">${escapeHtml(w.path)}</span>
+                  </div>
+                  <button class="dsh-ws-switch-btn" data-ws-id="${escapeHtml(w.id || "")}" data-ws-path="${escapeHtml(w.path)}" style="border: 1px solid var(--dsw-alias-brand-primary, #4f6ef7); background: var(--dsw-alias-state-info-bg, #eff6ff); color: var(--dsw-alias-brand-primary, #4f6ef7); padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 600; cursor: pointer; flex-shrink: 0; margin-left: 6px; white-space: nowrap;">
+                    \u8FDB\u5165 \u2794
+                  </button>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        ` : ""}
+      </div>
+
+      <!-- \u5F39\u7A97\u5E95\u90E8\u64CD\u4F5C\u6761 -->
+      <div style="padding: 8px 16px; border-top: 1px solid var(--dsw-alias-border-l2, #e5e7eb); display: flex; align-items: center; justify-content: space-between; background: var(--dsw-alias-bg-layer-2, #f9fafb); flex-shrink: 0;">
+        <span style="font-size: 10px; color: var(--dsw-alias-label-tertiary, #6b7280);">
+          \u{1F4A1} \u70B9\u51FB\u6587\u4EF6\u5939\u53EF\u9010\u7EA7\u8FDB\u5165
+        </span>
+        <button id="dsh-ws-cancel-btn" style="border: 1px solid var(--dsw-alias-border-l2, #d1d5db); background: var(--dsw-alias-bg-layer-1, #fff); color: var(--dsw-alias-label-primary, #111827); padding: 5px 14px; border-radius: 8px; font-size: 12px; cursor: pointer; font-weight: 500;">\u5173\u95ED</button>
+      </div>
+    `;
+    modal.querySelector("#dsh-ws-close-btn")?.addEventListener("click", closeModal);
+    modal.querySelector("#dsh-ws-cancel-btn")?.addEventListener("click", closeModal);
+    modal.querySelectorAll(".dsh-ws-crumb-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const p = btn.getAttribute("data-path");
+        if (p) loadDirectory(p);
+      });
+    });
+    modal.querySelectorAll(".dsh-ws-quick-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const p = btn.getAttribute("data-path");
+        if (p) loadDirectory(p);
+      });
+    });
+    modal.querySelector("#dsh-ws-up-btn")?.addEventListener("click", (e) => {
+      const p = e.currentTarget.getAttribute("data-path");
+      if (p) loadDirectory(p);
+    });
+    modal.querySelector("#dsh-ws-refresh-btn")?.addEventListener("click", () => {
+      loadDirectory(currentPath);
+    });
+    modal.querySelector("#dsh-ws-add-current-btn")?.addEventListener("click", () => {
+      doSubmit(currentPath);
+    });
+    const filterInput = modal.querySelector("#dsh-ws-filter-input");
+    if (filterInput) {
+      filterInput.addEventListener("input", (e) => {
+        filterQuery = e.target.value;
+        render();
+        const nextInput = modal.querySelector("#dsh-ws-filter-input");
+        if (nextInput) {
+          nextInput.focus();
+          nextInput.selectionStart = nextInput.selectionEnd = nextInput.value.length;
+        }
+      });
+    }
+    modal.querySelectorAll(".dsh-ws-drill-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const p = btn.getAttribute("data-path");
+        if (p) loadDirectory(p);
+      });
+    });
+    modal.querySelectorAll(".dsh-ws-entry-row").forEach((row) => {
+      row.addEventListener("click", (e) => {
+        if (e.target.closest(".dsh-ws-pick-entry-btn")) return;
+        const p = row.getAttribute("data-path");
+        if (p) loadDirectory(p);
+      });
+    });
+    modal.querySelectorAll(".dsh-ws-pick-entry-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const p = btn.getAttribute("data-path");
+        if (p) doSubmit(p);
+      });
+    });
+    modal.querySelectorAll(".dsh-ws-registered-row, .dsh-ws-switch-btn").forEach((el) => {
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const wsId = el.getAttribute("data-ws-id");
+        const wsPath = el.getAttribute("data-ws-path");
+        if (wsId || wsPath) {
+          switchToWorkspace(wsId, wsPath);
+        }
+      });
+    });
+    modal.querySelector("#dsh-ws-toggle-manual")?.addEventListener("click", () => {
+      showManualInput = !showManualInput;
+      render();
+    });
+    const manualInput = modal.querySelector("#dsh-ws-manual-input");
+    modal.querySelector("#dsh-ws-manual-jump-btn")?.addEventListener("click", () => {
+      if (manualInput && manualInput.value.trim()) {
+        loadDirectory(manualInput.value.trim());
+      }
+    });
+    modal.querySelector("#dsh-ws-manual-add-btn")?.addEventListener("click", () => {
+      if (manualInput && manualInput.value.trim()) {
+        doSubmit(manualInput.value.trim());
+      }
+    });
+    if (manualInput) {
+      manualInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          doSubmit(manualInput.value.trim());
+        }
+      });
+    }
+  }
+  async function authRpc(endpoint, payload = {}) {
+    let token = getGlobalAdminToken();
+    if (!token && isLocalEnvironment()) {
+      try {
+        const res = await fetch("/__dsh_bridge__/loopback-token", { method: "POST" });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.adminToken) {
+            token = data.adminToken;
+            setGlobalAdminToken(token);
+          }
+        }
+      } catch {
+      }
+    }
+    return rpcCall(endpoint, {
+      ...payload,
+      ...token ? { adminToken: token } : {},
+      ...isLocalEnvironment() ? { isLocalhost: true } : {}
+    });
+  }
+  async function switchToWorkspace(wsId, wsPath) {
+    if (isSubmitting) return;
+    isSubmitting = true;
+    statusMessage = `\u6B63\u5728\u5207\u6362\u5DE5\u4F5C\u533A\u2026`;
+    isErrorMessage = false;
+    render();
+    if (typeof onPicked === "function" && wsPath) {
+      try {
+        onPicked(wsPath);
+      } catch (e) {
+      }
+    }
+    let switched = false;
+    if (clientCtx?.workspaces?.startSession && wsId) {
+      try {
+        clientCtx.workspaces.startSession(wsId);
+        switched = true;
+      } catch (e) {
+        console.warn("[dsh-bridge] startSession failed:", e);
+      }
+    }
+    if (!switched && wsPath) {
+      try {
+        if (clientCtx?.workspaces?.create) {
+          const ws = await clientCtx.workspaces.create({ path: wsPath });
+          if (ws?.workspaceId && clientCtx?.workspaces?.startSession) {
+            clientCtx.workspaces.startSession(ws.workspaceId);
+            switched = true;
+          }
+        }
+        if (!switched) {
+          const raw = await authRpc(BRIDGE_ENDPOINTS.addRemoteWorkspace, { path: wsPath });
+          const res = raw?.value || raw;
+          if (res?.workspaceId && clientCtx?.workspaces?.startSession) {
+            try {
+              clientCtx.workspaces.startSession(res.workspaceId);
+              switched = true;
+            } catch (e) {
+            }
+          }
+          if (!switched && res?.sessionId && clientCtx?.sessions?.open) {
+            try {
+              clientCtx.sessions.open(res.sessionId);
+              switched = true;
+            } catch (e) {
+            }
+          }
+        }
+      } catch (e) {
+      }
+    }
+    statusMessage = `\u2713 \u5DF2\u5207\u6362\u81F3\u5DE5\u4F5C\u533A\uFF01`;
+    render();
+    setTimeout(() => {
+      closeModal();
+      document.body.classList.remove("dsh-drawer-open");
+    }, 400);
+  }
+  async function loadDirectory(targetPath) {
+    if (isSubmitting) return;
+    if (!rpcCall) return;
+    isLoading = true;
+    filterQuery = "";
+    statusMessage = null;
+    isErrorMessage = false;
+    render();
+    try {
+      const raw = await authRpc(BRIDGE_ENDPOINTS.listRemoteDirectories, { path: targetPath });
+      const res = raw?.value || raw;
+      if (res) {
+        currentPath = res.currentPath || targetPath || "";
+        parentPath = res.parentPath || null;
+        breadcrumbs = res.breadcrumbs || [];
+        entries = res.entries || [];
+        roots = res.roots || [];
+        drives = res.drives || [];
+        workspaces = res.workspaces || [];
+        if (res.error) {
+          statusMessage = res.error;
+          isErrorMessage = true;
+        }
+      }
+    } catch (err) {
+      statusMessage = err.message || "\u8BFB\u53D6\u76EE\u5F55\u5931\u8D25";
+      isErrorMessage = true;
+    } finally {
+      isLoading = false;
+      render();
+    }
+  }
+  async function doSubmit(pathToRegister) {
+    if (isSubmitting) return;
+    const p = (pathToRegister || currentPath || "").trim();
+    if (!p) {
+      statusMessage = "\u8BF7\u8F93\u5165\u6216\u9009\u62E9\u5DE5\u4F5C\u533A\u8DEF\u5F84";
+      isErrorMessage = true;
+      render();
+      return;
+    }
+    if (!rpcCall) return;
+    isSubmitting = true;
+    statusMessage = null;
+    isErrorMessage = false;
+    render();
+    try {
+      let clientWs = null;
+      if (clientCtx?.workspaces?.create) {
+        try {
+          clientWs = await clientCtx.workspaces.create({ path: p });
+        } catch (e) {
+          console.warn("[dsh-bridge] clientCtx.workspaces.create failed:", e);
+        }
+      }
+      const raw = await authRpc(BRIDGE_ENDPOINTS.addRemoteWorkspace, { path: p });
+      const res = raw?.value || raw;
+      if (res && res.ok) {
+        statusMessage = `\u2713 \u5DE5\u4F5C\u533A\u300C${res.title || p}\u300D\u5DF2\u9009\u5B9A\uFF0C\u6B63\u5728\u5207\u6362\u2026`;
+        isErrorMessage = false;
+        workspaces = res.workspaces || [];
+        render();
+        const targetWorkspaceId = clientWs?.workspaceId || res.workspaceId;
+        if (typeof onPicked === "function") {
+          try {
+            onPicked(p);
+          } catch (e) {
+          }
+        }
+        let switched = false;
+        if (clientCtx?.workspaces?.startSession && targetWorkspaceId) {
+          try {
+            clientCtx.workspaces.startSession(targetWorkspaceId);
+            switched = true;
+          } catch (e) {
+            console.warn("[dsh-bridge] startSession failed:", e);
+          }
+        }
+        if (!switched && clientCtx?.sessions?.open && res.sessionId) {
+          try {
+            clientCtx.sessions.open(res.sessionId);
+            switched = true;
+          } catch (e) {
+            console.warn("[dsh-bridge] sessions.open failed:", e);
+          }
+        }
+        if (typeof onWorkspaceAdded === "function") {
+          onWorkspaceAdded(res);
+        }
+        setTimeout(() => {
+          closeModal();
+          document.body.classList.remove("dsh-drawer-open");
+        }, 500);
+      } else {
+        statusMessage = res?.error || raw?.error || "\u6DFB\u52A0\u5DE5\u4F5C\u533A\u5931\u8D25";
+        isErrorMessage = true;
+        render();
+      }
+    } catch (err) {
+      statusMessage = err.message || "\u6DFB\u52A0\u5DE5\u4F5C\u533A\u5F02\u5E38";
+      isErrorMessage = true;
+      render();
+    } finally {
+      isSubmitting = false;
+    }
+  }
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+  loadDirectory("");
+}
+function RemoteDirectoryFlow(props) {
+  const { open, pick } = props;
+  const outcome = React.useRef(props);
+  outcome.current = props;
+  const armed = React.useRef(false);
+  React.useEffect(() => {
+    if (!open) {
+      armed.current = false;
+      return;
+    }
+    if (armed.current) return;
+    armed.current = true;
+    if (isLocalEnvironment()) {
+      const pickFn = typeof pick === "function" ? pick : typeof window.__dshClientCtx?.workspaces?.pickDirectory === "function" ? () => window.__dshClientCtx.workspaces.pickDirectory() : null;
+      if (pickFn) {
+        pickFn().then((chosenPath) => {
+          if (chosenPath === null) {
+            if (outcome.current?.onCancel) outcome.current.onCancel();
+          } else if (chosenPath) {
+            if (outcome.current?.onPicked) outcome.current.onPicked(chosenPath);
+          }
+        }, (err) => {
+          if (outcome.current?.onError) outcome.current.onError(err instanceof Error ? err.message : String(err));
+        });
+        return;
+      }
+    }
+    if (typeof window.__dshOpenRemoteWorkspaceModal === "function") {
+      window.__dshOpenRemoteWorkspaceModal(
+        (res) => {
+          if (res?.path && outcome.current?.onPicked) {
+            outcome.current.onPicked(res.path);
+          }
+        },
+        (chosenPath) => {
+          if (chosenPath && outcome.current?.onPicked) {
+            outcome.current.onPicked(chosenPath);
+          }
+        },
+        () => {
+          if (outcome.current?.onCancel) {
+            outcome.current.onCancel();
+          }
+        }
+      );
+    }
+  }, [open, pick]);
+  return null;
 }
 function apply(ctx) {
-  setupMobileExperience();
+  window.__dshClientCtx = ctx;
   const rpcCall = (endpoint, payload, signal) => ctx.connection.rpc.call(BRIDGE_RPC_CHANNEL, endpoint, payload, signal);
+  window.__dshOpenRemoteWorkspaceModal = (onAdded, onPickDirect, onCancel) => showRemoteWorkspaceDialog(rpcCall, onAdded, ctx, onPickDirect, onCancel);
+  setupMobileExperience(rpcCall, ctx);
+  const injected = () => ({ pick: () => ctx.workspaces?.pickDirectory?.() });
+  ctx.slots.inject(
+    "conversation.hero.workspace.directoryFlow",
+    () => ctx.slots.inject("sidebar.workspaces.directoryFlow", function* () {
+      yield ctx.slots.register(
+        {
+          name: "conversation.hero.workspace.directoryFlow",
+          priority: -10,
+          inject: injected
+        },
+        RemoteDirectoryFlow
+      );
+      yield ctx.slots.register(
+        {
+          name: "sidebar.workspaces.directoryFlow",
+          priority: -10,
+          inject: injected
+        },
+        RemoteDirectoryFlow
+      );
+    })
+  );
   ctx.slots.inject(
     "settings.section",
     () => ctx.slots.register(

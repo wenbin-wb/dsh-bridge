@@ -23,6 +23,48 @@ if (typeof window !== 'undefined') {
 
 import { BRIDGE_RPC_CHANNEL, BRIDGE_ENDPOINTS } from '../lib/bridge-rpc-constants.js';
 
+let _globalAdminToken = '';
+function setGlobalAdminToken(t) {
+  _globalAdminToken = t || '';
+  if (typeof window !== 'undefined') {
+    try {
+      if (t) sessionStorage.setItem('dsh_admin_token', t);
+      else sessionStorage.removeItem('dsh_admin_token');
+    } catch {}
+  }
+}
+
+function getGlobalAdminToken() {
+  if (_globalAdminToken) return _globalAdminToken;
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = sessionStorage.getItem('dsh_admin_token');
+      if (saved) {
+        _globalAdminToken = saved;
+        return saved;
+      }
+    } catch {}
+  }
+  return '';
+}
+
+function isLocalEnvironment() {
+  if (typeof window === 'undefined') return true;
+  const host = window.location.hostname || '';
+  const proto = window.location.protocol || '';
+  return (
+    host === '127.0.0.1' ||
+    host === 'localhost' ||
+    host === '::1' ||
+    host === '' ||
+    proto === 'file:' ||
+    proto === 'vscode-webview:' ||
+    proto === 'app:' ||
+    typeof window.__DSH_ELECTRON__ !== 'undefined' ||
+    (typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.includes('Electron'))
+  );
+}
+
 const GITHUB_URL = 'https://github.com/wenbin-wb/dsh-bridge';
 const RELEASES_URL = 'https://github.com/wenbin-wb/dsh-bridge/releases';
 const ISSUES_URL = 'https://github.com/wenbin-wb/dsh-bridge/issues/new';
@@ -38,7 +80,7 @@ function upgradeCommands(latest) {
 }
 
 const name = 'dsh-bridge';
-const inject = ['slots', 'connection'];
+const inject = ['slots', 'connection', 'workspaces', 'sessions'];
 
 // semver 比较：a > b
 function semverGt(a, b) {
@@ -1801,6 +1843,78 @@ function RestartDshCard({ rpcCall }) {
   );
 }
 
+// 运维 Tab 内的远程工作区管理卡片
+function RemoteWorkspaceCard({ rpcCall }) {
+  const [workspaces, setWorkspaces] = React.useState([]);
+  const [loading, setLoading] = React.useState(false);
+
+  const load = React.useCallback(async () => {
+    if (!rpcCall) return;
+    setLoading(true);
+    try {
+      const res = await rpcCall(BRIDGE_ENDPOINTS.listWorkspaces, {});
+      const list = res?.value || res;
+      if (Array.isArray(list)) setWorkspaces(list);
+      else if (list?.workspaces && Array.isArray(list.workspaces)) setWorkspaces(list.workspaces);
+    } catch {}
+    finally { setLoading(false); }
+  }, [rpcCall]);
+
+  React.useEffect(() => {
+    load();
+  }, [load]);
+
+  return React.createElement('div', { style: { ...s.card, marginBottom: 16 } },
+    React.createElement('div', {
+      style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 8 },
+    },
+      React.createElement('div', null,
+        React.createElement('div', { style: { ...s.label, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 } },
+          '🗂️ 远程工作区管理 (目录浏览器)'
+        ),
+        React.createElement('div', { style: { ...s.muted, marginTop: 3 } },
+          '在移动端或远程设备上可视点选电脑上的文件夹或直接输入路径添加至 DSH。'
+        ),
+      ),
+      React.createElement('button', {
+        type: 'button',
+        style: { ...s.btnPri, height: 32, fontSize: 12, padding: '0 14px' },
+        onClick: () => {
+          if (typeof window.__dshOpenRemoteWorkspaceModal === 'function') {
+            window.__dshOpenRemoteWorkspaceModal();
+          } else if (typeof showRemoteWorkspaceDialog === 'function') {
+            showRemoteWorkspaceDialog(rpcCall, () => load());
+          }
+        },
+      }, '+ 远程添加工作区'),
+    ),
+    workspaces.length > 0 ? React.createElement('div', {
+      style: { display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 },
+    },
+      workspaces.map((ws, i) => React.createElement('div', {
+        key: ws.path || i,
+        style: {
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '7px 12px',
+          background: 'var(--dsw-alias-bg-layer-1,#ffffff)',
+          border: '1px solid var(--dsw-alias-border-l2,#e5e7eb)',
+          borderRadius: 8,
+          fontSize: 12,
+        },
+      },
+        React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' } },
+          React.createElement('span', { style: { fontWeight: 600, color: 'var(--dsw-alias-brand-primary,#4f6ef7)', flexShrink: 0 } }, `@${i + 1} ${ws.title || ''}`),
+          React.createElement('span', { style: { ...s.code, color: 'var(--dsw-alias-label-tertiary,#6b7280)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, ws.path),
+        ),
+      )),
+    ) : React.createElement('div', {
+      style: { ...s.muted, marginTop: 6, padding: '10px 14px', background: 'var(--dsw-alias-bg-layer-1,#ffffff)', border: '1px solid var(--dsw-alias-border-l2,#e5e7eb)', borderRadius: 8, textAlign: 'center' },
+    }, loading ? '正在读取工作区列表…' : '暂无已注册工作区，点击右上角「+ 远程添加工作区」即可浏览添加。'),
+  );
+}
+
 // 版本检查 + 一键升级 + GitHub/反馈入口
 function VersionBanner({ rpcCall }) {
   const [info, setInfo] = React.useState(null);
@@ -2239,6 +2353,7 @@ function BridgePanel({ rpcCall }) {
           const data = await res.json();
           if (data?.ok && data.adminToken) {
             setAdminToken(data.adminToken);
+            setGlobalAdminToken(data.adminToken);
             setAdminUnlocked(true);
             return data.adminToken;
           }
@@ -2255,7 +2370,7 @@ function BridgePanel({ rpcCall }) {
   }, [isLocalhost, adminUnlocked, fetchLoopbackToken]);
 
   const authRpcCall = React.useCallback(async (endpoint, payload = {}, signal) => {
-    let token = adminToken;
+    let token = adminToken || getGlobalAdminToken();
     if (isLocalhost && !token) {
       token = await fetchLoopbackToken();
     }
@@ -2282,7 +2397,9 @@ function BridgePanel({ rpcCall }) {
     try {
       const res = await rpcCall(BRIDGE_ENDPOINTS.authAdminUnlock, { password: unlockPassword });
       if (res?.ok) {
-        setAdminToken(res.value?.adminToken || '');
+        const token = res.value?.adminToken || '';
+        setAdminToken(token);
+        setGlobalAdminToken(token);
         setAdminUnlocked(true);
         setUnlockPassword('');
         setShowUnlockModal(false);
@@ -2304,6 +2421,7 @@ function BridgePanel({ rpcCall }) {
       }
     } catch {}
     setAdminToken('');
+    setGlobalAdminToken('');
     setAdminUnlocked(false);
   }, [rpcCall, adminToken]);
 
@@ -2480,6 +2598,7 @@ function BridgePanel({ rpcCall }) {
   } else if (activeTab === 'ops') {
     tabContent = React.createElement(React.Fragment, null,
       React.createElement(SystemMetricsWidget, { metrics: status?.system }),
+      React.createElement(RemoteWorkspaceCard, { rpcCall: authRpcCall }),
       React.createElement(NetworkDiagnosticWidget, { rpcCall: authRpcCall }),
       React.createElement(BackupRestoreWidget, {
         rpcCall: authRpcCall,
@@ -2833,6 +2952,7 @@ function injectMobileStyles() {
         z-index: 9998 !important;
         box-sizing: border-box !important;
         user-select: none !important;
+        pointer-events: none !important;
       }
 
       /* 左侧双横线按钮 (DeepSeek App 原生图标) */
@@ -2849,6 +2969,7 @@ function injectMobileStyles() {
         cursor: pointer;
         padding: 0;
         transition: opacity 0.15s;
+        pointer-events: auto !important;
       }
       .dsh-header-menu-btn:active {
         opacity: 0.6;
@@ -2868,9 +2989,27 @@ function injectMobileStyles() {
         cursor: pointer;
         padding: 0;
         transition: opacity 0.15s;
+        pointer-events: auto !important;
       }
       .dsh-header-new-btn:active {
         opacity: 0.6;
+      }
+
+      /* 中间动态会话标题 (单行居中打点截断，100% 还原原生 App 导航体验) */
+      .dsh-mobile-header-title {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        text-align: center !important;
+        font-size: 15px !important;
+        font-weight: 600 !important;
+        color: var(--dsw-alias-label-primary, #111827) !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+        padding: 0 10px !important;
+        user-select: none !important;
+        pointer-events: none !important;
+        letter-spacing: -0.2px !important;
       }
 
       /* 3. 中间主内容区与输入框 */
@@ -2889,6 +3028,110 @@ function injectMobileStyles() {
         display: none !important;
       }
 
+      /* 3.1 会话对话头部顶栏：移动端防挤压与空间释放优化（严格排除 .dsh-mobile-app-header） */
+      div[class*="_centerCol"] header,
+      header[class*="wSkVaW_header"] {
+        padding: 4px 16px 2px 16px !important;
+        position: relative !important;
+        overflow: visible !important;
+      }
+
+      div[class*="wSkVaW_titleRow"],
+      div[class*="titleRow"] {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 8px !important;
+        min-height: 32px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+      }
+
+      /* 移动端将原有嵌入在内容区的长面包屑标题隐藏（已统一提升至顶部导航栏正中），彻底释放第二行空间 */
+      nav[class*="wSkVaW_crumbs"],
+      nav[class*="crumbs"],
+      div[class*="wSkVaW_crumbs"],
+      div[class*="crumbs"],
+      [class*="wSkVaW_crumbs"] {
+        display: none !important;
+      }
+
+      /* 子代理/智能体模式胶囊 (Actions)：紧凑圆角胶囊 */
+      div[class*="wSkVaW_headerActions"],
+      div[class*="headerActions"] {
+        flex: 0 0 auto !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+        margin-left: 0 !important;
+      }
+
+      button[class*="h8S2Va_trigger"],
+      button[class*="subagent"] {
+        min-height: 26px !important;
+        height: 26px !important;
+        padding: 2px 8px !important;
+        font-size: 11.5px !important;
+        line-height: 16px !important;
+        border-radius: 13px !important;
+        background: var(--dsw-alias-bg-layer-2, rgba(0, 0, 0, 0.04)) !important;
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+      }
+
+      /* Session Log 导出下载按钮 (Utilities)：在移动端极简为 28px 圆形纯图标按钮，隐藏长文本，极大释放顶部空间 */
+      div[class*="wSkVaW_headerUtilities"],
+      div[class*="headerUtilities"] {
+        flex: 0 0 auto !important;
+        margin-left: 4px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+      }
+
+      button[class*="nL4_yW_sessionLogButton"],
+      button[class*="sessionLogButton"] {
+        min-width: 28px !important;
+        width: 28px !important;
+        height: 28px !important;
+        padding: 0 !important;
+        border-radius: 50% !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-shrink: 0 !important;
+        border: 1px solid var(--dsw-alias-border-l2, rgba(0, 0, 0, 0.1)) !important;
+        background: var(--dsw-alias-bg-layer-2, rgba(0, 0, 0, 0.03)) !important;
+        color: var(--dsw-alias-label-secondary, #6b7280) !important;
+        margin-left: 0 !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+      }
+
+      button[class*="nL4_yW_sessionLogButton"]:hover:not(:disabled),
+      button[class*="sessionLogButton"]:hover:not(:disabled) {
+        background: var(--dsw-alias-interactive-bg-hover, rgba(0, 0, 0, 0.06)) !important;
+        color: var(--dsw-alias-label-primary, #111827) !important;
+      }
+
+      button[class*="nL4_yW_sessionLogButton"] span,
+      button[class*="sessionLogButton"] span {
+        display: none !important;
+      }
+
+      button[class*="nL4_yW_sessionLogButton"] svg,
+      button[class*="sessionLogButton"] svg {
+        width: 13px !important;
+        height: 13px !important;
+        margin: 0 !important;
+      }
+
+      /* 子代理展开菜单在移动端右对齐与宽度自适应 */
+      div[class*="h8S2Va_menu"] {
+        max-width: calc(100vw - 32px) !important;
+        left: auto !important;
+        right: 0 !important;
+      }
+
       /* 输入框底座：DeepSeek App 居中及底部固定 */
       div[class*="wSkVaW_scrollBody"] {
         padding-bottom: max(16px, env(safe-area-inset-bottom)) !important;
@@ -2901,6 +3144,67 @@ function injectMobileStyles() {
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05) !important;
         border: 1px solid rgba(0, 0, 0, 0.07) !important;
         background: var(--dsw-alias-bg-layer-2, #f4f4f7) !important;
+      }
+
+      /* 输入框底部工具栏：弹性自适应，彻底杜绝权限选择器(Full access)与模型选择器重叠碰撞 */
+      div[class*="uV2eYG_row"] {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 6px !important;
+        width: 100% !important;
+        padding: 2px 2px 4px !important;
+        box-sizing: border-box !important;
+      }
+
+      div[class*="uV2eYG_tools"] {
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        flex: 0 0 auto !important;
+        min-width: 0 !important;
+      }
+
+      div[class*="uV2eYG_modes"] {
+        display: flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+        flex: 0 0 auto !important;
+        min-width: 0 !important;
+      }
+
+      button[class*="Sh0Q9G_trigger"] {
+        flex: 0 0 auto !important;
+        min-width: 0 !important;
+      }
+
+      div[class*="uV2eYG_trailing"] {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-end !important;
+        gap: 6px !important;
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+      }
+
+      div[class*="_7KE1Ra_root"] {
+        flex: 0 1 auto !important;
+        min-width: 0 !important;
+        max-width: 180px !important;
+      }
+
+      button[class*="_7KE1Ra_trigger"] {
+        max-width: 100% !important;
+        min-width: 0 !important;
+        flex: 1 1 auto !important;
+        padding: 0 4px 0 6px !important;
+      }
+
+      span[class*="_7KE1Ra_triggerLabel"] {
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+        min-width: 0 !important;
       }
 
       /* 4. 原生侧边栏抽屉化 (Drawer) */
@@ -3119,6 +3423,86 @@ function injectMobileStyles() {
       }
     }
 
+    /* 远程工作区选择弹窗移动端/桌面端自适应样式 */
+    #dsh-remote-workspace-modal {
+      position: fixed !important;
+      inset: 0 !important;
+      z-index: 100000 !important;
+      background: rgba(0, 0, 0, 0.65) !important;
+      backdrop-filter: blur(5px) !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      padding: 16px !important;
+      box-sizing: border-box !important;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+      color: var(--dsw-alias-label-primary, #111827) !important;
+    }
+
+    .dsh-ws-dialog-card {
+      background: var(--dsw-alias-bg-layer-1, #ffffff) !important;
+      border: 1px solid var(--dsw-alias-border-l1, #e5e7eb) !important;
+      border-radius: 16px !important;
+      width: 100% !important;
+      max-width: 620px !important;
+      max-height: 88vh !important;
+      display: flex !important;
+      flex-direction: column !important;
+      box-shadow: 0 25px 35px -5px rgba(0,0,0,0.3), 0 12px 16px -5px rgba(0,0,0,0.2) !important;
+      overflow: hidden !important;
+      animation: dshModalFadeIn 0.2s ease-out !important;
+    }
+
+    .dsh-ws-chips-scroll {
+      display: flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+      overflow-x: auto !important;
+      white-space: nowrap !important;
+      scrollbar-width: none !important;
+      -ms-overflow-style: none !important;
+      -webkit-overflow-scrolling: touch !important;
+      padding: 2px 0 !important;
+    }
+    .dsh-ws-chips-scroll::-webkit-scrollbar {
+      display: none !important;
+    }
+
+    @media (max-width: 640px) {
+      #dsh-remote-workspace-modal {
+        align-items: flex-end !important;
+        padding: 0 !important;
+      }
+
+      .dsh-ws-dialog-card {
+        max-height: 92dvh !important;
+        height: 92dvh !important;
+        border-bottom-left-radius: 0 !important;
+        border-bottom-right-radius: 0 !important;
+        border-left: none !important;
+        border-right: none !important;
+        border-bottom: none !important;
+        max-width: 100vw !important;
+        width: 100vw !important;
+        margin: 0 !important;
+        animation: dshBottomSheetUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+      }
+
+      .dsh-ws-drag-handle {
+        display: block !important;
+      }
+    }
+
+    @keyframes dshModalFadeIn {
+      from { opacity: 0; transform: scale(0.96); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes dshBottomSheetUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
     @media (min-width: 769px) {
       .dsh-mobile-app-header,
       .dsh-mobile-backdrop {
@@ -3129,12 +3513,13 @@ function injectMobileStyles() {
   document.head.appendChild(style);
 }
 
-function setupMobileExperience() {
+function setupMobileExperience(rpcCall, ctx) {
   if (typeof document === 'undefined' || typeof window === 'undefined') return;
   injectMobileStyles();
 
-  // 1. 创建顶部 DeepSeek App 风格导航条 (Header: 左侧双横线，右侧(+)，中间留白，对话页无设置按钮)
+  // 1. 创建顶部 DeepSeek App 风格导航条 (Header: 左侧双横线，中间当前会话标题，右侧(+))
   let header = document.querySelector('.dsh-mobile-app-header');
+  let titleEl = document.querySelector('.dsh-mobile-header-title');
   if (!header) {
     header = document.createElement('header');
     header.className = 'dsh-mobile-app-header';
@@ -3157,6 +3542,11 @@ function setupMobileExperience() {
       }
     };
 
+    // 中间动态会话标题 (居中展示当前会话名称，避免顶部留白)
+    titleEl = document.createElement('div');
+    titleEl.className = 'dsh-mobile-header-title';
+    titleEl.innerText = '新会话';
+
     // 右侧 (+) 新建会话按钮 (DeepSeek App 圆形加号风格)
     const rightBtn = document.createElement('button');
     rightBtn.className = 'dsh-header-new-btn';
@@ -3174,8 +3564,28 @@ function setupMobileExperience() {
     };
 
     header.appendChild(leftBtn);
+    header.appendChild(titleEl);
     header.appendChild(rightBtn);
     document.body.appendChild(header);
+  }
+
+  // 绑定会话标题实时同步 (切换会话或收到首条回复自动更新)
+  const syncMobileTitle = () => {
+    if (!titleEl) titleEl = document.querySelector('.dsh-mobile-header-title');
+    if (!titleEl) return;
+    const snap = ctx?.sessions?.list?.getSnapshot?.();
+    if (!snap) return;
+    const cur = snap.current ? snap.byId?.[snap.current] : null;
+    if (!cur || cur.blank) {
+      titleEl.innerText = '新会话';
+    } else {
+      titleEl.innerText = cur.displayTitle || cur.title || '会话';
+    }
+  };
+
+  syncMobileTitle();
+  if (typeof ctx?.sessions?.list?.subscribe === 'function') {
+    ctx.sessions.list.subscribe(syncMobileTitle);
   }
 
   // 2. 创建背景遮罩（用于抽屉侧边栏）
@@ -3309,15 +3719,718 @@ function setupMobileExperience() {
       }
     }
   }, { passive: true });
+
+  // 5. 拦截原生的「添加工作区 / 打开文件夹」操作，在远程与移动端无缝弹出网页版目录选择器（本机电脑保持原生对话框）
+  document.addEventListener('click', (e) => {
+    if (isLocalEnvironment()) return; // 本机电脑环境不拦截，使用系统原生文件夹对话框
+    const btn = e.target.closest('button, [role="button"], a');
+    if (!btn) return;
+    if (btn.closest('#dsh-remote-workspace-modal')) return;
+
+    const label = (
+      btn.getAttribute('aria-label') ||
+      btn.innerText ||
+      btn.title ||
+      ''
+    ).trim();
+
+    const isAddWorkspace = (
+      label === '添加工作区' ||
+      label === '新建工作区' ||
+      label === '打开工作区' ||
+      label === '打开文件夹' ||
+      label === 'Add Workspace' ||
+      label === 'Open Folder' ||
+      label.includes('添加工作区') ||
+      label.includes('打开工作区') ||
+      label.includes('打开文件夹') ||
+      btn.matches('button[aria-label*="工作区"][aria-label*="添加"], button[aria-label*="工作区"][aria-label*="打开"]')
+    );
+
+    if (isAddWorkspace) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+
+      if (typeof window.__dshOpenRemoteWorkspaceModal === 'function') {
+        window.__dshOpenRemoteWorkspaceModal();
+      }
+    }
+  }, true);
+}
+
+// 辅助函数：HTML 转义
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// ---- 全局网页端远程工作区目录选择弹窗 (树形层级浏览 + 面包屑导航 + 一键添加与切换) ----
+
+function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicked, onCancel) {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return;
+
+  const existing = document.getElementById('dsh-remote-workspace-modal');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'dsh-remote-workspace-modal';
+  overlay.style.cssText = `
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--dsw-alias-label-primary, #111827);
+  `;
+
+  const modal = document.createElement('div');
+  modal.className = 'dsh-ws-dialog-card';
+
+  let currentPath = '';
+  let parentPath = null;
+  let breadcrumbs = [];
+  let entries = [];
+  let roots = [];
+  let drives = [];
+  let workspaces = [];
+  let filterQuery = '';
+  let showManualInput = false;
+  let isLoading = false;
+  let isSubmitting = false;
+  let statusMessage = null;
+  let isErrorMessage = false;
+
+  function closeModal() {
+    document.removeEventListener('keydown', handleKeydown);
+    overlay.style.opacity = '0';
+    overlay.style.transition = 'opacity 0.15s ease';
+    setTimeout(() => overlay.remove(), 150);
+    if (typeof onCancel === 'function') {
+      try {
+        onCancel();
+      } catch (e) {}
+    }
+  }
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeModal();
+  });
+
+  const handleKeydown = (e) => {
+    if (e.key === 'Escape') {
+      closeModal();
+    }
+  };
+  document.addEventListener('keydown', handleKeydown);
+
+  function render() {
+    const filteredEntries = (entries || []).filter(e => {
+      if (!filterQuery.trim()) return true;
+      return e.name.toLowerCase().includes(filterQuery.trim().toLowerCase());
+    });
+
+    modal.innerHTML = `
+      <!-- 移动端顶部下拉指示条 -->
+      <div class="dsh-ws-drag-handle" style="width: 36px; height: 4px; background: var(--dsw-alias-border-l2, #d1d5db); border-radius: 2px; margin: 8px auto 0 auto; display: none;"></div>
+
+      <!-- 弹窗顶部标题栏 -->
+      <div style="padding: 12px 16px; border-bottom: 1px solid var(--dsw-alias-border-l2, #e5e7eb); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; background: var(--dsw-alias-bg-layer-2, #f9fafb);">
+        <div style="display: flex; align-items: center; gap: 8px; overflow: hidden;">
+          <span style="font-size: 20px; flex-shrink: 0;">🗂️</span>
+          <div style="overflow: hidden;">
+            <div style="font-size: 15px; font-weight: 600; color: var(--dsw-alias-label-primary, #111827); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">选择电脑工作区</div>
+            <div style="font-size: 11px; color: var(--dsw-alias-label-tertiary, #6b7280); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">点击进入文件夹，或点击「+ 选为工作区」直接添加并切换</div>
+          </div>
+        </div>
+        <button id="dsh-ws-close-btn" style="border: none; background: none; font-size: 18px; cursor: pointer; color: var(--dsw-alias-label-tertiary, #9ca3af); padding: 4px 8px; border-radius: 6px; line-height: 1; flex-shrink: 0;">✕</button>
+      </div>
+
+      <div style="padding: 12px 16px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 10px;">
+        <!-- 提示信息横幅 -->
+        ${statusMessage ? `
+          <div style="padding: 8px 12px; border-radius: 8px; font-size: 12px; line-height: 1.5; font-weight: 500; display: flex; align-items: center; gap: 8px; ${isErrorMessage ? 'background: var(--dsw-alias-state-error-bg, #fef2f2); border: 1px solid var(--dsw-alias-state-error-border, #fecaca); color: var(--dsw-alias-state-error-primary, #dc2626);' : 'background: var(--dsw-alias-state-success-bg, #ecfdf5); border: 1px solid var(--dsw-alias-state-success-border, #a7f3d0); color: var(--dsw-alias-state-success-primary, #059669);'}">
+            <span>${isErrorMessage ? '⚠️' : '🎉'}</span>
+            <span>${escapeHtml(statusMessage)}</span>
+          </div>
+        ` : ''}
+
+        <!-- 快速直达与磁盘横向滑动栏 (极简省空间) -->
+        <div class="dsh-ws-chips-scroll">
+          ${(drives || []).map(d => {
+            const isActive = currentPath.startsWith(d.path) || currentPath === d.path;
+            return `
+              <button class="dsh-ws-quick-btn" data-path="${escapeHtml(d.path)}" style="border: 1px solid ${isActive ? 'var(--dsw-alias-brand-primary, #4f6ef7)' : 'var(--dsw-alias-border-l2, #d1d5db)'}; background: ${isActive ? 'var(--dsw-alias-brand-primary, #4f6ef7)' : 'var(--dsw-alias-bg-layer-2, #f9fafb)'}; color: ${isActive ? '#fff' : 'var(--dsw-alias-label-primary, #111827)'}; border-radius: 14px; padding: 4px 10px; font-size: 11px; cursor: pointer; font-weight: 500; flex-shrink: 0; transition: all 0.1s;">
+                💾 ${escapeHtml(d.name)}
+              </button>
+            `;
+          }).join('')}
+          <span style="color: var(--dsw-alias-border-l2, #d1d5db); margin: 0 1px; flex-shrink: 0;">|</span>
+          ${(roots || []).map(r => {
+            const isActive = currentPath === r.path;
+            return `
+              <button class="dsh-ws-quick-btn" data-path="${escapeHtml(r.path)}" style="border: 1px solid ${isActive ? 'var(--dsw-alias-brand-primary, #4f6ef7)' : 'var(--dsw-alias-border-l2, #d1d5db)'}; background: ${isActive ? 'var(--dsw-alias-state-info-bg, #eff6ff)' : 'var(--dsw-alias-bg-layer-2, #f9fafb)'}; color: ${isActive ? 'var(--dsw-alias-brand-primary, #4f6ef7)' : 'var(--dsw-alias-label-secondary, #374151)'}; border-radius: 14px; padding: 4px 10px; font-size: 11px; cursor: pointer; font-weight: 500; flex-shrink: 0;">
+                ${escapeHtml(r.name)}
+              </button>
+            `;
+          }).join('')}
+        </div>
+
+        <!-- 交互式面包屑路径导航条 (Breadcrumbs Bar) -->
+        <div style="background: var(--dsw-alias-bg-layer-3, #f3f4f6); border: 1px solid var(--dsw-alias-border-l2, #e5e7eb); border-radius: 10px; padding: 6px 10px; display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+          <div class="dsh-ws-chips-scroll" style="flex: 1;">
+            <span style="font-size: 12px; margin-right: 2px; flex-shrink: 0;">📂</span>
+            ${(breadcrumbs || []).map((crumb, idx) => {
+              const isLast = idx === breadcrumbs.length - 1;
+              return `
+                <button class="dsh-ws-crumb-btn" data-path="${escapeHtml(crumb.path)}" style="border: none; background: ${isLast ? 'var(--dsw-alias-bg-layer-1, #fff)' : 'transparent'}; color: ${isLast ? 'var(--dsw-alias-brand-primary, #4f6ef7)' : 'var(--dsw-alias-label-secondary, #4b5563)'}; font-family: ui-monospace, Menlo, monospace; font-size: 11px; font-weight: ${isLast ? '700' : '500'}; padding: 3px 6px; border-radius: 4px; cursor: pointer; text-decoration: ${isLast ? 'none' : 'underline'}; text-underline-offset: 2px; flex-shrink: 0; box-shadow: ${isLast ? '0 1px 2px rgba(0,0,0,0.06)' : 'none'};">
+                  ${escapeHtml(crumb.name)}
+                </button>
+                ${!isLast ? `<span style="color: var(--dsw-alias-label-tertiary, #9ca3af); font-size: 11px; font-weight: 600; flex-shrink: 0;">/</span>` : ''}
+              `;
+            }).join('')}
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
+            ${parentPath ? `
+              <button id="dsh-ws-up-btn" data-path="${escapeHtml(parentPath)}" title="返回上一级" style="border: 1px solid var(--dsw-alias-border-l2, #d1d5db); background: var(--dsw-alias-bg-layer-1, #fff); color: var(--dsw-alias-label-primary, #111827); padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 2px;">
+                ⬆️ 上级
+              </button>
+            ` : ''}
+            <button id="dsh-ws-refresh-btn" title="刷新目录" style="border: 1px solid var(--dsw-alias-border-l2, #d1d5db); background: var(--dsw-alias-bg-layer-1, #fff); color: var(--dsw-alias-label-primary, #111827); padding: 3px 6px; border-radius: 6px; font-size: 11px; cursor: pointer;">
+              🔄
+            </button>
+          </div>
+        </div>
+
+        <!-- 当前所在目录确认卡片 (Primary Action Card) -->
+        <div style="background: var(--dsw-alias-state-info-bg, #eff6ff); border: 1px solid var(--dsw-alias-state-info-border, #bfdbfe); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+            <span style="font-size: 11px; font-weight: 600; color: var(--dsw-alias-brand-primary, #2563eb); flex-shrink: 0;">当前目录:</span>
+            <span style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--dsw-alias-label-primary, #1e3a8a); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; text-align: right; font-weight: 600;">${escapeHtml(currentPath)}</span>
+          </div>
+          <button id="dsh-ws-add-current-btn" style="border: none; background: var(--dsw-alias-brand-primary, #2563eb); color: #fff; height: 36px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; box-shadow: 0 2px 4px rgba(37,99,235,0.25); transition: opacity 0.1s;" ${isSubmitting ? 'disabled' : ''}>
+            ${isSubmitting ? '正在添加并切换…' : '👉 设为当前工作区并进入'}
+          </button>
+        </div>
+
+        <!-- 子目录列表与过滤栏 -->
+        <div style="border: 1px solid var(--dsw-alias-border-l2, #e5e7eb); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; background: var(--dsw-alias-bg-layer-1, #fff);">
+          <!-- 实时过滤搜索框 -->
+          <div style="padding: 7px 10px; background: var(--dsw-alias-bg-layer-2, #f9fafb); border-bottom: 1px solid var(--dsw-alias-border-l2, #e5e7eb); display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+            <div style="display: flex; align-items: center; gap: 6px; flex: 1;">
+              <span style="font-size: 11px; color: var(--dsw-alias-label-tertiary, #9ca3af);">🔍</span>
+              <input id="dsh-ws-filter-input" type="text" value="${escapeHtml(filterQuery)}" placeholder="过滤子文件夹…" style="border: none; background: transparent; font-size: 12px; width: 100%; color: var(--dsw-alias-label-primary, #111827); outline: none;" />
+            </div>
+            <span style="font-size: 10px; color: var(--dsw-alias-label-tertiary, #6b7280); flex-shrink: 0;">
+              ${filteredEntries.length} 个文件夹
+            </span>
+          </div>
+
+          <!-- 子文件夹滚动列表 (移动端舒适大点按区域) -->
+          <div style="max-height: 240px; min-height: 120px; overflow-y: auto; padding: 2px 0;">
+            ${isLoading ? `
+              <div style="padding: 32px; text-align: center; font-size: 12px; color: var(--dsw-alias-label-tertiary, #6b7280); display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                <span style="font-size: 20px;">⏳</span>
+                <span>正在读取目录内容…</span>
+              </div>
+            ` : filteredEntries.length === 0 ? `
+              <div style="padding: 26px 16px; text-align: center; font-size: 12px; color: var(--dsw-alias-label-tertiary, #6b7280); display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                <span style="font-size: 22px;">📁</span>
+                <span>${filterQuery ? '未找到匹配的子文件夹' : '当前文件夹下没有更多子文件夹'}</span>
+                <span style="font-size: 11px; color: var(--dsw-alias-label-tertiary, #9ca3af);">（直接点击上方蓝色按钮即可进入当前目录）</span>
+              </div>
+            ` : filteredEntries.map(e => `
+              <div class="dsh-ws-entry-row" data-path="${escapeHtml(e.path)}" style="display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; border-bottom: 1px solid var(--dsw-alias-border-l2, #f3f4f6); cursor: pointer; font-size: 12px; transition: background 0.1s; min-height: 40px;">
+                <div class="dsh-ws-drill-btn" data-path="${escapeHtml(e.path)}" style="display: flex; align-items: center; gap: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; padding: 2px 0;">
+                  <span style="font-size: 16px; flex-shrink: 0;">📁</span>
+                  <span style="font-family: ui-monospace, Menlo, monospace; font-weight: 500; color: var(--dsw-alias-label-primary, #111827); overflow: hidden; text-overflow: ellipsis;">${escapeHtml(e.name)}</span>
+                  <span style="color: var(--dsw-alias-label-tertiary, #9ca3af); font-size: 12px; margin-left: 2px; flex-shrink: 0;">›</span>
+                </div>
+                <button class="dsh-ws-pick-entry-btn" data-path="${escapeHtml(e.path)}" title="直接添加此子文件夹为工作区并进入" style="border: 1px solid var(--dsw-alias-state-success-border, #a7f3d0); background: var(--dsw-alias-state-success-bg, #ecfdf5); color: var(--dsw-alias-state-success-primary, #059669); padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0; margin-left: 8px; white-space: nowrap; transition: all 0.1s;">
+                  + 选为工作区
+                </button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- 手动输入路径折叠区 -->
+        <div>
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <button id="dsh-ws-toggle-manual" style="border: none; background: none; color: var(--dsw-alias-label-tertiary, #6b7280); font-size: 11px; cursor: pointer; padding: 2px 0; text-decoration: underline;">
+              ${showManualInput ? '▼ 收起绝对路径手动输入' : '▶ 手动粘贴/输入绝对路径'}
+            </button>
+          </div>
+          ${showManualInput ? `
+            <div style="margin-top: 6px; display: flex; gap: 6px;">
+              <input id="dsh-ws-manual-input" type="text" value="${escapeHtml(currentPath)}" placeholder="输入电脑绝对路径，例如 C:\\Projects\\my-app" style="flex: 1; font-family: ui-monospace, Menlo, monospace; font-size: 11px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--dsw-alias-border-l2, #d1d5db); background: var(--dsw-alias-bg-layer-1, #fff); color: var(--dsw-alias-label-primary, #111827); outline: none;" />
+              <button id="dsh-ws-manual-jump-btn" style="border: 1px solid var(--dsw-alias-border-l2, #d1d5db); background: var(--dsw-alias-bg-layer-2, #f9fafb); color: var(--dsw-alias-label-primary, #111827); padding: 0 10px; border-radius: 8px; font-size: 11px; cursor: pointer; white-space: nowrap;">
+                前往
+              </button>
+              <button id="dsh-ws-manual-add-btn" style="border: none; background: var(--dsw-alias-brand-primary, #4f6ef7); color: #fff; padding: 0 12px; border-radius: 8px; font-size: 11px; font-weight: 500; cursor: pointer; white-space: nowrap;">
+                添加并进入
+              </button>
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- 已在 DSH 注册的工作区展示 (支持一键切换) -->
+        ${(workspaces && workspaces.length > 0) ? `
+          <div style="padding-top: 2px;">
+            <div style="font-size: 11px; font-weight: 600; color: var(--dsw-alias-label-tertiary, #6b7280); margin-bottom: 4px;">已注册工作区 (${workspaces.length} 个，点击直接切换)：</div>
+            <div style="display: flex; flex-direction: column; gap: 4px; max-height: 80px; overflow-y: auto;">
+              ${workspaces.map((w, i) => `
+                <div class="dsh-ws-registered-row" data-ws-id="${escapeHtml(w.id || '')}" data-ws-path="${escapeHtml(w.path)}" style="display: flex; align-items: center; justify-content: space-between; background: var(--dsw-alias-bg-layer-2, #f9fafb); border: 1px solid var(--dsw-alias-border-l2, #e5e7eb); border-radius: 6px; padding: 4px 8px; font-size: 11px; cursor: pointer; transition: background 0.1s;">
+                  <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">
+                    <span style="font-weight: 600; color: var(--dsw-alias-brand-primary, #4f6ef7);">@${i + 1} ${escapeHtml(w.title || '')}</span>
+                    <span style="color: var(--dsw-alias-label-tertiary, #6b7280); margin-left: 6px; font-family: ui-monospace, Menlo, monospace; font-size: 10px;">${escapeHtml(w.path)}</span>
+                  </div>
+                  <button class="dsh-ws-switch-btn" data-ws-id="${escapeHtml(w.id || '')}" data-ws-path="${escapeHtml(w.path)}" style="border: 1px solid var(--dsw-alias-brand-primary, #4f6ef7); background: var(--dsw-alias-state-info-bg, #eff6ff); color: var(--dsw-alias-brand-primary, #4f6ef7); padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 600; cursor: pointer; flex-shrink: 0; margin-left: 6px; white-space: nowrap;">
+                    进入 ➔
+                  </button>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+
+      <!-- 弹窗底部操作条 -->
+      <div style="padding: 8px 16px; border-top: 1px solid var(--dsw-alias-border-l2, #e5e7eb); display: flex; align-items: center; justify-content: space-between; background: var(--dsw-alias-bg-layer-2, #f9fafb); flex-shrink: 0;">
+        <span style="font-size: 10px; color: var(--dsw-alias-label-tertiary, #6b7280);">
+          💡 点击文件夹可逐级进入
+        </span>
+        <button id="dsh-ws-cancel-btn" style="border: 1px solid var(--dsw-alias-border-l2, #d1d5db); background: var(--dsw-alias-bg-layer-1, #fff); color: var(--dsw-alias-label-primary, #111827); padding: 5px 14px; border-radius: 8px; font-size: 12px; cursor: pointer; font-weight: 500;">关闭</button>
+      </div>
+    `;
+
+    // 绑定事件处理器
+    modal.querySelector('#dsh-ws-close-btn')?.addEventListener('click', closeModal);
+    modal.querySelector('#dsh-ws-cancel-btn')?.addEventListener('click', closeModal);
+
+    // 面包屑点击
+    modal.querySelectorAll('.dsh-ws-crumb-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const p = btn.getAttribute('data-path');
+        if (p) loadDirectory(p);
+      });
+    });
+
+    // 快捷盘符与常用目录点击
+    modal.querySelectorAll('.dsh-ws-quick-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const p = btn.getAttribute('data-path');
+        if (p) loadDirectory(p);
+      });
+    });
+
+    // 返回上一级与刷新
+    modal.querySelector('#dsh-ws-up-btn')?.addEventListener('click', (e) => {
+      const p = e.currentTarget.getAttribute('data-path');
+      if (p) loadDirectory(p);
+    });
+    modal.querySelector('#dsh-ws-refresh-btn')?.addEventListener('click', () => {
+      loadDirectory(currentPath);
+    });
+
+    // 添加当前目录为工作区
+    modal.querySelector('#dsh-ws-add-current-btn')?.addEventListener('click', () => {
+      doSubmit(currentPath);
+    });
+
+    // 过滤输入框
+    const filterInput = modal.querySelector('#dsh-ws-filter-input');
+    if (filterInput) {
+      filterInput.addEventListener('input', (e) => {
+        filterQuery = e.target.value;
+        render();
+        const nextInput = modal.querySelector('#dsh-ws-filter-input');
+        if (nextInput) {
+          nextInput.focus();
+          nextInput.selectionStart = nextInput.selectionEnd = nextInput.value.length;
+        }
+      });
+    }
+
+    // 深入文件夹
+    modal.querySelectorAll('.dsh-ws-drill-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const p = btn.getAttribute('data-path');
+        if (p) loadDirectory(p);
+      });
+    });
+
+    // 列表项点击（整行进入文件夹）
+    modal.querySelectorAll('.dsh-ws-entry-row').forEach(row => {
+      row.addEventListener('click', (e) => {
+        if (e.target.closest('.dsh-ws-pick-entry-btn')) return;
+        const p = row.getAttribute('data-path');
+        if (p) loadDirectory(p);
+      });
+    });
+
+    // 快捷选为工作区按钮
+    modal.querySelectorAll('.dsh-ws-pick-entry-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const p = btn.getAttribute('data-path');
+        if (p) doSubmit(p);
+      });
+    });
+
+    // 已注册工作区切换按钮与整行点击
+    modal.querySelectorAll('.dsh-ws-registered-row, .dsh-ws-switch-btn').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const wsId = el.getAttribute('data-ws-id');
+        const wsPath = el.getAttribute('data-ws-path');
+        if (wsId || wsPath) {
+          switchToWorkspace(wsId, wsPath);
+        }
+      });
+    });
+
+    // 手动输入折叠切换
+    modal.querySelector('#dsh-ws-toggle-manual')?.addEventListener('click', () => {
+      showManualInput = !showManualInput;
+      render();
+    });
+
+    // 手动前往与添加
+    const manualInput = modal.querySelector('#dsh-ws-manual-input');
+    modal.querySelector('#dsh-ws-manual-jump-btn')?.addEventListener('click', () => {
+      if (manualInput && manualInput.value.trim()) {
+        loadDirectory(manualInput.value.trim());
+      }
+    });
+    modal.querySelector('#dsh-ws-manual-add-btn')?.addEventListener('click', () => {
+      if (manualInput && manualInput.value.trim()) {
+        doSubmit(manualInput.value.trim());
+      }
+    });
+    if (manualInput) {
+      manualInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          doSubmit(manualInput.value.trim());
+        }
+      });
+    }
+  }
+
+  async function authRpc(endpoint, payload = {}) {
+    let token = getGlobalAdminToken();
+    if (!token && isLocalEnvironment()) {
+      try {
+        const res = await fetch('/__dsh_bridge__/loopback-token', { method: 'POST' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.adminToken) {
+            token = data.adminToken;
+            setGlobalAdminToken(token);
+          }
+        }
+      } catch {}
+    }
+    return rpcCall(endpoint, {
+      ...payload,
+      ...(token ? { adminToken: token } : {}),
+      ...(isLocalEnvironment() ? { isLocalhost: true } : {}),
+    });
+  }
+
+  async function switchToWorkspace(wsId, wsPath) {
+    if (isSubmitting) return;
+    isSubmitting = true;
+    statusMessage = `正在切换工作区…`;
+    isErrorMessage = false;
+    render();
+
+    if (typeof onPicked === 'function' && wsPath) {
+      try {
+        onPicked(wsPath);
+      } catch (e) {}
+    }
+
+    let switched = false;
+    if (clientCtx?.workspaces?.startSession && wsId) {
+      try {
+        clientCtx.workspaces.startSession(wsId);
+        switched = true;
+      } catch (e) {
+        console.warn('[dsh-bridge] startSession failed:', e);
+      }
+    }
+
+    if (!switched && wsPath) {
+      try {
+        if (clientCtx?.workspaces?.create) {
+          const ws = await clientCtx.workspaces.create({ path: wsPath });
+          if (ws?.workspaceId && clientCtx?.workspaces?.startSession) {
+            clientCtx.workspaces.startSession(ws.workspaceId);
+            switched = true;
+          }
+        }
+        if (!switched) {
+          const raw = await authRpc(BRIDGE_ENDPOINTS.addRemoteWorkspace, { path: wsPath });
+          const res = raw?.value || raw;
+          if (res?.workspaceId && clientCtx?.workspaces?.startSession) {
+            try {
+              clientCtx.workspaces.startSession(res.workspaceId);
+              switched = true;
+            } catch (e) {}
+          }
+          if (!switched && res?.sessionId && clientCtx?.sessions?.open) {
+            try {
+              clientCtx.sessions.open(res.sessionId);
+              switched = true;
+            } catch (e) {}
+          }
+        }
+      } catch (e) {}
+    }
+
+    statusMessage = `✓ 已切换至工作区！`;
+    render();
+    setTimeout(() => {
+      closeModal();
+      document.body.classList.remove('dsh-drawer-open');
+    }, 400);
+  }
+
+  async function loadDirectory(targetPath) {
+    if (isSubmitting) return;
+    if (!rpcCall) return;
+    isLoading = true;
+    filterQuery = '';
+    statusMessage = null;
+    isErrorMessage = false;
+    render();
+
+    try {
+      const raw = await authRpc(BRIDGE_ENDPOINTS.listRemoteDirectories, { path: targetPath });
+      const res = raw?.value || raw;
+      if (res) {
+        currentPath = res.currentPath || targetPath || '';
+        parentPath = res.parentPath || null;
+        breadcrumbs = res.breadcrumbs || [];
+        entries = res.entries || [];
+        roots = res.roots || [];
+        drives = res.drives || [];
+        workspaces = res.workspaces || [];
+        if (res.error) {
+          statusMessage = res.error;
+          isErrorMessage = true;
+        }
+      }
+    } catch (err) {
+      statusMessage = err.message || '读取目录失败';
+      isErrorMessage = true;
+    } finally {
+      isLoading = false;
+      render();
+    }
+  }
+
+  async function doSubmit(pathToRegister) {
+    if (isSubmitting) return;
+    const p = (pathToRegister || currentPath || '').trim();
+    if (!p) {
+      statusMessage = '请输入或选择工作区路径';
+      isErrorMessage = true;
+      render();
+      return;
+    }
+    if (!rpcCall) return;
+
+    isSubmitting = true;
+    statusMessage = null;
+    isErrorMessage = false;
+    render();
+
+    try {
+      // 1. 先通过 clientCtx.workspaces.create 注册本地客户端快照
+      let clientWs = null;
+      if (clientCtx?.workspaces?.create) {
+        try {
+          clientWs = await clientCtx.workspaces.create({ path: p });
+        } catch (e) {
+          console.warn('[dsh-bridge] clientCtx.workspaces.create failed:', e);
+        }
+      }
+
+      // 2. 调用服务端 RPC 进行持久化与 session 绑定
+      const raw = await authRpc(BRIDGE_ENDPOINTS.addRemoteWorkspace, { path: p });
+      const res = raw?.value || raw;
+      if (res && res.ok) {
+        statusMessage = `✓ 工作区「${res.title || p}」已选定，正在切换…`;
+        isErrorMessage = false;
+        workspaces = res.workspaces || [];
+        render();
+
+        const targetWorkspaceId = clientWs?.workspaceId || res.workspaceId;
+
+        // 如果是通过 Hero / DirectoryFlow 流程打开的，通知 Flow
+        if (typeof onPicked === 'function') {
+          try {
+            onPicked(p);
+          } catch (e) {}
+        }
+
+        // 切换至新工作区并创建会话
+        let switched = false;
+        if (clientCtx?.workspaces?.startSession && targetWorkspaceId) {
+          try {
+            clientCtx.workspaces.startSession(targetWorkspaceId);
+            switched = true;
+          } catch (e) {
+            console.warn('[dsh-bridge] startSession failed:', e);
+          }
+        }
+        
+        if (!switched && clientCtx?.sessions?.open && res.sessionId) {
+          try {
+            clientCtx.sessions.open(res.sessionId);
+            switched = true;
+          } catch (e) {
+            console.warn('[dsh-bridge] sessions.open failed:', e);
+          }
+        }
+
+        if (typeof onWorkspaceAdded === 'function') {
+          onWorkspaceAdded(res);
+        }
+
+        setTimeout(() => {
+          closeModal();
+          document.body.classList.remove('dsh-drawer-open');
+        }, 500);
+      } else {
+        statusMessage = res?.error || raw?.error || '添加工作区失败';
+        isErrorMessage = true;
+        render();
+      }
+    } catch (err) {
+      statusMessage = err.message || '添加工作区异常';
+      isErrorMessage = true;
+      render();
+    } finally {
+      isSubmitting = false;
+    }
+  }
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  // 初次加载目录
+  loadDirectory('');
+}
+
+// ---- DSH 原生 Slot 目录选择器适配组件 ----
+
+function RemoteDirectoryFlow(props) {
+  const { open, pick } = props;
+  const outcome = React.useRef(props);
+  outcome.current = props;
+  const armed = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!open) {
+      armed.current = false;
+      return;
+    }
+    if (armed.current) return;
+    armed.current = true;
+
+    // 1. 本机电脑访问（Localhost / 127.0.0.1 / Electron 客户端）：直接唤起系统原生文件夹选择对话框！
+    if (isLocalEnvironment()) {
+      const pickFn = typeof pick === 'function' ? pick : (typeof window.__dshClientCtx?.workspaces?.pickDirectory === 'function' ? () => window.__dshClientCtx.workspaces.pickDirectory() : null);
+      if (pickFn) {
+        pickFn().then((chosenPath) => {
+          if (chosenPath === null) {
+            if (outcome.current?.onCancel) outcome.current.onCancel();
+          } else if (chosenPath) {
+            if (outcome.current?.onPicked) outcome.current.onPicked(chosenPath);
+          }
+        }, (err) => {
+          if (outcome.current?.onError) outcome.current.onError(err instanceof Error ? err.message : String(err));
+        });
+        return;
+      }
+    }
+
+    // 2. 远程或移动端访问（手机或局域网跨设备/公网）：呼出网页版远程目录树形选择器！
+    if (typeof window.__dshOpenRemoteWorkspaceModal === 'function') {
+      window.__dshOpenRemoteWorkspaceModal(
+        (res) => {
+          if (res?.path && outcome.current?.onPicked) {
+            outcome.current.onPicked(res.path);
+          }
+        },
+        (chosenPath) => {
+          if (chosenPath && outcome.current?.onPicked) {
+            outcome.current.onPicked(chosenPath);
+          }
+        },
+        () => {
+          if (outcome.current?.onCancel) {
+            outcome.current.onCancel();
+          }
+        }
+      );
+    }
+  }, [open, pick]);
+
+  return null;
 }
 
 // ---- 插件入口 ----
 
 function apply(ctx) {
-  setupMobileExperience();
-
+  window.__dshClientCtx = ctx;
   const rpcCall = (endpoint, payload, signal) =>
     ctx.connection.rpc.call(BRIDGE_RPC_CHANNEL, endpoint, payload, signal);
+
+  window.__dshOpenRemoteWorkspaceModal = (onAdded, onPickDirect, onCancel) =>
+    showRemoteWorkspaceDialog(rpcCall, onAdded, ctx, onPickDirect, onCancel);
+
+  setupMobileExperience(rpcCall, ctx);
+
+  const injected = () => ({ pick: () => ctx.workspaces?.pickDirectory?.() });
+
+  // 注册至 DSH 原生目录选择 Slot（设置 priority: -10 覆盖原生 Electron 选择器，在远程/移动网页端生效）
+  ctx.slots.inject('conversation.hero.workspace.directoryFlow', () =>
+    ctx.slots.inject('sidebar.workspaces.directoryFlow', function* () {
+      yield ctx.slots.register(
+        {
+          name: 'conversation.hero.workspace.directoryFlow',
+          priority: -10,
+          inject: injected,
+        },
+        RemoteDirectoryFlow,
+      );
+      yield ctx.slots.register(
+        {
+          name: 'sidebar.workspaces.directoryFlow',
+          priority: -10,
+          inject: injected,
+        },
+        RemoteDirectoryFlow,
+      );
+    }),
+  );
 
   ctx.slots.inject('settings.section', () =>
     ctx.slots.register(

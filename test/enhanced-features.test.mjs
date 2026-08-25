@@ -115,3 +115,94 @@ test('AuthManager and backup integration', async () => {
   assert.equal(status.hasPassword, true);
   assert.equal(status.hasAdminPassword, true);
 });
+
+test('BridgeService listRemoteDirectories & addWorkspace', async () => {
+  const registered = [];
+  const mockCtx = {
+    workspaceRegistry: {
+      list: async () => registered,
+      add: async (entry) => { registered.push(entry); },
+    },
+  };
+
+  const service = new BridgeService({
+    dshPort: 3080,
+    proxyPort: 3082,
+    logger: { info: () => {}, warn: () => {}, error: () => {} },
+  });
+  service.ctx = mockCtx;
+
+  // 1. 测试列出目录
+  const dirRes = await service.listRemoteDirectories();
+  assert.equal(dirRes.ok, true);
+  assert.ok(dirRes.currentPath);
+  assert.ok(Array.isArray(dirRes.roots));
+  assert.ok(Array.isArray(dirRes.drives));
+  assert.ok(Array.isArray(dirRes.entries));
+
+  // 2. 测试添加当前项目作为工作区
+  const currentDir = process.cwd();
+  const addRes = await service.addWorkspace(currentDir);
+  assert.equal(addRes.ok, true);
+  assert.equal(addRes.path, currentDir);
+  assert.equal(addRes.registered, true);
+
+  // 3. 测试获取工作区列表
+  const wsList = await service.getWorkspaces();
+  assert.ok(Array.isArray(wsList));
+  assert.ok(wsList.some(w => w.path === currentDir));
+
+  // 4. 测试添加不存在路径报错
+  const failRes = await service.addWorkspace('C:\\non_existent_folder_xyz_12345');
+  assert.equal(failRes.ok, false);
+  assert.ok(failRes.error);
+});
+
+test('ConversationBridge /addworkspace and /workspaces commands', async () => {
+  const registered = [];
+  const mockCtx = {
+    on: () => () => {},
+    effect: () => () => {},
+    workspaceRegistry: {
+      list: async () => registered,
+      add: async (entry) => { registered.push(entry); },
+    },
+    sessions: new Map(),
+    agents: new Map(),
+  };
+
+  const sentTexts = [];
+  const mockPlatform = {
+    id: 'test-platform',
+    capabilities: { maxMessageChars: 2000, supportsGroup: true },
+    sendText: async (peer, text) => {
+      sentTexts.push(text);
+      return { success: true };
+    },
+    sendTyping: async () => {},
+  };
+
+  const bridge = new ConversationBridge({
+    ctx: mockCtx,
+    logger: { info: () => {}, warn: () => {}, error: () => {} },
+    platform: mockPlatform,
+    config: { allowFrom: ['user1'] },
+  });
+
+  const currentDir = process.cwd();
+
+  // 1. 发送缺少参数的 /addworkspace
+  await bridge.handleInbound({ senderId: 'user1', text: '/addworkspace' });
+  assert.match(sentTexts[0], /缺少工作区路径/);
+
+  // 2. 发送有效 /addworkspace <当前路径>
+  await bridge.handleInbound({ senderId: 'user1', text: `/addworkspace ${currentDir}` });
+  assert.equal(registered.length, 1);
+  assert.equal(registered[0].path, currentDir);
+  assert.match(sentTexts[1], /工作区添加成功/);
+
+  // 3. 发送 /workspaces 列出
+  await bridge.handleInbound({ senderId: 'user1', text: '/workspaces' });
+  assert.match(sentTexts[2], /可用工作区/);
+  assert.ok(sentTexts[2].includes(currentDir));
+});

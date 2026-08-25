@@ -244,3 +244,127 @@ test('P0-7: Loopback 物理特权 Token 签发与远程/伪造拦截', async () 
   assert.equal(remoteIsLoopback && !isPublicTunnel, false)
 })
 
+test('P0-8: Workspace RPC checkAdminAuth 权限校验与访客拦截', async () => {
+  const auth = new AuthManager({
+    config: {
+      enabled: true,
+      adminPolicy: 'password_unlock',
+      passwordHash: 'dummy_hash',
+      passwordSalt: 'dummy_salt',
+    },
+  })
+
+  const mockCtx = {
+    workspaceRegistry: {
+      list: async () => [],
+      add: async () => {},
+    },
+  }
+
+  const service = new BridgeService({
+    dshPort: 3080,
+    proxyPort: 3082,
+    logger: { info: () => {}, warn: () => {}, error: () => {} },
+  })
+  service.ctx = mockCtx
+
+  let rpcHandler
+  const mockDshCtx = {
+    connection: {
+      rpc: {
+        handle: (channel, fn) => {
+          rpcHandler = fn
+        },
+      },
+    },
+  }
+
+  installBridgeRpc(mockDshCtx, {
+    service,
+    authManager: auth,
+    logger: { info: () => {}, warn: () => {}, error: () => {} },
+  })
+
+  // 1. 无 adminToken 访客调用 listRemoteDirectories -> 被拦截
+  const res1 = await rpcHandler(BRIDGE_ENDPOINTS.listRemoteDirectories, { path: process.cwd() })
+  assert.equal(res1.ok, false)
+  assert.match(res1.error.message, /需要管理员权限/)
+
+  // 2. 无 adminToken 访客调用 addRemoteWorkspace -> 被拦截
+  const res2 = await rpcHandler(BRIDGE_ENDPOINTS.addRemoteWorkspace, { path: process.cwd() })
+  assert.equal(res2.ok, false)
+  assert.match(res2.error.message, /需要管理员权限/)
+
+  // 3. 无 adminToken 访客调用 listWorkspaces -> 被拦截
+  const res3 = await rpcHandler(BRIDGE_ENDPOINTS.listWorkspaces, {})
+  assert.equal(res3.ok, false)
+  assert.match(res3.error.message, /需要管理员权限/)
+
+  // 4. 提供有效 adminToken -> 成功放行
+  const validAdminToken = auth.createAdminSession()
+  const res4 = await rpcHandler(BRIDGE_ENDPOINTS.listRemoteDirectories, {
+    path: process.cwd(),
+    adminToken: validAdminToken,
+  })
+  assert.equal(res4.ok, true)
+  assert.ok(res4.value.currentPath)
+})
+
+test('P0-9: 路径穿越与敏感系统目录黑名单拦截 (Windows & POSIX)', async () => {
+  const { isSafeWorkspacePath, isSensitiveFolderName } = await import('../lib/security/path-validator.js')
+
+  // 1. 敏感文件夹名识别
+  assert.equal(isSensitiveFolderName('.ssh'), true)
+  assert.equal(isSensitiveFolderName('.gnupg'), true)
+  assert.equal(isSensitiveFolderName('.aws'), true)
+  assert.equal(isSensitiveFolderName('$Recycle.Bin'), true)
+  assert.equal(isSensitiveFolderName('my-project'), false)
+
+  // 2. Windows 系统敏感目录拦截
+  const winCheck1 = await isSafeWorkspacePath('C:\\Windows')
+  assert.equal(winCheck1.valid, false)
+  assert.match(winCheck1.error, /安全拦截/)
+
+  const winCheck2 = await isSafeWorkspacePath('C:\\Program Files')
+  assert.equal(winCheck2.valid, false)
+
+  // 3. POSIX 系统敏感目录拦截
+  const posixCheck1 = await isSafeWorkspacePath('/etc/shadow', { allowNonExistent: true })
+  assert.equal(posixCheck1.valid, false)
+
+  const posixCheck2 = await isSafeWorkspacePath('/root/.ssh', { allowNonExistent: true })
+  assert.equal(posixCheck2.valid, false)
+
+  // 4. 路径中包含敏感片段
+  const dotSshCheck = await isSafeWorkspacePath('D:\\test\\.ssh\\keys', { allowNonExistent: true })
+  assert.equal(dotSshCheck.valid, false)
+
+  // 5. 空字符 (Null byte) 注入拦截
+  const nullByteCheck = await isSafeWorkspacePath('D:\\Projects\0\\etc')
+  assert.equal(nullByteCheck.valid, false)
+
+  // 6. 当前项目合法目录放行
+  const validCheck = await isSafeWorkspacePath(process.cwd())
+  assert.equal(validCheck.valid, true)
+})
+
+test('P0-10: Rate Limiter 滑动窗口频率限制防护', async () => {
+  const { RateLimiter } = await import('../lib/security/rate-limiter.js')
+  const limiter = new RateLimiter({ maxRequests: 3, windowMs: 1000 })
+  const key = '192.168.1.100'
+
+  // 前 3 次允许
+  assert.equal(limiter.check(key).allowed, true)
+  assert.equal(limiter.check(key).allowed, true)
+  assert.equal(limiter.check(key).allowed, true)
+
+  // 第 4 次被限流
+  const r4 = limiter.check(key)
+  assert.equal(r4.allowed, false)
+  assert.equal(r4.remaining, 0)
+  assert.ok(r4.retryAfterSec > 0)
+
+  limiter.dispose()
+})
+
+

@@ -36,9 +36,18 @@
 
 ## Features
 
-- **🔐 Enterprise Access Security & Admin Guard (v2.5.0 Major Release)**:
+- **🗂️ Web-based Remote Workspace Browser & Multi-Platform Management (v2.8.0 Major)**:
+  - **Remote Web Directory Picker**: Resolves the desktop silent popup issue on mobile/remote access; opens a responsive bottom-sheet/modal directory tree browser with drive letters (`C:\`, `D:\`), quick roots (Desktop / Projects), real-time search filtering, and manual path navigation;
+  - **Seamless Local Host Fallback**: On local host (`localhost` / `127.0.0.1` / Electron desktop), standard system native folder dialogs are preserved automatically without extra clicks;
+  - **IM `/addworkspace <absolute_path>` Command**: Add and immediately switch project workspaces on WeChat, QQ, Feishu, and Telegram with a single command.
+- **📱 Native-grade Mobile UX & Layout Redesign (v2.8.0)**:
+  - **Top Centered Dynamic Title**: Prominently centers the active conversation title in the fixed top app bar, eliminating awkward top whitespace;
+  - **Spacious 2nd Header Row**: Mode / subagent badge and a 28px circular download icon button neatly aligned on opposite ends;
+  - **Adaptive Composer Bottom Bar**: Eliminates button collision and overlapping between permission preset and model selectors on mobile/narrow screens.
+- **🔐 Comprehensive Security Hardening & Audit (v2.8.0)**:
   - **1st Line of Defense (Visitor Access Guard)**: Auto-injected 256-bit security Token in QR codes for 1-click passwordless login; manual IP/domain visits enforce password verification; granular channel scoping (All / Public Tunnels Only / LAN Only);
   - **2nd Line of Defense (Admin Console Guard)**: Separated administrator password and visitor password; global console lockout for remote devices to prevent unauthorized configuration changes (Password Unlock / Local Host Only / Open);
+  - **File System & RPC Hardening**: Enforces `checkAdminAuth` on all workspace inspection and registration RPC endpoints; system directory blacklist (`C:\Windows\System32`, `/etc/shadow`, `/root/.ssh`); symlink escape detection; sliding-window rate limiting;
   - **Fail-safe Recovery System (Triple Protection)**: Host machine (`127.0.0.1`) enjoys permanent physical privileges (never locked out) + terminal command `touch ~/.dsh/dsh-bridge/reset-auth` for instant emergency recovery + built-in "Forgot Password" guides;
   - **Financial-grade Security Engine**: PBKDF2 + SHA-256 salted password hashing, 30-day HttpOnly SameSite session protection, IP brute-force rate limiter (5 failed attempts trigger 60s cooldown).
 - **📱 PWA Standalone Full-Screen App & Touch Adaptation**: Add to mobile home screen for a 100% standalone native app experience (no browser address bar or bottom navigation); clean header, drawer gestures, and responsive settings cards
@@ -63,6 +72,9 @@
 
 | Target | Description | Status |
 |--------|-------------|--------|
+| **Remote Workspace Picker & Smart Routing** | Web-based directory browser + local native dialog routing + IM `/addworkspace` | ✅ **Completed** (v2.8.0) |
+| **Mobile Layout Redesign & Anti-Collision** | Top centered title + 28px circular download icon + composer adaptive layout | ✅ **Completed** (v2.8.0) |
+| **Comprehensive Security Hardening** | RPC auth + sensitive directory blacklist + symlink escape prevention + rate limiter | ✅ **Completed** (v2.8.0) |
 | **Mobile & DevOps** | PWA Standalone App + Network Diagnostics + Config Backup/Restore + System Resource Monitor | ✅ **Completed** |
 | **Session Renaming** | Support `/rename <new title>` across WeChat, QQ, Feishu, Telegram | ✅ **Completed** |
 | **Tunnel AutoStart & Fixed Domain** | Cloudflare Named Tunnel token mode + autoStart persistence | ✅ **Completed** |
@@ -213,17 +225,20 @@ Deeply tailored for smartphone screens and touch gestures, providing a clean and
 
 - **Minimalist Top Navigation**: Left drawer toggle and right `(+)` quick-new session button, keeping the screen clean and content-focused;
 - **Native Sidebar Drawer**: Full access to DSH session history, workspace folders, search, view options, and session actions;
+- **Remote Workspace Picker**: Tap "Add Workspace" on mobile / remote web to pop up a bottom-sheet directory browser with disk drive switching, breadcrumbs, and one-click workspace switching;
 - **Fluid Responsive Settings**: Redesigned settings layout with vertical flow, auto-scaling QR codes, and tag badges without cramped word wrapping;
 - **Touch Gesture Support**: Swipe right from the left edge (<=35px) to open the drawer, swipe left to dismiss, and **long-press on any session item to bring up context actions** (Rename/Fork/Archive).
 
 #### Chat & Session Experience
 
 <p align="center">
-  <img src="docs/screenshots/remote-web-mobile.jpg" width="29%" alt="Mobile New Session Home" />
-  &nbsp;&nbsp;&nbsp;
-  <img src="docs/screenshots/mobile-chat.jpg" width="29%" alt="Mobile Active Chat View" />
-  &nbsp;&nbsp;&nbsp;
-  <img src="docs/screenshots/mobile-drawer.jpg" width="29%" alt="Mobile Native Sidebar Drawer" />
+  <img src="docs/screenshots/remote-web-mobile.jpg" width="22%" alt="Mobile New Session Home" />
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/mobile-chat.jpg" width="22%" alt="Mobile Active Chat View" />
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/mobile-drawer.jpg" width="22%" alt="Mobile Native Sidebar Drawer" />
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/mobile-workspace-picker.jpg" width="22%" alt="Mobile Remote Workspace Picker" />
 </p>
 
 #### Remote Access & Plugin Settings Console
@@ -309,7 +324,9 @@ Powered by Tencent's official WeChat ClawBot feature (iLink Bot API). Log in wit
 | *(Plain text)* | Send to the currently active agent |
 | `/sessions` (or `/list`) | List sessions (grouped by workspace with titles) |
 | `/use N` (or `/resume N`) | Switch to / resume session N |
+| `/rename <title>` | Rename the currently active session |
 | `/workspaces` | List available workspaces |
+| `/addworkspace <path>` | Register a new host directory as workspace |
 | `/new <prompt>` | Start a new session in the current workspace |
 | `/new <prompt> @N` (or `@path`) | Start a new session in the specified workspace |
 | `/stop` | Stop the current task |
@@ -370,10 +387,12 @@ Integrates Tencent's official QQ Bot platform. Supports private chat, group chat
 | `/new <prompt>` | Start a new session |
 | `/sessions` (or `/list`) | List sessions (grouped by workspace) |
 | `/use N` (or `/resume N`) | Switch to / resume session N |
+| `/rename <title>` | Rename the active session |
 | `/end` | End current session (triggers quick-action buttons) |
 | `/stop` | Stop the current task |
 | `/status` | View agent status |
 | `/workspaces` | List available workspaces |
+| `/addworkspace <path>` | Register a new host directory as workspace |
 | `/help` | Display all available commands |
 
 **Important Notice**
@@ -404,7 +423,7 @@ Connect your enterprise self-built app via Feishu's official WebSocket protocol.
 - 📜 **Card JSON 2.0 Streaming**: In-place single-card incremental streaming updates, eliminating message bubble fragmentation
 - 🛡️ **Card 2.0 Interactive Approvals**: Native orange approval card with `[✓ Approve]` / `[✕ Reject]` action buttons for 1-click execution
 - 📝 **Full Markdown Rendering**: Native support for headings, tables, syntax highlighting, blockquotes, and lists
-- 🔄 **Workspace & Session Management**: Table-formatted `/sessions`, `/use N` switching, and `/workspaces` listing
+- 🔄 **Workspace & Session Management**: Table-formatted `/sessions`, `/use N` switching, `/rename` title updating, and `/workspaces` & `/addworkspace` management
 
 **Setup Steps**
 
@@ -422,7 +441,9 @@ Connect your enterprise self-built app via Feishu's official WebSocket protocol.
 | `/new <prompt> @N` | Create a new session in workspace N |
 | `/sessions` (or `/list`) | List all sessions in a structured Markdown table |
 | `/use N` (or `/resume N`) | Switch to/resume session N |
+| `/rename <title>` | Rename currently active session |
 | `/workspaces` | List all available workspaces |
+| `/addworkspace <path>` | Register a new host directory as workspace |
 | `/end` | End current session |
 | `/stop` | Stop currently executing task |
 | `/status` | View agent status dashboard |
@@ -445,7 +466,7 @@ Connect official Telegram Bot API for real-time private and group interactions. 
 - 🎯 **Native Command Menu (`Menu` Button)**: Automatically registered with `setMyCommands` & `setChatMenuButton`, type `/` or tap `[Menu]` for 1-click command navigation
 - 🛡️ **Inline Keyboard Interactive Cards**: Permission approvals send `[✓ Approve]` / `[✕ Reject]` buttons for 1-second approval actions
 - 🖼️ **Multimodal & File Transfers**: Inbound images/files automatically saved and sent to Agent; generated artifacts sent back to Telegram
-- 🔄 **Session & Workspace Management**: Manage multiple sessions with `/sessions`, switch with `/use N`, view workspaces with `/workspaces`
+- 🔄 **Session & Workspace Management**: Manage multiple sessions with `/sessions`, switch with `/use N`, `/rename` title, and manage workspaces with `/workspaces` & `/addworkspace`
 
 **Quick Start**
 
@@ -463,7 +484,9 @@ Connect official Telegram Bot API for real-time private and group interactions. 
 | `/new <prompt> @N` | Create a new session in workspace N | Multi-workspace routing |
 | `/sessions` (or `/list`) | List all sessions | 1-click switch buttons |
 | `/use N` (or `/resume N`） | Switch to/resume session N | Instant context switch |
+| `/rename <title>` | Rename the currently active session | Real-time title update |
 | `/workspaces` | List all available workspaces | View workspace paths |
+| `/addworkspace <path>` | Register a new host directory as workspace | Auto-bind and assign index |
 | `/status` | View agent status dashboard | Refresh/Stop/End buttons |
 | `/stop` | Stop currently executing task | Immediate abort |
 | `/end` | End current active session | Quick-start button attached |
