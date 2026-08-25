@@ -41,17 +41,21 @@
   - **2nd Line of Defense (Admin Console Guard)**: Separated administrator password and visitor password; global console lockout for remote devices to prevent unauthorized configuration changes (Password Unlock / Local Host Only / Open);
   - **Fail-safe Recovery System (Triple Protection)**: Host machine (`127.0.0.1`) enjoys permanent physical privileges (never locked out) + terminal command `touch ~/.dsh/dsh-bridge/reset-auth` for instant emergency recovery + built-in "Forgot Password" guides;
   - **Financial-grade Security Engine**: PBKDF2 + SHA-256 salted password hashing, 30-day HttpOnly SameSite session protection, IP brute-force rate limiter (5 failed attempts trigger 60s cooldown).
-- **📱 Mobile Browser & Touch Adaptation**: Specially crafted layout for smartphone viewports. Clean header with drawer & quick-new button, touch gestures, and responsive settings cards without text-wrapping issues
+- **📱 PWA Standalone Full-Screen App & Touch Adaptation**: Add to mobile home screen for a 100% standalone native app experience (no browser address bar or bottom navigation); clean header, drawer gestures, and responsive settings cards
+- **🔍 Real-Time Network Diagnostic Tool**: 1-click diagnosis of local proxy port, LAN IPv4, Cloudflare Anycast edge latency, and npmmirror registry reachability
+- **🗄️ 1-Click Configuration Backup & Restore**: Export/import complete settings `.json` backup including tokens, allowlists, and tunnel configurations in the Security tab
+- **📊 Host System Resource Monitor**: Real-time overview of CPU model/cores, system memory usage percentage, Node process memory (Heap/RSS), and DSH process uptime
+- **🏷️ Session Renaming Command `/rename <new title>`**: Rename active sessions anytime via WeChat, QQ, Feishu, or Telegram, updating the Web drawer in real time
 - **LAN Access**: Scan QR code with your smartphone/tablet, direct access on the same Wi-Fi — keep the conversation going from your phone
-- **Cloudflare Tunnel**: One-click public internet exposure, connect from anywhere without a public server of your own — keep working even when you're away from home
+- **Cloudflare Tunnel**: One-click public internet exposure with Named Tunnel token mode for fixed custom domain and auto-start on DSH boot
 - **Custom Tunnel**: Connect to your own tunnel server with a fixed domain ([Setup Guide](docs/custom-tunnel.md))
 - **WeChat Bot (ClawBot / iLink)**: Scan a QR code to log in a WeChat personal account, then chat with, control, and approve your DeepSeek Harness agents right inside WeChat. **Multi-workspace selection, restart-persistent sessions, grouped session listing with titles, media (image/file/voice) transfer, and permission approvals** — over Tencent's official iLink Bot API, no public server or tunnel required ([Usage Guide](docs/wechat-usage.md))
 - **QQ Bot (OpenAPI v2)**: Connect your QQ Bot to receive private/group messages, send Markdown, button keyboards, and rich media. **Full event coverage (C2C / GROUP_AT_MESSAGE_CREATE), auto token refresh, reconnection with backoff, message deduplication** — over Tencent's official QQ Bot OpenAPI v2 ([Usage Guide](docs/qq-usage.md))
 - **Feishu / Lark Bot (Official WebSocket)**: Connect enterprise self-built apps via Feishu's official WebSocket protocol. **No public IP / no Webhook required, Markdown table formatting, native interactive card permission approvals with 1-click button actions** ([Usage Guide](docs/feishu-usage.md))
 - **Telegram Bot (Official Bot API + Proxy Support)**: Connect official Telegram bots for private and group interactions. **No public IP required (Long Polling getUpdates), built-in zero-dependency HTTP/HTTPS proxy tunnel, smooth typewriter streaming output, native command menu (Menu button), and Inline Keyboard interactive approval cards** ([Usage Guide](docs/telegram-usage.md))
 - **Official Brand SVG Icons**: Authentic vector brand icons for WeChat, QQ, Feishu, Telegram with real-time status indicators
-- **Fast Version Check & 1-Click Upgrade**: Dual-channel registry check (npmmirror + npmjs fallback in ~200ms) with seamless **1-click in-app upgrade**, no terminal copying required
-- **Dark Mode Support**: Deep integration with DeepSeek Harness Design Tokens (`--dsw-alias-*`), QR code background protection for safe dark mode scanning
+- **Fast Version Check, 1-Click Upgrade & 1-Click Restart**: Dual-channel registry check (npmmirror + npmjs fallback in ~200ms) with seamless **1-click in-app upgrade and graceful DSH restart with automatic reconnect polling**
+- **Native Dark Mode Support**: Deep integration with DeepSeek Harness Design Tokens (`--dsw-alias-*`), QR code background protection for safe dark mode scanning
 
 ---
 
@@ -59,6 +63,9 @@
 
 | Target | Description | Status |
 |--------|-------------|--------|
+| **Mobile & DevOps** | PWA Standalone App + Network Diagnostics + Config Backup/Restore + System Resource Monitor | ✅ **Completed** |
+| **Session Renaming** | Support `/rename <new title>` across WeChat, QQ, Feishu, Telegram | ✅ **Completed** |
+| **Tunnel AutoStart & Fixed Domain** | Cloudflare Named Tunnel token mode + autoStart persistence | ✅ **Completed** |
 | **Access Security** | Visitor Access Auth Guard + Admin Console Anti-Tamper + Fail-safe Recovery | ✅ **Completed** (v2.5.0) |
 | **Telegram** | IM channel suited for self-hosting and overseas (Long Polling / Proxy / Native Menu / Inline Cards / Streaming) | ✅ **Completed** (v2.4.0) |
 | **Feishu** | Feishu / Lark official persistent WebSocket bot (No-public-IP WS / Card Approvals) | ✅ **Completed** (v2.3.0) |
@@ -496,29 +503,42 @@ dsh plugin --profile web add .
 ## FAQ (Frequently Asked Questions)
 
 <details>
-  <summary><b>Q1: Getting "Failed to load provider directory: settings are unavailable in this browser" when accessing remotely?</b></summary>
+  <summary><b>Q1: How can I prevent unauthorized external access after connecting via QR code or public tunnel?</b></summary>
   <br/>
 
-  - **Reason**: This is an upstream security feature in DeepSeek Harness (DSH). To prevent malicious network devices from intercepting API keys and model credentials, DSH restricts the provider catalog & credential modification API exclusively to loopback (`127.0.0.1`).
-  - **Recommendations**:
-    1. **Recommended Workflow**: Configure your LLM models & API keys once on your desktop computer (`127.0.0.1:3080`). Afterward, you can create sessions, chat, and control agents from your mobile device with 100% full functionality;
-    2. **Cloudflare Tunnel**: Accessing through the built-in Cloudflare Tunnel (`https://*.trycloudflare.com`) provides a secure HTTPS context for maximum mobile browser compatibility;
-    3. **SSH Port Forwarding**: If you must modify API keys remotely from a phone, use SSH local port forwarding (`ssh -L 3082:127.0.0.1:3082 user@ip`) to map the connection to localhost.
+  - **Answer**:
+    1. Navigate to the **"Security"** tab in the console and enable Global Access Password or Secret Token gatekeeper;
+    2. Once enabled, visitors accessing through LAN IP or public tunnels must authenticate with the password or token before accessing any interface;
+    3. Host computer loopback (`127.0.0.1`) enjoys physical loopback privileges with automatic passwordless direct access.
 </details>
 
 <details>
-  <summary><b>Q2: Prompted with "Admin permission required" or settings locked when modifying config remotely?</b></summary>
+  <summary><b>Q2: How is message security handled for WeChat / QQ / Feishu / Telegram bots? Can unauthorized senders trigger agents?</b></summary>
   <br/>
 
-  - **Reason**: The plugin incorporates an Anti-Tamper Guard to prevent unauthorized visitors from viewing or tampering with tunnels and bot tokens.
-  - **Solution**:
-    1. Enter your admin password in the interactive **"🔒 Unlock Admin Console"** dialog to unlock the session (if you haven't set a separate admin password, enter your initial access password);
-    2. **Host computer (127.0.0.1) access has permanent physical privileges** and is never locked;
-    3. In case of forgotten passwords, execute a single emergency command in your host terminal:
-       ```bash
-       touch ~/.dsh/dsh-bridge/reset-auth
-       ```
-       The plugin will instantly clear passwords and restore default passwordless access.
+  - **Answer**:
+    1. **Strict Allowlist Mechanism**: The plugin incorporates an automatic and manual sender allowlist. Only messages from allowlisted users can drive the Agent;
+    2. **First Sender Auto-Approval**: Upon first login or setup, the first message sent by the admin automatically binds their ID to the allowlist;
+    3. **Silent Drop for Unknown Senders**: All messages from non-allowlisted individuals or unauthorized group members are silently dropped at the lowest layer (never fed to LLM), consuming zero tokens and executing zero commands.
+</details>
+
+<details>
+  <summary><b>Q3: What is the difference between Cloudflare Temporary URL and Fixed Domain (Token Mode)?</b></summary>
+  <br/>
+
+  - **Answer**:
+    1. **Temporary Quick Tunnel (Default)**: Zero setup, no Cloudflare account needed. Generates a random `https://*.trycloudflare.com` URL with 1 click;
+    2. **Fixed Named Tunnel (Token Mode)**: Create a Named Tunnel in Cloudflare Zero Trust and configure your custom domain (e.g. `dsh.yourdomain.com`). With "Auto-start with DSH" checked, the URL remains permanently fixed across reboots.
+</details>
+
+<details>
+  <summary><b>Q4: Will chat sessions and bot configurations be lost after plugin upgrade or DSH restart?</b></summary>
+  <br/>
+
+  - **Answer**:
+    1. **Persistent Configuration**: All IM credentials, allowlists, auto-start preferences, and security settings are saved to `~/.dsh/dsh-bridge/`;
+    2. **Seamless Session Re-attach**: Conversation history is managed natively by DSH persistence. After restart, sending a message or typing `/resume` instantly reconnects to the existing session;
+    3. **1-Click Backup & Restore**: The "Ops & Monitoring" tab supports exporting/importing `.json` backup files for effortless migration between machines.
 </details>
 
 ---

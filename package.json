@@ -1,8 +1,8 @@
 {
   "name": "@wenbin_wb/dsh-bridge",
-  "version": "2.6.1",
+  "version": "2.7.0",
   "description": "手机扫码即可在移动端/公网继续用 DeepSeek Harness，人不在电脑前也能接着干。一键局域网二维码、Cloudflare 公网隧道、自建隧道与微信 / QQ / 飞书 / Telegram Bot（多工作区/会话持久化/媒体/卡片审批/流式输出），无需自己搭公网服务器。",
-  "releaseNotes": "【v2.6.1 公网隧道自启与固定域名】\n• 🔄 支持公网隧道（Cloudflare/自建）开机自启与重启状态记忆\n• 🌐 支持 Cloudflare 命名隧道（Token 模式），永久固定专属域名永不变更\n• ⚙️ 控制台新增「随 DSH 启动自动开启」开关与高级 Token 配置",
+  "releaseNotes": "【v2.7.0 运维监控看板、网络诊断与会话重命名】\n• 📊 新增「宿主系统看板」：实时监控 CPU 核心、Uptime 运行时间与内存负载\n• 🔍 新增「网络连通性诊断」：一键探测本地端口、局域网、Cloudflare 与自建隧道服务器连通性\n• 🗄️ 新增「配置备份与恢复」：支持一键导出/导入全局配置与平台凭证\n• 🏷️ 新增「会话重命名指令」：IM 对话发送 `/rename <新标题>` 实时更新会话标题\n• 🔄 升级后支持一键重启 DSH 服务并自动探测重连刷新\n• 🎨 优化 Tab 栏无滚动条视觉排版与移动端触控体验",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -18,6 +18,7 @@
     "cordis.patch.yml",
     "README.md",
     "README.en.md",
+    "CHANGELOG.md",
     "LICENSE",
     "docs"
   ],

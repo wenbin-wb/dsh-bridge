@@ -109,6 +109,10 @@ const Icons = {
   check: (props) => React.createElement('svg', { viewBox: '0 0 24 24', width: 12, height: 12, fill: 'none', stroke: 'currentColor', strokeWidth: 2.5, strokeLinecap: 'round', strokeLinejoin: 'round', ...props },
     React.createElement('polyline', { points: '20 6 9 17 4 12' })
   ),
+  ops: (props) => React.createElement('svg', { viewBox: '0 0 24 24', width: 16, height: 16, fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', ...props },
+    React.createElement('circle', { cx: 12, cy: 12, r: 3 }),
+    React.createElement('path', { d: 'M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z' })
+  ),
 };
 
 // ---- 子组件 ----
@@ -257,6 +261,9 @@ function QrBlock({ url, qr, onReset, auth, onNavigateSecurity }) {
     showQr && qr && React.createElement('div', { style: { marginTop: 10 } },
       React.createElement('img', { src: qr, alt: 'QR', style: s.qr }),
       React.createElement('div', { style: { ...s.muted, marginTop: 4 } }, '请在私密环境下使用'),
+      React.createElement('div', { style: { ...s.muted, marginTop: 4, fontSize: 11, color: 'var(--dsw-alias-brand-primary, #4f6ef7)' } },
+        '📱 提示：手机浏览器扫码打开后，在菜单点击「添加到主屏幕」即可作为独立全屏 App 运行。'
+      ),
     ),
     onReset && React.createElement('div', { style: { marginTop: 8 } },
       React.createElement('button', {
@@ -1445,8 +1452,6 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
             ),
     ),
 
-
-
     React.createElement('div', { style: s.block },
       React.createElement('div', { style: { ...s.tip, fontSize: 12 } },
         platformId === 'wechat'
@@ -1459,29 +1464,340 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
   );
 }
 
-// 单条升级命令行：命令文本 + 复制按钮
-function UpgradeCommandRow({ cmd }) {
-  const [copied, copy] = useCopy();
-  return React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
-    React.createElement('code', {
-      style: {
-        ...s.code,
-        fontSize: 11,
-        color: 'var(--dsw-alias-label-secondary,#6b7280)',
-        flex: 1,
-        minWidth: 0,
-        wordBreak: 'break-all',
-        background: 'var(--dsw-alias-bg-layer-1,#ffffff)',
-        padding: '4px 8px',
-        borderRadius: 6,
-        border: '1px solid var(--dsw-alias-border-l2,#e5e7eb)',
+// 宿主系统运行监控看板
+function SystemMetricsWidget({ metrics }) {
+  if (!metrics) return null;
+  const memUsedPercent = metrics.memory?.usedPercent ?? 0;
+  const memUsedGb = (metrics.memory?.usedBytes / (1024 ** 3)).toFixed(1);
+  const memTotalGb = (metrics.memory?.totalBytes / (1024 ** 3)).toFixed(1);
+  const heapMb = Math.round((metrics.memory?.processHeapUsed || 0) / (1024 ** 2));
+
+  const formatUptime = (sec = 0) => {
+    const days = Math.floor(sec / 86400);
+    const hrs = Math.floor((sec % 86400) / 3600);
+    const mins = Math.floor((sec % 3600) / 60);
+    if (days > 0) return `${days}天 ${hrs}小时 ${mins}分`;
+    if (hrs > 0) return `${hrs}小时 ${mins}分`;
+    return `${mins}分钟`;
+  };
+
+  const progressColor = memUsedPercent > 85 ? '#dc2626' : memUsedPercent > 70 ? '#d97706' : '#059669';
+
+  return React.createElement('div', {
+    style: {
+      ...s.card,
+      marginBottom: 16,
+    },
+  },
+    React.createElement('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 6 } },
+      React.createElement('div', { style: { ...s.label, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 } },
+        '📊 宿主系统与运行看板'
+      ),
+      React.createElement('div', { style: { fontSize: 11, color: 'var(--dsw-alias-label-secondary, #6b7280)' } },
+        `Node ${metrics.os?.nodeVersion || ''} · ${metrics.os?.platform || ''} ${metrics.os?.arch || ''}`
+      ),
+    ),
+    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, marginBottom: 12 } },
+      React.createElement('div', null,
+        React.createElement('div', { style: { color: 'var(--dsw-alias-label-tertiary, #9ca3af)', fontSize: 11, marginBottom: 2 } }, 'CPU 核心与型号'),
+        React.createElement('div', { style: { fontWeight: 600, color: 'var(--dsw-alias-label-primary, currentColor)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }, title: metrics.cpu?.model },
+          `${metrics.cpu?.cores || 0} 核心 (${(metrics.cpu?.model || '').split('@')[0].trim()})`
+        ),
+      ),
+      React.createElement('div', null,
+        React.createElement('div', { style: { color: 'var(--dsw-alias-label-tertiary, #9ca3af)', fontSize: 11, marginBottom: 2 } }, 'DSH 运行时间 (Uptime)'),
+        React.createElement('div', { style: { fontWeight: 600, color: 'var(--dsw-alias-state-success-primary, #059669)' } },
+          formatUptime(metrics.uptime?.processSec)
+        ),
+      ),
+      React.createElement('div', null,
+        React.createElement('div', { style: { color: 'var(--dsw-alias-label-tertiary, #9ca3af)', fontSize: 11, marginBottom: 2 } }, 'Node 进程堆内存'),
+        React.createElement('div', { style: { fontWeight: 600, color: 'var(--dsw-alias-label-primary, currentColor)' } },
+          `${heapMb} MB`
+        ),
+      ),
+    ),
+    React.createElement('div', null,
+      React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--dsw-alias-label-secondary, #6b7280)', marginBottom: 4 } },
+        React.createElement('span', null, `系统内存占用: ${memUsedGb} GB / ${memTotalGb} GB`),
+        React.createElement('span', { style: { fontWeight: 600, color: progressColor } }, `${memUsedPercent}%`),
+      ),
+      React.createElement('div', {
+        style: {
+          width: '100%', height: 6, background: 'var(--dsw-alias-border-l2, #e5e7eb)', borderRadius: 999, overflow: 'hidden',
+        },
       },
-    }, cmd),
-    React.createElement('button', {
-      style: { ...s.btnGhost, height: 26, padding: '0 10px', fontSize: 12, flexShrink: 0 },
-      onClick: () => copy(cmd),
-      title: '复制升级命令',
-    }, copied ? '✓ 已复制' : '复制'),
+        React.createElement('div', {
+          style: {
+            width: `${memUsedPercent}%`, height: '100%', background: progressColor, borderRadius: 999, transition: 'width .3s ease',
+          },
+        }),
+      ),
+    ),
+  );
+}
+
+// 网络连通性诊断小工具
+function NetworkDiagnosticWidget({ rpcCall }) {
+  const [running, setRunning] = React.useState(false);
+  const [result, setResult] = React.useState(null);
+
+  const runDiagnose = React.useCallback(async () => {
+    setRunning(true);
+    try {
+      const r = await rpcCall(BRIDGE_ENDPOINTS.diagnoseNetwork, {});
+      if (r?.ok) setResult(r.value);
+    } catch (e) {
+      setResult({ overall: 'warning', results: [{ item: 'err', name: '诊断请求异常', status: 'fail', detail: e.message }] });
+    } finally {
+      setRunning(false);
+    }
+  }, [rpcCall]);
+
+  return React.createElement('div', { style: { ...s.card, marginBottom: 16 } },
+    React.createElement('div', { style: { marginBottom: 10 } },
+      React.createElement('div', { style: { ...s.label, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 } },
+        '🔍 网络连通性一键诊断'
+      ),
+      React.createElement('div', { style: { ...s.muted, marginTop: 3 } },
+        '一键检测本地反向代理端口、局域网 IPv4、Cloudflare Anycast 延迟以及国内 npmmirror 镜像源连通性。'
+      ),
+    ),
+
+    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: result ? 12 : 0 } },
+      React.createElement('button', {
+        type: 'button',
+        style: { ...s.btnPri, height: 32, fontSize: 12, padding: '0 14px' },
+        onClick: runDiagnose,
+        disabled: running,
+      },
+        running ? '正在探测连通性…' : result ? '🔄 重新诊断网络' : '🔍 开始一键诊断'
+      ),
+      result && React.createElement('span', {
+        style: {
+          fontSize: 12,
+          color: result.overall === 'healthy' ? 'var(--dsw-alias-state-success-primary, #059669)' : 'var(--dsw-alias-state-warn-primary, #d97706)',
+          fontWeight: 600,
+        },
+      }, result.overall === 'healthy' ? '✓ 所有网络探测项正常' : '▲ 检测到部分延迟较高或异常'),
+    ),
+
+    running && !result && React.createElement('div', {
+      style: {
+        marginTop: 10, padding: '10px 14px', borderRadius: 8,
+        background: 'var(--dsw-alias-bg-layer-2, #f9fafb)',
+        display: 'flex', alignItems: 'center', gap: 8, color: 'var(--dsw-alias-brand-primary, #4f6ef7)',
+        fontSize: 12,
+      },
+    },
+      React.createElement('span', { style: { animation: 'spin 1s linear infinite', display: 'inline-flex' } }, React.createElement(Icons.refresh)),
+      '正在执行网络端口与云端节点连通性探测…'
+    ),
+
+    result?.results && React.createElement('div', {
+      style: {
+        display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10,
+        paddingTop: 10, borderTop: '1px solid var(--dsw-alias-border-l2, #e5e7eb)',
+      },
+    },
+      result.results.map((item, idx) => {
+        const isPass = item.status === 'pass';
+        const isWarn = item.status === 'warn';
+        return React.createElement('div', {
+          key: idx,
+          style: {
+            display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8,
+            padding: '8px 10px', borderRadius: 6,
+            background: 'var(--dsw-alias-bg-layer-1, rgba(255,255,255,0.7))',
+            border: `1px solid ${isPass ? 'var(--dsw-alias-state-success-border, #a7f3d0)' : isWarn ? 'var(--dsw-alias-state-warn-border, #fde68a)' : 'var(--dsw-alias-state-error-border, #fecaca)'}`,
+            boxSizing: 'border-box',
+          },
+        },
+          React.createElement('div', { style: { flex: 1, minWidth: 0 } },
+            React.createElement('div', { style: { fontWeight: 600, color: 'var(--dsw-alias-label-primary, currentColor)', marginBottom: 2 } },
+              isPass ? '✓ ' : isWarn ? '▲ ' : '✕ ',
+              item.name
+            ),
+            React.createElement('div', { style: { fontSize: 11, color: 'var(--dsw-alias-label-secondary, #6b7280)' } }, item.detail),
+          ),
+          item.latencyMs != null && React.createElement('span', {
+            style: {
+              fontSize: 11, fontWeight: 600, flexShrink: 0,
+              color: item.latencyMs < 500 ? 'var(--dsw-alias-state-success-primary, #059669)' : 'var(--dsw-alias-state-warn-primary, #d97706)',
+            },
+          }, `${item.latencyMs}ms`),
+        );
+      })
+    )
+  );
+}
+
+// 全局配置备份与恢复小卡片
+function BackupRestoreWidget({ rpcCall, onUpdate }) {
+  const [exporting, setExporting] = React.useState(false);
+  const [importing, setImporting] = React.useState(false);
+  const [msg, setMsg] = React.useState(null);
+  const fileInputRef = React.useRef(null);
+
+  const handleExport = async () => {
+    setExporting(true);
+    setMsg(null);
+    try {
+      const r = await rpcCall(BRIDGE_ENDPOINTS.exportBackup, {});
+      if (r?.ok && r.value) {
+        const jsonStr = JSON.stringify(r.value, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+        a.href = url;
+        a.download = `dsh-bridge-backup-${dateStr}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        setMsg({ ok: true, text: '✓ 备份文件已成功导出并下载到本地！' });
+      } else {
+        setMsg({ ok: false, text: r?.error?.message || '导出备份失败' });
+      }
+    } catch (e) {
+      setMsg({ ok: false, text: e.message || '导出异常' });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target?.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setMsg(null);
+    try {
+      const text = await file.text();
+      const backup = JSON.parse(text);
+      const r = await rpcCall(BRIDGE_ENDPOINTS.importBackup, { backup });
+      if (r?.ok) {
+        setMsg({ ok: true, text: '✓ 配置已成功导入并刷新生效！' });
+        onUpdate?.(r.value?.status);
+      } else {
+        setMsg({ ok: false, text: r?.error?.message || '导入配置失败' });
+      }
+    } catch (err) {
+      setMsg({ ok: false, text: `导入解析失败: ${err.message}` });
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  return React.createElement('div', { style: { ...s.card, marginBottom: 16 } },
+    React.createElement('div', { style: { marginBottom: 10 } },
+      React.createElement('div', { style: { ...s.label, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 } },
+        '🗄️ 全局配置备份与恢复'
+      ),
+      React.createElement('div', { style: { ...s.muted, marginTop: 3 } },
+        '支持一键导出或导入恢复本插件所有配置（包含各 IM 平台凭证、授权白名单、公网隧道与安全认证规则）。'
+      ),
+    ),
+    React.createElement('div', { style: { display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' } },
+      React.createElement('button', {
+        type: 'button',
+        style: { ...s.btnPri, height: 32, fontSize: 12, padding: '0 14px' },
+        onClick: handleExport,
+        disabled: exporting || importing,
+      }, exporting ? '正在导出…' : '📥 导出配置备份 (.json)'),
+      React.createElement('button', {
+        type: 'button',
+        style: { ...s.btnGhost, height: 32, fontSize: 12, padding: '0 14px' },
+        onClick: () => fileInputRef.current?.click(),
+        disabled: exporting || importing,
+      }, importing ? '正在导入…' : '📤 导入配置恢复'),
+      React.createElement('input', {
+        type: 'file',
+        ref: fileInputRef,
+        accept: '.json',
+        style: { display: 'none' },
+        onChange: handleFileChange,
+      }),
+    ),
+    msg && React.createElement('div', {
+      style: {
+        marginTop: 10, padding: '6px 12px', borderRadius: 6, fontSize: 12,
+        background: msg.ok ? 'var(--dsw-alias-state-success-bg,#ecfdf5)' : 'var(--dsw-alias-state-error-bg,#fef2f2)',
+        color: msg.ok ? 'var(--dsw-alias-state-success-primary,#059669)' : 'var(--dsw-alias-state-error-primary,#dc2626)',
+      },
+    }, msg.text),
+  );
+}
+
+// 运维 Tab 内的手动重启 DSH 服务小卡片
+function RestartDshCard({ rpcCall }) {
+  const [restarting, setRestarting] = React.useState(false);
+  const [status, setStatus] = React.useState(null);
+
+  const handleRestart = async () => {
+    setRestarting(true);
+    setStatus({ phase: 'restarting', text: '正在向 DSH 服务发送重启指令…' });
+    try {
+      await rpcCall(BRIDGE_ENDPOINTS.restartDsh, {});
+    } catch {}
+
+    setStatus({ phase: 'reconnecting', text: 'DSH 服务正在重启中，正在自动重新连接…' });
+    await new Promise(r => setTimeout(r, 2000));
+
+    let attempts = 0;
+    const maxAttempts = 30;
+    const pollHealth = setInterval(async () => {
+      attempts++;
+      try {
+        const r = await rpcCall(BRIDGE_ENDPOINTS.checkVersion, {});
+        if (r?.ok) {
+          clearInterval(pollHealth);
+          setStatus({ phase: 'success', text: '🎉 重启成功！已重新建立连接，正在刷新页面…' });
+          setTimeout(() => { window.location.reload(); }, 1000);
+          return;
+        }
+      } catch {}
+
+      if (attempts >= maxAttempts) {
+        clearInterval(pollHealth);
+        setStatus({ phase: 'timeout', text: '重连等待超时，请手动刷新页面。' });
+        setRestarting(false);
+      }
+    }, 1000);
+  };
+
+  return React.createElement('div', { style: { ...s.card, marginBottom: 16 } },
+    React.createElement('div', { style: { marginBottom: 10 } },
+      React.createElement('div', { style: { ...s.label, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 } },
+        '🔄 DSH 服务平滑重启'
+      ),
+      React.createElement('div', { style: { ...s.muted, marginTop: 3 } },
+        '优雅退出并重新拉起当前 DSH 进程与所有插件服务，前端将在几秒后自动探测重连并刷新页面。'
+      ),
+    ),
+    !restarting && !status && React.createElement('button', {
+      type: 'button',
+      style: { ...s.btnGhost, height: 32, fontSize: 12, padding: '0 14px' },
+      onClick: handleRestart,
+    }, '🔄 立即重启 DSH 服务'),
+    (restarting || status) && React.createElement('div', {
+      style: {
+        display: 'flex', alignItems: 'center', gap: 8, fontSize: 12,
+        color: status?.phase === 'success'
+          ? 'var(--dsw-alias-state-success-primary, #059669)'
+          : status?.phase === 'timeout'
+            ? 'var(--dsw-alias-state-error-primary, #dc2626)'
+            : 'var(--dsw-alias-state-info-primary, #2563eb)',
+        fontWeight: 500,
+      },
+    },
+      status?.phase !== 'success' && status?.phase !== 'timeout' && React.createElement('span', {
+        style: { animation: 'spin 1s linear infinite', display: 'inline-flex' },
+      }, React.createElement(Icons.refresh)),
+      status?.text || '正在调度…',
+    ),
   );
 }
 
@@ -1492,6 +1808,9 @@ function VersionBanner({ rpcCall }) {
   const [upgrading, setUpgrading] = React.useState(false);
   const [upgradeResult, setUpgradeResult] = React.useState(null);
   const [showManual, setShowManual] = React.useState(false);
+  const [restarting, setRestarting] = React.useState(false);
+  const [restartStatus, setRestartStatus] = React.useState(null);
+  const [dismissRestart, setDismissRestart] = React.useState(false);
 
   const check = React.useCallback(async () => {
     setLoading(true);
@@ -1512,11 +1831,12 @@ function VersionBanner({ rpcCall }) {
     if (!info?.latest || upgrading) return;
     setUpgrading(true);
     setUpgradeResult(null);
+    setDismissRestart(false);
+    setRestartStatus(null);
     try {
       const r = await rpcCall(BRIDGE_ENDPOINTS.upgradePlugin, { version: info.latest });
       if (r?.ok && r.value?.ok) {
-        setUpgradeResult({ ok: true, message: `已成功升级到 v${info.latest}！请重启 DSH 服务使新版本生效。` });
-        setTimeout(() => check(), 3000);
+        setUpgradeResult({ ok: true, message: `已成功升级到 v${info.latest}！` });
       } else {
         setUpgradeResult({ ok: false, message: r?.value?.error || r?.error?.message || '升级失败' });
         setShowManual(true);
@@ -1527,9 +1847,49 @@ function VersionBanner({ rpcCall }) {
     } finally {
       setUpgrading(false);
     }
-  }, [info?.latest, upgrading, rpcCall, check]);
+  }, [info?.latest, upgrading, rpcCall]);
 
-  const links = React.createElement('div', { style: { display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' } },
+  const handleRestart = React.useCallback(async () => {
+    setRestarting(true);
+    setRestartStatus({ phase: 'restarting', text: '正在调度 DSH 服务重启…' });
+    try {
+      await rpcCall(BRIDGE_ENDPOINTS.restartDsh, {});
+    } catch {
+      // 忽略 RPC 错误（因为服务可能瞬间关闭导致网络连接断开）
+    }
+
+    setRestartStatus({ phase: 'reconnecting', text: 'DSH 服务正在重启中，正在自动重新连接…' });
+
+    // 等待 2 秒后开始健康检查轮询
+    await new Promise(r => setTimeout(r, 2000));
+
+    let attempts = 0;
+    const maxAttempts = 30; // 最多探测 30 次（约 30 秒）
+    const pollHealth = setInterval(async () => {
+      attempts++;
+      try {
+        const r = await rpcCall(BRIDGE_ENDPOINTS.checkVersion, {});
+        if (r?.ok) {
+          clearInterval(pollHealth);
+          setRestartStatus({ phase: 'success', text: '🎉 重启成功！已自动加载最新版本。正在刷新页面…' });
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+          return;
+        }
+      } catch {
+        // 仍在启动中，继续等待
+      }
+
+      if (attempts >= maxAttempts) {
+        clearInterval(pollHealth);
+        setRestartStatus({ phase: 'timeout', text: '重连等待超时，请手动刷新页面。' });
+        setRestarting(false);
+      }
+    }, 1000);
+  }, [rpcCall]);
+
+  const links = React.createElement('div', { style: { display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' } },
     React.createElement('a', {
       href: GITHUB_URL, target: '_blank', rel: 'noreferrer', style: s.btnLink,
     }, React.createElement(Icons.github), 'GitHub'),
@@ -1598,7 +1958,7 @@ function VersionBanner({ rpcCall }) {
             gap: 4,
           },
           onClick: check,
-          disabled: loading || upgrading,
+          disabled: loading || upgrading || restarting,
           title: '重新检查 npm 线上版本',
         },
           React.createElement(Icons.refresh),
@@ -1639,10 +1999,10 @@ function VersionBanner({ rpcCall }) {
                 background: upgradeResult?.ok
                   ? 'var(--dsw-alias-state-success-primary,#059669)'
                   : 'var(--dsw-alias-brand-primary,#4f6ef7)',
-                opacity: upgrading ? 0.6 : 1,
+                opacity: (upgrading || restarting) ? 0.6 : 1,
               },
               onClick: handleUpgrade,
-              disabled: upgrading || upgradeResult?.ok,
+              disabled: upgrading || restarting || upgradeResult?.ok,
             },
               upgrading
                 ? React.createElement('span', { style: { display: 'inline-flex', alignItems: 'center', gap: 6 } },
@@ -1650,7 +2010,7 @@ function VersionBanner({ rpcCall }) {
                     '正在自动升级…',
                   )
                 : upgradeResult?.ok
-                  ? '✓ 已完成升级'
+                  ? '✓ 升级完成'
                   : `一键升级到 v${info.latest}`
             ),
           ),
@@ -1673,11 +2033,72 @@ function VersionBanner({ rpcCall }) {
             info.releaseNotes
           ),
 
-          upgradeResult && React.createElement('div', {
+          // 升级成功后：引导重启 DSH 操作卡片
+          upgradeResult?.ok && !dismissRestart && React.createElement('div', {
             style: {
-              background: upgradeResult.ok ? 'var(--dsw-alias-state-success-bg,#ecfdf5)' : 'var(--dsw-alias-state-error-bg,#fef2f2)',
-              border: `1px solid ${upgradeResult.ok ? 'var(--dsw-alias-state-success-border,#a7f3d0)' : 'var(--dsw-alias-state-error-border,#fecaca)'}`,
-              color: upgradeResult.ok ? 'var(--dsw-alias-state-success-primary,#065f46)' : 'var(--dsw-alias-state-error-primary,#991b1b)',
+              background: 'var(--dsw-alias-bg-layer-2, rgba(255, 255, 255, 0.95))',
+              border: '1px solid var(--dsw-alias-state-success-border, #a7f3d0)',
+              borderRadius: 8,
+              padding: '12px 14px',
+              marginBottom: 10,
+            },
+          },
+            React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 } },
+              React.createElement('span', { style: { fontSize: 16 } }, '✨'),
+              React.createElement('span', {
+                style: { fontSize: 13, fontWeight: 600, color: 'var(--dsw-alias-state-success-primary, #059669)' },
+              }, `已成功升级到 v${info.latest}！需要重启 DSH 服务使新版本生效`),
+            ),
+            !restarting && !restartStatus && React.createElement('div', {
+              style: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
+            },
+              React.createElement('button', {
+                style: {
+                  ...s.btnPri,
+                  height: 30,
+                  fontSize: 12,
+                  padding: '0 14px',
+                  background: 'var(--dsw-alias-state-success-primary, #059669)',
+                },
+                onClick: handleRestart,
+              }, '🔄 立即重启 DSH 服务'),
+              React.createElement('button', {
+                style: {
+                  ...s.btnGhost,
+                  height: 30,
+                  fontSize: 12,
+                  padding: '0 12px',
+                },
+                onClick: () => setDismissRestart(true),
+              }, '稍后手动重启'),
+            ),
+            (restarting || restartStatus) && React.createElement('div', {
+              style: {
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                fontSize: 12,
+                color: restartStatus?.phase === 'success'
+                  ? 'var(--dsw-alias-state-success-primary, #059669)'
+                  : restartStatus?.phase === 'timeout'
+                    ? 'var(--dsw-alias-state-error-primary, #dc2626)'
+                    : 'var(--dsw-alias-state-info-primary, #2563eb)',
+                fontWeight: 500,
+              },
+            },
+              restartStatus?.phase !== 'success' && restartStatus?.phase !== 'timeout' && React.createElement('span', {
+                style: { animation: 'spin 1s linear infinite', display: 'inline-flex' },
+              }, React.createElement(Icons.refresh)),
+              restartStatus?.text || '正在处理…',
+            ),
+          ),
+
+          // 失败提示
+          upgradeResult && !upgradeResult.ok && React.createElement('div', {
+            style: {
+              background: 'var(--dsw-alias-state-error-bg,#fef2f2)',
+              border: '1px solid var(--dsw-alias-state-error-border,#fecaca)',
+              color: 'var(--dsw-alias-state-error-primary,#991b1b)',
               padding: '8px 12px',
               borderRadius: 6,
               fontSize: 12,
@@ -1713,15 +2134,19 @@ const TABS = [
   { id: 'tunnel',   label: '公网隧道',  icon: Icons.tunnel },
   { id: 'im',       label: 'IM 机器人', icon: Icons.bot },
   { id: 'security', label: '安全认证',  icon: Icons.security },
+  { id: 'ops',      label: '运维监控',  icon: Icons.ops },
 ];
 
 function TabBar({ active, onChange, dots }) {
   return React.createElement('div', {
+    className: 'dsh-tabbar-container',
     style: {
       display: 'flex', gap: 4, marginBottom: 20,
       borderBottom: '1px solid var(--dsw-alias-border-l2,#e5e7eb)',
       overflowX: 'auto', WebkitOverflowScrolling: 'touch',
       maxWidth: '100%', flexWrap: 'nowrap',
+      scrollbarWidth: 'none',
+      msOverflowStyle: 'none',
     },
   },
     TABS.map(({ id, label, icon: TabIcon }) => {
@@ -2052,6 +2477,16 @@ function BridgePanel({ rpcCall }) {
       rpcCall: authRpcCall,
       onUpdate: () => load(true),
     });
+  } else if (activeTab === 'ops') {
+    tabContent = React.createElement(React.Fragment, null,
+      React.createElement(SystemMetricsWidget, { metrics: status?.system }),
+      React.createElement(NetworkDiagnosticWidget, { rpcCall: authRpcCall }),
+      React.createElement(BackupRestoreWidget, {
+        rpcCall: authRpcCall,
+        onUpdate: () => load(true),
+      }),
+      React.createElement(RestartDshCard, { rpcCall: authRpcCall }),
+    );
   } else if (activeTab === 'im') {
     // 从 listPlatforms 动态生成平台列表
     const IM_PLATFORMS = [
@@ -2348,6 +2783,17 @@ function injectMobileStyles() {
   const style = document.createElement('style');
   style.id = 'dsh-bridge-mobile-styles';
   style.textContent = `
+    /* DSH Bridge 隐藏 Tab 栏原生滚动条并保持平滑滑动 */
+    .dsh-tabbar-container {
+      scrollbar-width: none !important;
+      -ms-overflow-style: none !important;
+    }
+    .dsh-tabbar-container::-webkit-scrollbar {
+      display: none !important;
+      width: 0 !important;
+      height: 0 !important;
+    }
+
     /* DSH Bridge 移动端自适应与触控交互增强样式 */
     :root {
       --dsh-mobile-header-h: 52px;
