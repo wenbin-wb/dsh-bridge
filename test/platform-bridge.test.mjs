@@ -40,6 +40,7 @@ class MockPlatform extends Platform {
 function makeMockCtx(extra = {}) {
   const events = {}
   const ctx = {
+    _mock: true,
     on(event, fn) { (events[event] ??= []).push(fn); return () => { events[event] = events[event].filter(f => f !== fn) } },
     emit(event, ...args) { (events[event] ?? []).forEach((fn) => fn(...args)) },
     logger: { info() {}, warn() {}, error() {} },
@@ -207,7 +208,7 @@ test('splitForIM 保留 fenced code block 完整', () => {
   assert.ok(out[0].includes('```js'))
 })
 
-test('sessionsInDisplayOrder 按工作区字母序分组', () => {
+test('sessionsInDisplayOrder 按工作区分组，保持组内顺序', () => {
   const all = [
     { id: 's-a1', cwd: 'B-proj', createdAt: 300 },
     { id: 's-b2', cwd: 'A-proj', createdAt: 200 },
@@ -215,7 +216,7 @@ test('sessionsInDisplayOrder 按工作区字母序分组', () => {
     { id: 's-n1', cwd: undefined, createdAt: 50 },
   ]
   const ordered = sessionsInDisplayOrder(all).map((s) => s.id)
-  assert.deepEqual(ordered, ['s-n1', 's-b2', 's-b1', 's-a1'])
+  assert.deepEqual(ordered, ['s-a1', 's-b2', 's-b1', 's-n1'])
 })
 
 test('ConversationBridge 群聊首次发言追加授权，不覆盖已有单聊白名单', async () => {
@@ -373,3 +374,38 @@ test('ConversationBridge turn/end 自动提取 assistant 消息中文件并调�
     platform.dispose()
   }
 })
+
+test('ConversationBridge listSessions 严格过滤已归档会话（内存与持久化）', async () => {
+  const { ctx } = makeMockCtx()
+  const platform = new MockPlatform({ ctx, logger: ctx.logger })
+  const bridge = new ConversationBridge({ ctx, logger: ctx.logger, config: {}, platform })
+
+  ctx.workspaceRegistry = {
+    archivedSessionIds: ['archived-s1', 'archived-s2'],
+  }
+  ctx.sessions.list = () => [
+    { id: 'live-s1', header: { createdAt: 100, cwd: '/app' }, events: [{ type: 'session/title', data: { title: '活跃会话1' } }] },
+    { id: 'archived-s1', header: { createdAt: 90, cwd: '/app' }, events: [{ type: 'session/title', data: { title: '已归档会话1' } }] },
+  ]
+  ctx.sessionPersistence = {
+    list: async () => [
+      { id: 'cold-s1', cwd: '/app', createdAt: 80 },
+      { id: 'archived-s2', cwd: '/app', createdAt: 70 },
+    ],
+    load: async (id) => ({
+      events: [{ type: 'session/title', data: { title: id === 'cold-s1' ? '冷会话1' : '归档冷会话' } }],
+    }),
+  }
+
+  const { listSessions } = conversationBridgeHelpers
+  const result = await listSessions(bridge)
+  const resultIds = result.map((s) => s.id)
+
+  assert.deepEqual(resultIds, ['live-s1', 'cold-s1'])
+  assert.ok(!resultIds.includes('archived-s1'))
+  assert.ok(!resultIds.includes('archived-s2'))
+
+  bridge.dispose()
+  platform.dispose()
+})
+

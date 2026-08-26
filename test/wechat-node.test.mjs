@@ -49,6 +49,7 @@ test('isGroupMessage detects room messages', () => {
 function makeMockCtx() {
   const events = {}
   const ctx = {
+    _mock: true,
     on(event, fn) { (events[event] ??= []).push(fn); return () => { events[event] = events[event].filter(f => f !== fn) } },
     emit(event, ...args) { (events[event] ?? []).forEach((fn) => fn(...args)) },
     wechat: {
@@ -149,7 +150,7 @@ test('resolveApproval handles /yes and bare 1', () => {
   }
 })
 
-test('sessionsInDisplayOrder groups by cwd alphabetically, preserving inner order', () => {
+test('sessionsInDisplayOrder groups by cwd, preserving inner order', () => {
   const all = [
     { id: 's-a1', cwd: 'B-proj', createdAt: 300 },
     { id: 's-b2', cwd: 'A-proj', createdAt: 200 },
@@ -157,8 +158,7 @@ test('sessionsInDisplayOrder groups by cwd alphabetically, preserving inner orde
     { id: 's-n1', cwd: undefined, createdAt: 50 },
   ]
   const ordered = sessionsInDisplayOrder(all).map((s) => s.id)
-  // '(未指定)' 以 ( 开头，localeCompare 排最前；随后 A-proj（字母序）组内保持原顺序；最后 B-proj
-  assert.deepEqual(ordered, ['s-n1', 's-b2', 's-b1', 's-a1'])
+  assert.deepEqual(ordered, ['s-a1', 's-b2', 's-b1', 's-n1'])
 })
 
 test('sessionsInDisplayOrder number matches renderSessions numbering', async () => {
@@ -171,10 +171,9 @@ test('sessionsInDisplayOrder number matches renderSessions numbering', async () 
       { id: 's-3', cwd: 'A-proj', createdAt: 100, title: 'A2' },
     ]
     const ordered = sessionsInDisplayOrder(all)
-    // renderSessions 编号: A-proj 组先 (s-2=1, s-3=2)，B-proj 组后 (s-1=3)
-    assert.equal(ordered[0].id, 's-2')
-    assert.equal(ordered[1].id, 's-3')
-    assert.equal(ordered[2].id, 's-1')
+    assert.equal(ordered[0].id, 's-1')
+    assert.equal(ordered[1].id, 's-2')
+    assert.equal(ordered[2].id, 's-3')
   } finally {
     node.dispose()
   }
