@@ -6,7 +6,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { Platform, ConversationBridge, PlatformManager, conversationBridgeHelpers, textOfAssistantMessage } from '../lib/platform/index.js'
 
-const { splitForIM, sessionsInDisplayOrder } = conversationBridgeHelpers
+const { splitForIM, sessionsInDisplayOrder, extractFilePathsFromText, resolveFilePath } = conversationBridgeHelpers
 
 // ---------------------------------------------------------------------------
 // 造一个最小可用的 mock 平台（模拟任一 IM 平台）
@@ -19,6 +19,7 @@ class MockPlatform extends Platform {
     this.name = 'Mock IM'
     this.accountId = config.accountId ?? 'bot-mock'
     this.sent = [] // 记录发送的消息
+    this.sentMedia = [] // 记录发送的媒体文件
   }
   get configured() { return Boolean(this.config.token) }
   get capabilities() {
@@ -26,6 +27,10 @@ class MockPlatform extends Platform {
   }
   async sendText(peerId, text) {
     this.sent.push({ peerId, text })
+    return { success: true }
+  }
+  async sendMediaFile(peerId, filePath) {
+    this.sentMedia.push({ peerId, filePath })
     return { success: true }
   }
   async sendTyping(peerId, state) { return { success: true } }
@@ -311,4 +316,60 @@ test('PlatformManager 重复注册同 id 会替换并 dispose 旧实例', () => 
   manager.register(p2) // 同 id 'mock'
   assert.equal(manager.get('mock'), p2)
   manager.dispose()
+})
+
+test('extractFilePathsFromText 准确提取助手文本与终端命令中的真实文件路径', async () => {
+  const fs = await import('node:fs')
+  const path = await import('node:path')
+  const tmpFile = path.resolve(process.cwd(), 'scratch', 'test-intro-unit.txt')
+  fs.writeFileSync(tmpFile, '自我介绍内容测试')
+  try {
+    const text = `我已经为你生成了自我介绍文件 自我介绍.txt，文件已保存到：\n\n📁 ${tmpFile}`
+    const found = extractFilePathsFromText(text, process.cwd())
+    assert.equal(found.length, 1)
+    assert.equal(found[0], tmpFile)
+
+    const cmd = `New-Item -ItemType Directory -Path . -Force; Set-Content -Path "${tmpFile}"`
+    const foundCmd = extractFilePathsFromText(cmd, process.cwd())
+    assert.equal(foundCmd.length, 1)
+    assert.equal(foundCmd[0], tmpFile)
+  } finally {
+    try { fs.unlinkSync(tmpFile) } catch {}
+  }
+})
+
+test('ConversationBridge turn/end 自动提取 assistant 消息中文件并调用 sendMediaFile', async () => {
+  const fs = await import('node:fs')
+  const path = await import('node:path')
+  const tmpFile = path.resolve(process.cwd(), 'scratch', 'test-auto-send.txt')
+  fs.writeFileSync(tmpFile, '自动发送测试内容')
+
+  const { ctx } = makeMockCtx()
+  const platform = new MockPlatform({ ctx, logger: ctx.logger })
+  const bridge = new ConversationBridge({ ctx, logger: ctx.logger, config: {}, platform })
+  bridge.peerId = 'user-wechat-123'
+  bridge.activeSessionId = 's1'
+
+  try {
+    // 模拟 session/event 流程
+    ctx.emit('session/event', { id: 's1' }, { type: 'turn/start', data: { turn: 1 } })
+    ctx.emit('session/event', { id: 's1' }, {
+      type: 'assistant/message',
+      data: {
+        message: {
+          content: [{ type: 'text', text: `文件生成完毕，保存于 📁 ${tmpFile}` }]
+        }
+      }
+    })
+    ctx.emit('session/event', { id: 's1' }, { type: 'turn/end', data: { reason: { kind: 'stop' } } })
+
+    // 验证自动触发了 sendMediaFile
+    assert.equal(platform.sentMedia.length, 1)
+    assert.equal(platform.sentMedia[0].peerId, 'user-wechat-123')
+    assert.equal(platform.sentMedia[0].filePath, tmpFile)
+  } finally {
+    try { fs.unlinkSync(tmpFile) } catch {}
+    bridge.dispose()
+    platform.dispose()
+  }
 })

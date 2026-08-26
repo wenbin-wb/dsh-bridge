@@ -93,10 +93,9 @@ test('normalizeAesKey keeps base64(hex-string) intact', () => {
   assert.equal(parseAesKey(normalized).toString('hex'), hexStr)
 })
 
-test('encodeAesKeyForApi produces base64(hex)', () => {
+test('encodeAesKeyForApi produces base64(hex_string)', () => {
   const key = Buffer.from('0123456789abcdef')
   const encoded = encodeAesKeyForApi(key)
-  // 应该是 base64(hex_string)
   const decoded = Buffer.from(encoded, 'base64').toString('ascii')
   assert.equal(decoded, key.toString('hex'))
 })

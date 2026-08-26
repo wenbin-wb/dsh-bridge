@@ -1,8 +1,8 @@
 {
   "name": "@wenbin_wb/dsh-bridge",
-  "version": "2.8.1",
+  "version": "2.8.3",
   "description": "手机扫码即可在移动端/公网继续用 DeepSeek Harness，人不在电脑前也能接着干。一键局域网二维码、Cloudflare 公网隧道、自建隧道与微信 / QQ / 飞书 / Telegram Bot（多工作区/会话持久化/媒体/卡片审批/流式输出），无需自己搭公网服务器。",
-  "releaseNotes": "【v2.8.1 微信/IM 消息分块保护与流式体验修复】\n• 🛡️ 修复微信/IM 平台单条消息分块字符数因异常配置被切成 20 字符碎片的问题\n• ⚙️ 增加消息分块字符数全局安全下限防御（自动纠偏并保底为平台标准容量）\n• 💬 恢复微信/各平台完整段落与 Markdown 代码块的原生一次性下发",
+  "releaseNotes": "【v2.8.3 微信与全平台 IM 文件收发链路全面修复与深度兼容】\n• 📱 微信 iLink 官方媒体传输协议完全对齐：修复 getuploadurl 文件媒体类型枚举（media_type=3）与 AES 密钥规范编码（base64(hex)），彻底解决手机端「文件已过期/下载失败/0B」问题\n• 🤖 QQ 机器人富媒体文件直传修复：支持 file_type=4 通用文件传输并显式传递 file_name，彻底消除「未命名」卡片显示\n• 🌐 微信会话凭证（context_token）持久化机制：自动捕获并持久化落盘实时安全凭证，重启服务永不丢失会话上下文\n• 📢 多平台多端共享会话广播：同一会话在任一端（飞书/QQ/TG/Web）生成产物文件时，自动同步广播推送到所有已绑定的 IM 客户端",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

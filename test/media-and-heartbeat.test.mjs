@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { resolve } from 'node:path'
 import { QqGateway } from '../lib/qq/gateway.js'
 import { QqConversationNode } from '../lib/qq/node.js'
 import { FeishuConversationNode } from '../lib/feishu/node.js'
@@ -190,5 +191,5 @@ test('ConversationBridge triggers sendMediaFile on turn/end when local file exis
 
   assert.equal(sentMedia.length, 1)
   assert.equal(sentMedia[0].peer, 'u1')
-  assert.equal(sentMedia[0].filePath, targetFile)
+  assert.equal(sentMedia[0].filePath, resolve(process.cwd(), targetFile))
 })
