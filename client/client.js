@@ -1173,7 +1173,7 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
       setCfgDraft({
         digestIntervalSec: String(platform.config.digestIntervalSec ?? 300),
         approvalTimeoutSec: String(platform.config.approvalTimeoutSec ?? 600),
-        maxMessageChars: String(platform.config.maxMessageChars ?? (platformId === "telegram" ? 4096 : 2e3)),
+        maxMessageChars: String((platform.config.maxMessageChars >= 500 ? platform.config.maxMessageChars : null) ?? (platformId === "telegram" ? 4096 : 2e3)),
         sendChunkDelayMs: String(platform.config.sendChunkDelayMs ?? 1500),
         appId: platform.config.appId ?? "",
         // Secret 不由后端回传；空值表示沿用已保存密钥
