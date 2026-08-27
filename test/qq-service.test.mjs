@@ -144,23 +144,23 @@ test('QqGateway API_BASE uses unified api.bot.qq.com domain', () => {
   }
 })
 
-test('QqGateway gateway discovery uses /gateway/bot endpoint', () => {
+test('QqGateway gateway discovery uses /gateway/bot endpoint', async () => {
   const ctx = makeMockCordisCtx()
   const gw = new QqGateway({ ctx, logger: ctx.logger, config: {} })
+  const originalFetch = global.fetch
   try {
     let capturedUrl = null
     gw.refreshAccessToken = async () => 'tok'
     gw.connect = async () => { gw.stopRequested = true } // 连一次即停，避免死循环
-    const originalFetch = global.fetch
     global.fetch = async (url) => {
       capturedUrl = url
       return { ok: true, text: async () => JSON.stringify({ url: 'wss://api.bot.qq.com/websocket', shards: 1 }) }
     }
-    return gw.runLoop().finally(() => { global.fetch = originalFetch }).then(() => {
-      assert.ok(capturedUrl?.includes('/gateway/bot'), 'should call /gateway/bot, got ' + capturedUrl)
-    })
+    await gw.runLoop()
+    assert.ok(capturedUrl?.includes('/gateway/bot'), 'should call /gateway/bot, got ' + capturedUrl)
   } finally {
-    gw.dispose()
+    global.fetch = originalFetch
+    await gw.dispose()
   }
 })
 

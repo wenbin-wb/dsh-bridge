@@ -116,7 +116,7 @@ test('Feishu Node processes media messages and appends file path', async () => {
   assert.ok(events[0].text.includes('[文件: /mock/.feishu-media/doc.pdf]'))
 })
 
-test('ConversationBridge tracks created files on tool/call and notifies on turn/end', async () => {
+test('ConversationBridge 解析 assistant 消息中的 [SEND_FILE: path] 指令并在正文中剔除', async () => {
   const ctx = makeMockCordisCtx()
   const sentTexts = []
   const bridge = new ConversationBridge({
@@ -126,6 +126,7 @@ test('ConversationBridge tracks created files on tool/call and notifies on turn/
     platform: {
       id: 'mock',
       name: 'Mock',
+      status: 'connected',
       capabilities: {},
       sendText: async (peer, text) => { sentTexts.push(text) },
     },
@@ -136,29 +137,23 @@ test('ConversationBridge tracks created files on tool/call and notifies on turn/
   // 1. turn/start
   await ctx.emit('session/event', { id: 'session-1' }, { type: 'turn/start', data: { turn: 1 } })
 
-  // 2. tool/call creating file
-  await ctx.emit('session/event', { id: 'session-1' }, {
-    type: 'tool/call',
-    data: { name: 'write_to_file', parameters: { TargetFile: '/project/result.png' } },
-  })
-
-  // 3. assistant/message
+  // 2. assistant/message with directive
   await ctx.emit('session/event', { id: 'session-1' }, {
     type: 'assistant/message',
-    data: { message: { content: [{ type: 'text', text: '已生成图片。' }] } },
+    data: { message: { content: [{ type: 'text', text: '已生成图片。\n[SEND_FILE: /project/result.png]' }] } },
   })
 
-  // 4. turn/end
+  // 3. turn/end
   await ctx.emit('session/event', { id: 'session-1' }, {
     type: 'turn/end',
     data: { reason: { kind: 'stop' } },
   })
 
   assert.ok(sentTexts.some(t => t.includes('已生成图片。')))
-  assert.ok(sentTexts.some(t => t.includes('本轮已生成产物文件') && t.includes('/project/result.png')))
+  assert.ok(!sentTexts.some(t => t.includes('SEND_FILE')))
 })
 
-test('ConversationBridge triggers sendMediaFile on turn/end when local file exists', async () => {
+test('ConversationBridge triggers sendMediaFile on turn/end when [SEND_FILE: path] exists', async () => {
   const ctx = makeMockCordisCtx()
   const sentMedia = []
   const bridge = new ConversationBridge({
@@ -168,6 +163,7 @@ test('ConversationBridge triggers sendMediaFile on turn/end when local file exis
     platform: {
       id: 'mock',
       name: 'Mock',
+      status: 'connected',
       capabilities: {},
       sendText: async () => {},
       sendMediaFile: async (peer, filePath) => { sentMedia.push({ peer, filePath }) },
@@ -176,13 +172,12 @@ test('ConversationBridge triggers sendMediaFile on turn/end when local file exis
   bridge.peerId = 'u1'
   bridge.activeSessionId = 'session-1'
 
-  // package.json exists locally
-  const targetFile = 'package.json'
+  const targetFile = 'docs/banner.jpg'
 
   await ctx.emit('session/event', { id: 'session-1' }, { type: 'turn/start', data: { turn: 1 } })
   await ctx.emit('session/event', { id: 'session-1' }, {
-    type: 'tool/call',
-    data: { name: 'write_to_file', parameters: { TargetFile: targetFile } },
+    type: 'assistant/message',
+    data: { message: { content: [{ type: 'text', text: `请查收：\n[SEND_FILE: ${targetFile}]` }] } },
   })
   await ctx.emit('session/event', { id: 'session-1' }, {
     type: 'turn/end',

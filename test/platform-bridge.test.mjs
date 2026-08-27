@@ -17,6 +17,7 @@ class MockPlatform extends Platform {
     super({ ctx, logger, config, onPersist })
     this.id = 'mock'
     this.name = 'Mock IM'
+    this.status = config.status ?? 'connected'
     this.accountId = config.accountId ?? 'bot-mock'
     this.sent = [] // 记录发送的消息
     this.sentMedia = [] // 记录发送的媒体文件
@@ -61,7 +62,7 @@ function makeMockCtx(extra = {}) {
 
 test('Platform 基类提供生命周期与消息抽象接口', () => {
   const { ctx } = makeMockCtx()
-  const p = new MockPlatform({ ctx, logger: ctx.logger, config: { token: 't', accountId: 'bot1' } })
+  const p = new MockPlatform({ ctx, logger: ctx.logger, config: { token: 't', accountId: 'bot1', status: 'idle' } })
   assert.equal(p.id, 'mock')
   assert.equal(p.configured, true)
   assert.equal(p.status, 'idle')
@@ -319,27 +320,24 @@ test('PlatformManager 重复注册同 id 会替换并 dispose 旧实例', () => 
   manager.dispose()
 })
 
-test('extractFilePathsFromText 准确提取助手文本与终端命令中的真实文件路径', async () => {
+test('extractAndStripSendFileDirectives 准确提取指令并从聊天正文中剥离', async () => {
   const fs = await import('node:fs')
   const path = await import('node:path')
   const tmpFile = path.resolve(process.cwd(), 'scratch', 'test-intro-unit.txt')
   fs.writeFileSync(tmpFile, '自我介绍内容测试')
   try {
-    const text = `我已经为你生成了自我介绍文件 自我介绍.txt，文件已保存到：\n\n📁 ${tmpFile}`
-    const found = extractFilePathsFromText(text, process.cwd())
-    assert.equal(found.length, 1)
-    assert.equal(found[0], tmpFile)
-
-    const cmd = `New-Item -ItemType Directory -Path . -Force; Set-Content -Path "${tmpFile}"`
-    const foundCmd = extractFilePathsFromText(cmd, process.cwd())
-    assert.equal(foundCmd.length, 1)
-    assert.equal(foundCmd[0], tmpFile)
+    const raw = `我已经为你生成了自我介绍文件，请查收：\n[SEND_FILE: ${tmpFile}]\n祝你使用愉快！`
+    const { cleanText, files } = conversationBridgeHelpers.extractAndStripSendFileDirectives(raw, process.cwd())
+    assert.equal(files.length, 1)
+    assert.equal(files[0], tmpFile)
+    assert.equal(cleanText, '我已经为你生成了自我介绍文件，请查收：\n\n祝你使用愉快！')
+    assert.ok(!cleanText.includes('SEND_FILE'))
   } finally {
     try { fs.unlinkSync(tmpFile) } catch {}
   }
 })
 
-test('ConversationBridge turn/end 自动提取 assistant 消息中文件并调用 sendMediaFile', async () => {
+test('ConversationBridge 仅在收到 [SEND_FILE: path] 指令时发送媒体文件且聊天正文过滤指令', async () => {
   const fs = await import('node:fs')
   const path = await import('node:path')
   const tmpFile = path.resolve(process.cwd(), 'scratch', 'test-auto-send.txt')
@@ -352,24 +350,72 @@ test('ConversationBridge turn/end 自动提取 assistant 消息中文件并调�
   bridge.activeSessionId = 's1'
 
   try {
-    // 模拟 session/event 流程
     ctx.emit('session/event', { id: 's1' }, { type: 'turn/start', data: { turn: 1 } })
     ctx.emit('session/event', { id: 's1' }, {
       type: 'assistant/message',
       data: {
         message: {
-          content: [{ type: 'text', text: `文件生成完毕，保存于 📁 ${tmpFile}` }]
+          content: [{ type: 'text', text: `文件生成完毕，请查收！\n[SEND_FILE: ${tmpFile}]` }]
         }
       }
     })
     ctx.emit('session/event', { id: 's1' }, { type: 'turn/end', data: { reason: { kind: 'stop' } } })
+    await new Promise((r) => setTimeout(r, 15))
 
-    // 验证自动触发了 sendMediaFile
+    // 1. 验证聊天气泡收到的文本已剥离 [SEND_FILE: ...] 指令
+    assert.equal(platform.sent.length, 1)
+    assert.equal(platform.sent[0].text, '文件生成完毕，请查收！')
+
+    // 2. 验证自动触发了 sendMediaFile
     assert.equal(platform.sentMedia.length, 1)
     assert.equal(platform.sentMedia[0].peerId, 'user-wechat-123')
     assert.equal(platform.sentMedia[0].filePath, tmpFile)
   } finally {
     try { fs.unlinkSync(tmpFile) } catch {}
+    bridge.dispose()
+    platform.dispose()
+  }
+})
+
+test('ConversationBridge 在普通代码修改时绝不发送文件且不误判', async () => {
+  const fs = await import('node:fs')
+  const path = await import('node:path')
+  const tmpJs = path.resolve(process.cwd(), 'scratch', 'test-code.js')
+  const tmpVue = path.resolve(process.cwd(), 'scratch', 'test-code.vue')
+  fs.writeFileSync(tmpJs, 'console.log("hello")')
+  fs.writeFileSync(tmpVue, '<template><div></div></template>')
+
+  const { ctx } = makeMockCtx()
+  const platform = new MockPlatform({ ctx, logger: ctx.logger })
+  const bridge = new ConversationBridge({ ctx, logger: ctx.logger, config: {}, platform })
+  bridge.peerId = 'user-wechat-123'
+  bridge.activeSessionId = 's-code'
+
+  try {
+    ctx.emit('session/event', { id: 's-code' }, { type: 'turn/start', data: { turn: 1 } })
+    ctx.emit('session/event', { id: 's-code' }, {
+      type: 'tool/call',
+      data: { name: 'replace_file_content', parameters: { TargetFile: tmpJs } }
+    })
+    ctx.emit('session/event', { id: 's-code' }, {
+      type: 'assistant/message',
+      data: {
+        message: {
+          content: [{ type: 'text', text: `已修改源码文件：\n- ${tmpJs}\n- ${tmpVue}` }]
+        }
+      }
+    })
+    ctx.emit('session/event', { id: 's-code' }, { type: 'turn/end', data: { reason: { kind: 'stop' } } })
+    await new Promise((r) => setTimeout(r, 15))
+
+    // 验证源码修改未触发 sendMediaFile
+    assert.equal(platform.sentMedia.length, 0)
+    // 验证正常发送了修改日志
+    assert.equal(platform.sent.length, 1)
+    assert.ok(platform.sent[0].text.includes('已修改源码文件'))
+  } finally {
+    try { fs.unlinkSync(tmpJs) } catch {}
+    try { fs.unlinkSync(tmpVue) } catch {}
     bridge.dispose()
     platform.dispose()
   }
@@ -404,6 +450,30 @@ test('ConversationBridge listSessions 严格过滤已归档会话（内存与持
   assert.deepEqual(resultIds, ['live-s1', 'cold-s1'])
   assert.ok(!resultIds.includes('archived-s1'))
   assert.ok(!resultIds.includes('archived-s2'))
+
+  bridge.dispose()
+  platform.dispose()
+})
+
+test('ConversationBridge 当平台断开连接(status=idle)时严格拦截出站消息', async () => {
+  const { ctx } = makeMockCtx()
+  const platform = new MockPlatform({ ctx, logger: ctx.logger })
+  platform.status = 'idle' // 已断开连接
+  const bridge = new ConversationBridge({ ctx, logger: ctx.logger, config: {}, platform })
+  bridge.peerId = 'user-qq-123'
+  bridge.activeSessionId = 's1'
+
+  ctx.emit('session/event', { id: 's1' }, { type: 'turn/start', data: { turn: 1 } })
+  ctx.emit('session/event', { id: 's1' }, {
+    type: 'assistant/message',
+    data: { message: { content: [{ type: 'text', text: '这条消息不应该发送' }] } }
+  })
+  ctx.emit('session/event', { id: 's1' }, { type: 'turn/end', data: { reason: { kind: 'stop' } } })
+  await new Promise((r) => setTimeout(r, 15))
+
+  // 验证平台未发送任何消息
+  assert.equal(platform.sent.length, 0)
+  assert.equal(platform.sentMedia.length, 0)
 
   bridge.dispose()
   platform.dispose()
