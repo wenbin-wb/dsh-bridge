@@ -548,3 +548,31 @@ test('ConversationBridge createSession 默认使用首个已注册工作区并 a
 })
 
 
+
+// ---------------------------------------------------------------------------
+// 回归：dispose 必须解绑 session/event 监听器（曾因 disposer 闭包引用未定义的
+// digestState 抛 ReferenceError，被 dispose 的 try/catch 吞掉导致监听器泄漏）
+// ---------------------------------------------------------------------------
+
+test('ConversationBridge.dispose 解绑 session/event 监听器（P0-1 回归）', async () => {
+  const { ctx, events } = makeMockCtx()
+  const platform = new MockPlatform({ ctx, logger: ctx.logger })
+  const bridge = new ConversationBridge({ ctx, logger: ctx.logger, config: { allowFrom: ['u1'] }, platform })
+  bridge.activeSessionId = 's1'
+
+  const before = events['session/event']?.length ?? 0
+  assert.ok(before >= 1, 'bridge 应已订阅 session/event')
+
+  bridge.dispose()
+  platform.dispose()
+
+  assert.equal(events['session/event']?.length ?? 0, 0, 'dispose 后监听器必须被解绑')
+
+  // dispose 后派发事件不得再驱动已销毁的 bridge（幽灵事件不应触发外发）
+  ctx.emit(
+    'session/event',
+    { id: 's1', events: [], header: {}, seq: 0 },
+    { type: 'assistant/message', data: { message: { content: [{ type: 'text', text: 'ghost output' }] } } },
+  )
+  assert.equal(platform.sent.length, 0, 'dispose 后不应有任何外发')
+})
