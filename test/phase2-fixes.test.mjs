@@ -34,7 +34,7 @@ test('AuthManager 并发 persist 序列化且互不覆盖', async () => {
 })
 
 // 管理解锁防爆破：5 次失败锁定，正确密码在锁定期内也被拒绝
-test('unlockAdmin 失败 5 次后锁定 60 秒（T2.8 回归）', () => {
+test('unlockAdmin 失败 5 次后锁定 60 秒（T2.8 回归）', async () => {
   const auth = new AuthManager({
     config: { adminPasswordHash: '', adminPasswordSalt: '' },
     onPersist: async () => {},
@@ -43,10 +43,10 @@ test('unlockAdmin 失败 5 次后锁定 60 秒（T2.8 回归）', () => {
   auth.adminPasswordSalt = 'cafe'
 
   for (let i = 0; i < 5; i++) {
-    const res = auth.unlockAdmin('wrong-password')
+    const res = await auth.unlockAdmin('wrong-password')
     assert.equal(res.ok, false)
   }
-  const locked = auth.unlockAdmin('wrong-password')
+  const locked = await auth.unlockAdmin('wrong-password')
   assert.equal(locked.ok, false)
   assert.match(locked.error, /尝试次数过多/)
 
@@ -56,9 +56,9 @@ test('unlockAdmin 失败 5 次后锁定 60 秒（T2.8 回归）', () => {
   auth.dispose()
 })
 
-test('unlockAdmin 未设任何密码时直接放行（既有行为保持）', () => {
+test('unlockAdmin 未设任何密码时直接放行（既有行为保持）', async () => {
   const auth = new AuthManager({ config: {}, onPersist: async () => {} })
-  const res = auth.unlockAdmin('anything')
+  const res = await auth.unlockAdmin('anything')
   assert.equal(res.ok, true)
   assert.ok(res.adminToken)
   auth.dispose()
