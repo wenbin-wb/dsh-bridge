@@ -691,3 +691,82 @@ test('assistant/message 与 turn/end 绑定发起会话的 outboundPeer，而非
   bridge.dispose()
   platform.dispose()
 })
+
+// ---------------------------------------------------------------------------
+// 回归：审批桥必须 prepend 到 waterfall 最外层（微信收不到审批卡修复）
+//
+// DSH 的审批分发是 cordis waterfall：宿主 apiproxy 先注册的 GUI 认领监听器
+// 会认领 approval/asked 并 veto（不调 next()）等待网页回答。桥若不 prepend，
+// 永远轮不到执行 → IM 端收不到卡片 → 工具调用以 unavailable 失败。
+// ---------------------------------------------------------------------------
+
+const { Context: CordisContext } = await import('@deepseek-ai/cordis')
+
+async function makeApprovalHarness() {
+  const app = new CordisContext()
+  const platform = new MockPlatform({ ctx: app, logger: { info() {}, warn() {}, error() {}, debug() {} } })
+  const bridge = new ConversationBridge({
+    ctx: app, logger: platform.logger, config: { allowFrom: ['u1'] }, platform,
+  })
+  bridge.activeSessionId = 's1'
+  app.sessions = { list: () => [{ id: 's1', events: [], header: {}, seq: 0 }], get: () => undefined }
+  app.agents = {
+    get: () => undefined,
+    create: async ({ sessionId }) => ({ agent: { session: { id: sessionId }, followup() {}, cancel() {}, status: 'idle' } }),
+    resume: async ({ resumeSessionId }) => ({ agent: { session: { id: resumeSessionId }, followup() {}, cancel() {}, status: 'idle' } }),
+  }
+  app.workspaceRegistry = { archivedSessionIds: [], list: async () => [] }
+  app.sessionProjCache = {}
+
+  // 宿主式 GUI 认领监听器：先注册（模拟 dsh-host-apiproxy），认领后挂起等网页回答
+  let hostResolve = null
+  const hostClaims = []
+  app.on('approval/request', () => {
+    hostClaims.push(1)
+    return new Promise((resolve) => { hostResolve = resolve })
+  })
+  return { app, platform, bridge, get hostResolve() { return hostResolve }, hostClaims }
+}
+
+test('审批桥 prepend 最外层：卡片发到 IM，/yes 决议生效（微信收不到审批卡回归）', async () => {
+  const { app, platform, bridge, hostClaims } = await makeApprovalHarness()
+
+  await bridge.handleInbound({ senderId: 'u1', text: '把 readme 发我', outboundPeer: { peerId: 'u1' } })
+
+  // 模拟 dsh-user-approval.decide 的 waterfall 调用（含 unavailable 兜底）
+  const decidePromise = app.waterfall('approval/request', { agent: { session: { id: 's1' } }, toolName: 'read_file' }, () => Promise.resolve('unavailable'))
+  await new Promise((r) => setTimeout(r, 30))
+
+  assert.equal(hostClaims.length, 1, "宿主 GUI 监听器应经由 next() 并行挂起")
+  assert.ok(platform.sent.some((m) => m.text.includes('操作权限确认')), '审批卡片必须发到 IM')
+
+  // 用户回复 /yes → IM 侧决议
+  await bridge.handleInbound({ senderId: 'u1', text: '/yes', outboundPeer: { peerId: 'u1' } })
+  const outcome = await decidePromise
+  assert.equal(outcome, 'allowed-once')
+  await new Promise((r) => setTimeout(r, 30)) // 等待发送队列落地确认消息
+  assert.ok(platform.sent.some((m) => m.text.includes('已批准执行')))
+
+  bridge.dispose()
+  platform.dispose()
+})
+
+test('GUI 先决议时 IM 收到（Web 端操作）通知', async () => {
+  const harness = await makeApprovalHarness()
+  const { app, platform, bridge } = harness
+
+  await bridge.handleInbound({ senderId: 'u1', text: 'do work', outboundPeer: { peerId: 'u1' } })
+  const decidePromise = app.waterfall('approval/request', { agent: { session: { id: 's1' } }, toolName: 'browser_click' }, () => Promise.resolve('unavailable'))
+  await new Promise((r) => setTimeout(r, 30))
+  assert.ok(platform.sent.some((m) => m.text.includes('操作权限确认')))
+
+  // 用户在 Web GUI 上点了拒绝
+  harness.hostResolve('rejected')
+  const outcome = await decidePromise
+  assert.equal(outcome, 'rejected')
+  await new Promise((r) => setTimeout(r, 30)) // 等待发送队列落地确认消息
+  assert.ok(platform.sent.some((m) => m.text.includes('已拒绝执行') && m.text.includes('Web 端操作')))
+
+  bridge.dispose()
+  platform.dispose()
+})
