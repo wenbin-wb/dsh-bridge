@@ -28,6 +28,7 @@
     "build:banner": "node scripts/generate-banner.mjs",
     "prepack": "npm run build:lark && npm run build:client",
     "release:github": "node scripts/create-github-release.mjs",
+    "lint": "eslint .",
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
@@ -36,8 +37,11 @@
   },
   "devDependencies": {
     "@deepseek-ai/dsh-llm": "0.1.0-rc.6",
+    "@eslint/js": "^10.0.1",
     "@larksuiteoapi/node-sdk": "^1.73.0",
     "esbuild": "^0.25.9",
+    "eslint": "^10.9.1",
+    "globals": "^17.11.0",
     "puppeteer-core": "^25.8.0"
   },
   "peerDependencies": {
