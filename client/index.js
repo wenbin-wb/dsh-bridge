@@ -3028,6 +3028,163 @@ function injectMobileStyles() {
         display: none !important;
       }
 
+      /* 3.0 工作区 Workbench / 任务管理 / 多 Tab 栏移动端自适应适配 */
+      body:not(.dsh-workbench-open) div[class*="nArs4W_panel"],
+      body:not(.dsh-workbench-open) div[class*="workbench_panel"],
+      body:not(.dsh-workbench-open) div[class*="workbenchPanel"],
+      div[class*="nArs4W_panel"][class*="panelHidden"],
+      div[class*="workbench_panel"][class*="panelHidden"],
+      div[class*="workbenchPanel"][class*="panelHidden"],
+      div[class*="panelHidden"] {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+        width: 0 !important;
+        height: 0 !important;
+        max-height: 0 !important;
+        z-index: -1 !important;
+        opacity: 0 !important;
+        transform: translateX(105%) !important;
+      }
+
+      body.dsh-workbench-open div[class*="nArs4W_panel"]:not([class*="panelHidden"]),
+      body.dsh-workbench-open div[class*="workbench_panel"]:not([class*="panelHidden"]),
+      body.dsh-workbench-open div[class*="workbenchPanel"]:not([class*="panelHidden"]) {
+        display: flex !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+        top: var(--dsh-mobile-header-h, 52px) !important;
+        height: calc(100dvh - var(--dsh-mobile-header-h, 52px)) !important;
+        max-height: calc(100dvh - var(--dsh-mobile-header-h, 52px)) !important;
+        z-index: 50 !important;
+        box-sizing: border-box !important;
+        background: var(--dsw-alias-bg-layer-1, #ffffff) !important;
+        transform: none !important;
+        opacity: 1 !important;
+      }
+
+      /* Tab 栏：横向滑动手势 + 干净的底部边框，杜绝与顶部移动端 Header 重叠 */
+      div[class*="nArs4W_tabBar"],
+      div[class*="workbench_tabBar"],
+      div[class*="tabBar"] {
+        min-height: 40px !important;
+        height: 40px !important;
+        background: var(--dsw-alias-bg-layer-1, #ffffff) !important;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 0 8px !important;
+        gap: 6px !important;
+        overflow: visible !important;
+        box-sizing: border-box !important;
+      }
+
+      div[class*="nArs4W_tabList"],
+      div[class*="tabList"] {
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        overflow-x: auto !important;
+        scrollbar-width: none !important;
+        -webkit-overflow-scrolling: touch !important;
+      }
+      div[class*="nArs4W_tabList"]::-webkit-scrollbar,
+      div[class*="tabList"]::-webkit-scrollbar {
+        display: none !important;
+      }
+
+      /* 单个 Tab 胶囊化，文字超长自动打点，防止 Tab 互相挤压 */
+      div[class*="nArs4W_tab"],
+      div[class*="workbench_tab"] {
+        flex: 0 0 auto !important;
+        max-width: 170px !important;
+        min-width: 70px !important;
+        height: 30px !important;
+        padding: 0 8px 0 10px !important;
+        border-radius: 6px !important;
+        font-size: 12.5px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 6px !important;
+        background: var(--dsw-alias-bg-layer-2, #f3f4f6) !important;
+        color: var(--dsw-alias-label-secondary, #6b7280) !important;
+        cursor: pointer !important;
+        user-select: none !important;
+        box-sizing: border-box !important;
+      }
+
+      div[class*="nArs4W_tabActive"],
+      div[class*="workbench_tabActive"] {
+        background: var(--dsw-alias-bg-layer-1, #ffffff) !important;
+        color: var(--dsw-alias-label-primary, #111827) !important;
+        font-weight: 600 !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+      }
+
+      span[class*="nArs4W_tabTitle"],
+      span[class*="tabTitle"] {
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+        flex: 1 1 auto !important;
+      }
+
+      button[class*="nArs4W_tabClose"],
+      button[class*="tabClose"] {
+        width: 18px !important;
+        height: 18px !important;
+        border-radius: 50% !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-shrink: 0 !important;
+        opacity: 0.6 !important;
+        padding: 0 !important;
+      }
+
+      button[class*="nArs4W_tabBarPlus"],
+      button[class*="tabBarPlus"] {
+        width: 28px !important;
+        height: 28px !important;
+        border-radius: 50% !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-shrink: 0 !important;
+      }
+
+      /* 移动端面板右上角“返回对话 / ✕ 收起”按钮：常驻右侧，醒目且易触达 */
+      .dsh-mobile-panel-close-btn {
+        margin-left: 8px !important;
+        flex: 0 0 auto !important;
+        height: 28px !important;
+        padding: 0 10px !important;
+        border-radius: 14px !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        background: #2563eb !important;
+        color: #ffffff !important;
+        border: none !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 4px !important;
+        cursor: pointer !important;
+        user-select: none !important;
+        box-shadow: 0 2px 6px rgba(37, 99, 235, 0.28) !important;
+        white-space: nowrap !important;
+        transition: transform 0.1s, opacity 0.15s !important;
+        z-index: 10 !important;
+      }
+      .dsh-mobile-panel-close-btn:active {
+        transform: scale(0.95) !important;
+        opacity: 0.85 !important;
+      }
+
       /* 3.1 会话对话头部顶栏：移动端防挤压与空间释放优化（严格排除 .dsh-mobile-app-header） */
       div[class*="_centerCol"] header,
       header[class*="wSkVaW_header"] {
@@ -3222,19 +3379,53 @@ function injectMobileStyles() {
         transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         overflow-y: auto !important;
         border-right: 1px solid rgba(0, 0, 0, 0.06) !important;
+        pointer-events: auto !important;
       }
       body.dsh-drawer-open div[class*="_sidebarCol"] {
         transform: translateX(0) !important;
         box-shadow: 4px 0 28px rgba(0, 0, 0, 0.25) !important;
+        pointer-events: auto !important;
       }
 
-      /* 抽屉内部：强制 100% 宽度，隐藏冗余折叠按钮 */
+      /* 抽屉内部：强制 100% 宽度，无论内部状态如何均正常展开并展示 DSH 自带的顶部收起侧边栏图标 */
       body.dsh-drawer-open div[class*="hHd-Xa_root"] {
         width: 100% !important;
         max-width: 100% !important;
+        min-width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+      }
+      body.dsh-drawer-open div[class*="hHd-Xa_collapsed"] div[class*="hHd-Xa_regionArea"],
+      body.dsh-drawer-open div[class*="hHd-Xa_collapsed"] button[class*="hHd-Xa_newSession"],
+      body.dsh-drawer-open div[class*="hHd-Xa_collapsed"] div[class*="qDHVXG_root"] {
+        display: flex !important;
+        visibility: visible !important;
+      }
+      div[class*="hHd-Xa_logoRow"] {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+        padding: 10px 14px 6px 14px !important;
+        box-sizing: border-box !important;
       }
       div[class*="hHd-Xa_logoRow"] button[class*="hHd-Xa_toggle"] {
-        display: none !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 32px !important;
+        height: 32px !important;
+        border-radius: 8px !important;
+        color: var(--dsw-alias-label-secondary, #6b7280) !important;
+        background: transparent !important;
+        border: none !important;
+        cursor: pointer !important;
+        margin-left: auto !important;
+        transition: background 0.15s, color 0.15s !important;
+      }
+      div[class*="hHd-Xa_logoRow"] button[class*="hHd-Xa_toggle"]:active {
+        background: var(--dsw-alias-bg-layer-2, rgba(0, 0, 0, 0.06)) !important;
+        color: var(--dsw-alias-label-primary, #111827) !important;
       }
 
       /* 设置弹窗打开时解除抽屉隐藏限制 */
@@ -3252,8 +3443,6 @@ function injectMobileStyles() {
         position: fixed;
         inset: 0;
         background: rgba(0, 0, 0, 0.4);
-        backdrop-filter: blur(4px);
-        -webkit-backdrop-filter: blur(4px);
         z-index: 9999;
         display: none !important;
       }
@@ -3505,7 +3694,8 @@ function injectMobileStyles() {
 
     @media (min-width: 769px) {
       .dsh-mobile-app-header,
-      .dsh-mobile-backdrop {
+      .dsh-mobile-backdrop,
+      .dsh-mobile-panel-close-btn {
         display: none !important;
       }
     }
@@ -3534,18 +3724,23 @@ function setupMobileExperience(rpcCall, ctx) {
         <line x1="3" y1="15" x2="14" y2="15"></line>
       </svg>
     `;
-    leftBtn.onclick = () => {
+    leftBtn.onclick = (e) => {
+      e.stopPropagation();
       const isOpen = document.body.classList.toggle('dsh-drawer-open');
       if (isOpen) {
-        const collapsedToggle = document.querySelector('div[class*="hHd-Xa_collapsed"] button[class*="hHd-Xa_toggle"]');
-        if (collapsedToggle) collapsedToggle.click();
+        const expand = document.querySelector('button[aria-label*="打开侧边栏"], button[title*="打开侧边栏"]');
+        if (expand) expand.click();
       }
     };
 
-    // 中间动态会话标题 (居中展示当前会话名称，避免顶部留白)
+    // 中间动态会话标题 (居中展示当前会话名称，点击可快速切回对话流)
     titleEl = document.createElement('div');
     titleEl.className = 'dsh-mobile-header-title';
     titleEl.innerText = '新会话';
+    titleEl.onclick = () => {
+      const openPanels = document.querySelectorAll('div[class*="nArs4W_panel"]:not([class*="panelHidden"]), div[class*="workbench_panel"]:not([class*="panelHidden"])');
+      openPanels.forEach((p) => p.classList.add('nArs4W_panelHidden'));
+    };
 
     // 右侧 (+) 新建会话按钮 (DeepSeek App 圆形加号风格)
     const rightBtn = document.createElement('button');
@@ -3559,6 +3754,8 @@ function setupMobileExperience(rpcCall, ctx) {
       </svg>
     `;
     rightBtn.onclick = () => {
+      const openPanels = document.querySelectorAll('div[class*="nArs4W_panel"]:not([class*="panelHidden"]), div[class*="workbench_panel"]:not([class*="panelHidden"])');
+      openPanels.forEach((p) => p.classList.add('nArs4W_panelHidden'));
       const dshNewBtn = document.querySelector('button[aria-label="新建会话"]');
       if (dshNewBtn) dshNewBtn.click();
     };
@@ -3587,6 +3784,67 @@ function setupMobileExperience(rpcCall, ctx) {
   if (typeof ctx?.sessions?.list?.subscribe === 'function') {
     ctx.sessions.list.subscribe(syncMobileTitle);
   }
+  if (typeof ctx?.sessions?.active?.subscribe === 'function') {
+    ctx.sessions.active.subscribe(() => {
+      if (document.body.classList.contains('dsh-drawer-open')) {
+        document.body.classList.remove('dsh-drawer-open');
+      }
+      // 仅在移动端切换会话时自动收起右侧面板回到对话（PC端绝不干扰）
+      if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+        document.body.classList.remove('dsh-workbench-open');
+        const openPanels = document.querySelectorAll('div[class*="nArs4W_panel"]:not([class*="panelHidden"]), div[class*="workbench_panel"]:not([class*="panelHidden"])');
+        openPanels.forEach((p) => p.classList.add('nArs4W_panelHidden'));
+      }
+    });
+  }
+
+  // 1.1 移动端右侧边栏 / Workbench 面板管理：仅在移动端（<= 768px）挂载“返回对话”收起按钮，PC端保持纯净
+  const ensurePanelCloseButton = () => {
+    if (typeof window === 'undefined') return;
+    if (window.innerWidth > 768) {
+      document.querySelectorAll('.dsh-mobile-panel-close-btn').forEach(btn => btn.remove());
+      return;
+    }
+    const panels = document.querySelectorAll('div[class*="nArs4W_panel"]:not([class*="panelHidden"]), div[class*="workbench_panel"]:not([class*="panelHidden"])');
+    panels.forEach((p) => {
+      const bar = p.querySelector('div[class*="tabBar"], div[class*="nArs4W_tabBar"]');
+      if (bar && !bar.querySelector('.dsh-mobile-panel-close-btn')) {
+        const btn = document.createElement('button');
+        btn.className = 'dsh-mobile-panel-close-btn';
+        btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg><span>返回对话</span>`;
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          document.body.classList.remove('dsh-workbench-open');
+          p.classList.add('nArs4W_panelHidden');
+          const collapseBtn = document.querySelector('button[class*="toggleButton"][aria-label*="收起"]');
+          if (collapseBtn) collapseBtn.click();
+        };
+        bar.appendChild(btn);
+      }
+    });
+  };
+
+  const panelObserver = new MutationObserver(ensurePanelCloseButton);
+  panelObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+  window.addEventListener('resize', ensurePanelCloseButton);
+
+  // 移动端点击面板/工作区触发按钮时，自动激活 dsh-workbench-open
+  document.addEventListener('click', (e) => {
+    if (typeof window === 'undefined' || window.innerWidth > 768) return;
+    const trigger = e.target.closest('button[aria-label*="面板"], button[aria-label*="工作区"], div[class*="toggleCluster"] button, button[class*="subagent"], div[class*="headerActions"] button, div[class*="titleRow"] button');
+    if (trigger && !trigger.classList.contains('dsh-mobile-panel-close-btn') && !trigger.classList.contains('dsh-header-menu-btn') && !trigger.classList.contains('dsh-header-new-btn')) {
+      document.body.classList.add('dsh-workbench-open');
+    }
+  }, true);
+
+  // 移动端点击 DSH 自带的收起侧边栏图标时，自动收起抽屉
+  document.addEventListener('click', (e) => {
+    if (typeof window === 'undefined' || window.innerWidth > 768) return;
+    const toggle = e.target.closest('button[aria-label*="收起侧边栏"], button[title*="收起侧边栏"]');
+    if (toggle) {
+      document.body.classList.remove('dsh-drawer-open');
+    }
+  }, true);
 
   // 2. 创建背景遮罩（用于抽屉侧边栏）
   let backdrop = document.querySelector('.dsh-mobile-backdrop');
@@ -3599,7 +3857,7 @@ function setupMobileExperience(rpcCall, ctx) {
     document.body.appendChild(backdrop);
   }
 
-  // 3. 点击抽屉内的会话项自动收起抽屉（排除搜索、工作区、操作菜单、设置、输入等交互）
+  // 3. 点击遮罩收起抽屉，或点击抽屉内的会话项自动收起抽屉
   let lastLongPressTime = 0;
 
   document.addEventListener('click', (e) => {
@@ -3647,11 +3905,17 @@ function setupMobileExperience(rpcCall, ctx) {
         }
       }
 
-      // 如果点击的是会话列表项本身（切换到该会话）
-      const sessionRow = e.target.closest('div[class*="sessionRow"], div[role="treeitem"]');
+      // 点击会话项后平滑收起抽屉
+      const sessionRow = e.target.closest('a, div[class*="sessionRow"], div[role="treeitem"]');
       if (sessionRow) {
-        document.body.classList.remove('dsh-drawer-open');
+        setTimeout(() => {
+          if (document.body.classList.contains('dsh-drawer-open')) {
+            document.body.classList.remove('dsh-drawer-open');
+          }
+        }, 80);
       }
+    } else if (e.target.classList?.contains('dsh-mobile-backdrop')) {
+      document.body.classList.remove('dsh-drawer-open');
     }
   }, true);
 
@@ -4346,32 +4610,7 @@ function RemoteDirectoryFlow(props) {
   outcome.current = props;
   const armed = React.useRef(false);
 
-  React.useEffect(() => {
-    if (!open) {
-      armed.current = false;
-      return;
-    }
-    if (armed.current) return;
-    armed.current = true;
-
-    // 1. 本机电脑访问（Localhost / 127.0.0.1 / Electron 客户端）：直接唤起系统原生文件夹选择对话框！
-    if (isLocalEnvironment()) {
-      const pickFn = typeof pick === 'function' ? pick : (typeof window.__dshClientCtx?.workspaces?.pickDirectory === 'function' ? () => window.__dshClientCtx.workspaces.pickDirectory() : null);
-      if (pickFn) {
-        pickFn().then((chosenPath) => {
-          if (chosenPath === null) {
-            if (outcome.current?.onCancel) outcome.current.onCancel();
-          } else if (chosenPath) {
-            if (outcome.current?.onPicked) outcome.current.onPicked(chosenPath);
-          }
-        }, (err) => {
-          if (outcome.current?.onError) outcome.current.onError(err instanceof Error ? err.message : String(err));
-        });
-        return;
-      }
-    }
-
-    // 2. 远程或移动端访问（手机或局域网跨设备/公网）：呼出网页版远程目录树形选择器！
+  const openRemoteModal = () => {
     if (typeof window.__dshOpenRemoteWorkspaceModal === 'function') {
       window.__dshOpenRemoteWorkspaceModal(
         (res) => {
@@ -4390,7 +4629,48 @@ function RemoteDirectoryFlow(props) {
           }
         }
       );
+    } else if (outcome.current?.onCancel) {
+      outcome.current.onCancel();
     }
+  };
+
+  React.useEffect(() => {
+    if (!open) {
+      armed.current = false;
+      return;
+    }
+    if (armed.current) return;
+    armed.current = true;
+
+    // 1. 本机电脑或 Electron 环境：尝试唤起原生文件夹选择对话框
+    const isNativeHost = typeof window !== 'undefined' && (window.electron || window.__DSH_NATIVE_HOST__);
+    if (isNativeHost || isLocalEnvironment()) {
+      const pickFn = typeof pick === 'function' ? pick : (typeof window.__dshClientCtx?.workspaces?.pickDirectory === 'function' ? () => window.__dshClientCtx.workspaces.pickDirectory() : null);
+      if (pickFn) {
+        try {
+          const promise = pickFn();
+          if (promise && typeof promise.then === 'function') {
+            promise.then((chosenPath) => {
+              if (chosenPath === null) {
+                if (outcome.current?.onCancel) outcome.current.onCancel();
+              } else if (chosenPath) {
+                if (outcome.current?.onPicked) outcome.current.onPicked(chosenPath);
+              }
+            }).catch(() => {
+              // 原生选择器在纯网页模式下报 needs the native capability，平滑降级至远程目录树选择器
+              openRemoteModal();
+            });
+            return;
+          }
+        } catch {
+          openRemoteModal();
+          return;
+        }
+      }
+    }
+
+    // 2. 远程或移动端访问（手机或局域网跨设备/公网）：呼出网页版远程目录树形选择器！
+    openRemoteModal();
   }, [open, pick]);
 
   return null;

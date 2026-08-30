@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { BridgeService } from '../lib/index.js';
+import { BridgeService, selectLanIPv4 } from '../lib/index.js';
 import { ConversationBridge } from '../lib/platform/conversation-bridge.js';
 import { AuthManager } from '../lib/auth/manager.js';
 
@@ -206,3 +206,12 @@ test('ConversationBridge /addworkspace and /workspaces commands', async () => {
   assert.match(sentTexts[2], /可用工作区/);
   assert.ok(sentTexts[2].includes(currentDir));
 });
+
+test('selectLanIPv4 优先选择物理局域网网卡并过滤虚拟网卡 (WSL/VMware/Docker)', () => {
+  const ip = selectLanIPv4();
+  if (ip) {
+    assert.match(ip, /^\d+\.\d+\.\d+\.\d+$/);
+    assert.ok(!ip.startsWith('127.'));
+  }
+});
+

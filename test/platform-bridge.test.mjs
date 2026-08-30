@@ -479,3 +479,72 @@ test('ConversationBridge 当平台断开连接(status=idle)时严格拦截出站
   platform.dispose()
 })
 
+test('ConversationBridge renderSessions 安全处理 object 类型的 goal 标题，防止 TypeError 崩溃', async () => {
+  const { ctx } = makeMockCtx()
+  const platform = new MockPlatform({ ctx, logger: ctx.logger })
+  const bridge = new ConversationBridge({ ctx, logger: ctx.logger, config: { allowFrom: ['user1'] }, platform })
+
+  ctx.sessions.list = () => [
+    {
+      id: 's1',
+      header: { createdAt: Date.now(), cwd: '/workspace/project-a' },
+      cwd: '/workspace/project-a',
+      title: { objective: '重构登录模块', goal: { objective: '嵌套目标' } },
+    },
+    {
+      id: 's2',
+      header: { createdAt: Date.now(), cwd: '/workspace/project-a' },
+      cwd: '/workspace/project-a',
+      title: { goal: { objective: '修复网络超时' } },
+    },
+    {
+      id: 's3',
+      header: { createdAt: Date.now(), cwd: '/workspace/project-a' },
+      cwd: '/workspace/project-a',
+      title: null,
+    },
+  ]
+
+  const { renderSessions } = conversationBridgeHelpers
+  const output = await renderSessions(bridge)
+  assert.ok(output.includes('重构登录模块'))
+  assert.ok(output.includes('修复网络超时'))
+  assert.ok(output.includes('活跃会话') || output.includes('新会话'))
+
+  bridge.dispose()
+  platform.dispose()
+})
+
+test('ConversationBridge createSession 默认使用首个已注册工作区并 attach 到 workspaceRegistry', async () => {
+  const attachedSessions = []
+  const { ctx } = makeMockCtx({
+    workspaceRegistry: {
+      list: async () => [
+        {
+          id: 'ws-1',
+          path: '/home/user/my-project',
+          title: 'My Project',
+          attachSession: async (sId) => { attachedSessions.push(sId) },
+        },
+      ],
+    },
+  })
+
+  const platform = new MockPlatform({ ctx, logger: ctx.logger })
+  const bridge = new ConversationBridge({ ctx, logger: ctx.logger, config: { allowFrom: ['user1'] }, platform })
+  bridge.peerId = 'user1'
+
+  await bridge.createSession('测试提示词')
+
+  // 验证 attachSession 成功被调用
+  assert.equal(attachedSessions.length, 1)
+  assert.ok(attachedSessions[0].startsWith('session-'))
+  assert.equal(platform.sent.length, 1)
+  assert.ok(platform.sent[0].text.includes('已创建新会话'))
+  assert.ok(platform.sent[0].text.includes('/home/user/my-project'))
+
+  bridge.dispose()
+  platform.dispose()
+})
+
+

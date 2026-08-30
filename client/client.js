@@ -3389,6 +3389,163 @@ function injectMobileStyles() {
         display: none !important;
       }
 
+      /* 3.0 \u5DE5\u4F5C\u533A Workbench / \u4EFB\u52A1\u7BA1\u7406 / \u591A Tab \u680F\u79FB\u52A8\u7AEF\u81EA\u9002\u5E94\u9002\u914D */
+      body:not(.dsh-workbench-open) div[class*="nArs4W_panel"],
+      body:not(.dsh-workbench-open) div[class*="workbench_panel"],
+      body:not(.dsh-workbench-open) div[class*="workbenchPanel"],
+      div[class*="nArs4W_panel"][class*="panelHidden"],
+      div[class*="workbench_panel"][class*="panelHidden"],
+      div[class*="workbenchPanel"][class*="panelHidden"],
+      div[class*="panelHidden"] {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+        width: 0 !important;
+        height: 0 !important;
+        max-height: 0 !important;
+        z-index: -1 !important;
+        opacity: 0 !important;
+        transform: translateX(105%) !important;
+      }
+
+      body.dsh-workbench-open div[class*="nArs4W_panel"]:not([class*="panelHidden"]),
+      body.dsh-workbench-open div[class*="workbench_panel"]:not([class*="panelHidden"]),
+      body.dsh-workbench-open div[class*="workbenchPanel"]:not([class*="panelHidden"]) {
+        display: flex !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+        top: var(--dsh-mobile-header-h, 52px) !important;
+        height: calc(100dvh - var(--dsh-mobile-header-h, 52px)) !important;
+        max-height: calc(100dvh - var(--dsh-mobile-header-h, 52px)) !important;
+        z-index: 50 !important;
+        box-sizing: border-box !important;
+        background: var(--dsw-alias-bg-layer-1, #ffffff) !important;
+        transform: none !important;
+        opacity: 1 !important;
+      }
+
+      /* Tab \u680F\uFF1A\u6A2A\u5411\u6ED1\u52A8\u624B\u52BF + \u5E72\u51C0\u7684\u5E95\u90E8\u8FB9\u6846\uFF0C\u675C\u7EDD\u4E0E\u9876\u90E8\u79FB\u52A8\u7AEF Header \u91CD\u53E0 */
+      div[class*="nArs4W_tabBar"],
+      div[class*="workbench_tabBar"],
+      div[class*="tabBar"] {
+        min-height: 40px !important;
+        height: 40px !important;
+        background: var(--dsw-alias-bg-layer-1, #ffffff) !important;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 0 8px !important;
+        gap: 6px !important;
+        overflow: visible !important;
+        box-sizing: border-box !important;
+      }
+
+      div[class*="nArs4W_tabList"],
+      div[class*="tabList"] {
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        overflow-x: auto !important;
+        scrollbar-width: none !important;
+        -webkit-overflow-scrolling: touch !important;
+      }
+      div[class*="nArs4W_tabList"]::-webkit-scrollbar,
+      div[class*="tabList"]::-webkit-scrollbar {
+        display: none !important;
+      }
+
+      /* \u5355\u4E2A Tab \u80F6\u56CA\u5316\uFF0C\u6587\u5B57\u8D85\u957F\u81EA\u52A8\u6253\u70B9\uFF0C\u9632\u6B62 Tab \u4E92\u76F8\u6324\u538B */
+      div[class*="nArs4W_tab"],
+      div[class*="workbench_tab"] {
+        flex: 0 0 auto !important;
+        max-width: 170px !important;
+        min-width: 70px !important;
+        height: 30px !important;
+        padding: 0 8px 0 10px !important;
+        border-radius: 6px !important;
+        font-size: 12.5px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 6px !important;
+        background: var(--dsw-alias-bg-layer-2, #f3f4f6) !important;
+        color: var(--dsw-alias-label-secondary, #6b7280) !important;
+        cursor: pointer !important;
+        user-select: none !important;
+        box-sizing: border-box !important;
+      }
+
+      div[class*="nArs4W_tabActive"],
+      div[class*="workbench_tabActive"] {
+        background: var(--dsw-alias-bg-layer-1, #ffffff) !important;
+        color: var(--dsw-alias-label-primary, #111827) !important;
+        font-weight: 600 !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+      }
+
+      span[class*="nArs4W_tabTitle"],
+      span[class*="tabTitle"] {
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+        flex: 1 1 auto !important;
+      }
+
+      button[class*="nArs4W_tabClose"],
+      button[class*="tabClose"] {
+        width: 18px !important;
+        height: 18px !important;
+        border-radius: 50% !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-shrink: 0 !important;
+        opacity: 0.6 !important;
+        padding: 0 !important;
+      }
+
+      button[class*="nArs4W_tabBarPlus"],
+      button[class*="tabBarPlus"] {
+        width: 28px !important;
+        height: 28px !important;
+        border-radius: 50% !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-shrink: 0 !important;
+      }
+
+      /* \u79FB\u52A8\u7AEF\u9762\u677F\u53F3\u4E0A\u89D2\u201C\u8FD4\u56DE\u5BF9\u8BDD / \u2715 \u6536\u8D77\u201D\u6309\u94AE\uFF1A\u5E38\u9A7B\u53F3\u4FA7\uFF0C\u9192\u76EE\u4E14\u6613\u89E6\u8FBE */
+      .dsh-mobile-panel-close-btn {
+        margin-left: 8px !important;
+        flex: 0 0 auto !important;
+        height: 28px !important;
+        padding: 0 10px !important;
+        border-radius: 14px !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        background: #2563eb !important;
+        color: #ffffff !important;
+        border: none !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 4px !important;
+        cursor: pointer !important;
+        user-select: none !important;
+        box-shadow: 0 2px 6px rgba(37, 99, 235, 0.28) !important;
+        white-space: nowrap !important;
+        transition: transform 0.1s, opacity 0.15s !important;
+        z-index: 10 !important;
+      }
+      .dsh-mobile-panel-close-btn:active {
+        transform: scale(0.95) !important;
+        opacity: 0.85 !important;
+      }
+
       /* 3.1 \u4F1A\u8BDD\u5BF9\u8BDD\u5934\u90E8\u9876\u680F\uFF1A\u79FB\u52A8\u7AEF\u9632\u6324\u538B\u4E0E\u7A7A\u95F4\u91CA\u653E\u4F18\u5316\uFF08\u4E25\u683C\u6392\u9664 .dsh-mobile-app-header\uFF09 */
       div[class*="_centerCol"] header,
       header[class*="wSkVaW_header"] {
@@ -3583,19 +3740,53 @@ function injectMobileStyles() {
         transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         overflow-y: auto !important;
         border-right: 1px solid rgba(0, 0, 0, 0.06) !important;
+        pointer-events: auto !important;
       }
       body.dsh-drawer-open div[class*="_sidebarCol"] {
         transform: translateX(0) !important;
         box-shadow: 4px 0 28px rgba(0, 0, 0, 0.25) !important;
+        pointer-events: auto !important;
       }
 
-      /* \u62BD\u5C49\u5185\u90E8\uFF1A\u5F3A\u5236 100% \u5BBD\u5EA6\uFF0C\u9690\u85CF\u5197\u4F59\u6298\u53E0\u6309\u94AE */
+      /* \u62BD\u5C49\u5185\u90E8\uFF1A\u5F3A\u5236 100% \u5BBD\u5EA6\uFF0C\u65E0\u8BBA\u5185\u90E8\u72B6\u6001\u5982\u4F55\u5747\u6B63\u5E38\u5C55\u5F00\u5E76\u5C55\u793A DSH \u81EA\u5E26\u7684\u9876\u90E8\u6536\u8D77\u4FA7\u8FB9\u680F\u56FE\u6807 */
       body.dsh-drawer-open div[class*="hHd-Xa_root"] {
         width: 100% !important;
         max-width: 100% !important;
+        min-width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+      }
+      body.dsh-drawer-open div[class*="hHd-Xa_collapsed"] div[class*="hHd-Xa_regionArea"],
+      body.dsh-drawer-open div[class*="hHd-Xa_collapsed"] button[class*="hHd-Xa_newSession"],
+      body.dsh-drawer-open div[class*="hHd-Xa_collapsed"] div[class*="qDHVXG_root"] {
+        display: flex !important;
+        visibility: visible !important;
+      }
+      div[class*="hHd-Xa_logoRow"] {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+        padding: 10px 14px 6px 14px !important;
+        box-sizing: border-box !important;
       }
       div[class*="hHd-Xa_logoRow"] button[class*="hHd-Xa_toggle"] {
-        display: none !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 32px !important;
+        height: 32px !important;
+        border-radius: 8px !important;
+        color: var(--dsw-alias-label-secondary, #6b7280) !important;
+        background: transparent !important;
+        border: none !important;
+        cursor: pointer !important;
+        margin-left: auto !important;
+        transition: background 0.15s, color 0.15s !important;
+      }
+      div[class*="hHd-Xa_logoRow"] button[class*="hHd-Xa_toggle"]:active {
+        background: var(--dsw-alias-bg-layer-2, rgba(0, 0, 0, 0.06)) !important;
+        color: var(--dsw-alias-label-primary, #111827) !important;
       }
 
       /* \u8BBE\u7F6E\u5F39\u7A97\u6253\u5F00\u65F6\u89E3\u9664\u62BD\u5C49\u9690\u85CF\u9650\u5236 */
@@ -3613,8 +3804,6 @@ function injectMobileStyles() {
         position: fixed;
         inset: 0;
         background: rgba(0, 0, 0, 0.4);
-        backdrop-filter: blur(4px);
-        -webkit-backdrop-filter: blur(4px);
         z-index: 9999;
         display: none !important;
       }
@@ -3866,7 +4055,8 @@ function injectMobileStyles() {
 
     @media (min-width: 769px) {
       .dsh-mobile-app-header,
-      .dsh-mobile-backdrop {
+      .dsh-mobile-backdrop,
+      .dsh-mobile-panel-close-btn {
         display: none !important;
       }
     }
@@ -3890,16 +4080,21 @@ function setupMobileExperience(rpcCall, ctx) {
         <line x1="3" y1="15" x2="14" y2="15"></line>
       </svg>
     `;
-    leftBtn.onclick = () => {
+    leftBtn.onclick = (e) => {
+      e.stopPropagation();
       const isOpen = document.body.classList.toggle("dsh-drawer-open");
       if (isOpen) {
-        const collapsedToggle = document.querySelector('div[class*="hHd-Xa_collapsed"] button[class*="hHd-Xa_toggle"]');
-        if (collapsedToggle) collapsedToggle.click();
+        const expand = document.querySelector('button[aria-label*="\u6253\u5F00\u4FA7\u8FB9\u680F"], button[title*="\u6253\u5F00\u4FA7\u8FB9\u680F"]');
+        if (expand) expand.click();
       }
     };
     titleEl = document.createElement("div");
     titleEl.className = "dsh-mobile-header-title";
     titleEl.innerText = "\u65B0\u4F1A\u8BDD";
+    titleEl.onclick = () => {
+      const openPanels = document.querySelectorAll('div[class*="nArs4W_panel"]:not([class*="panelHidden"]), div[class*="workbench_panel"]:not([class*="panelHidden"])');
+      openPanels.forEach((p) => p.classList.add("nArs4W_panelHidden"));
+    };
     const rightBtn = document.createElement("button");
     rightBtn.className = "dsh-header-new-btn";
     rightBtn.title = "\u65B0\u5EFA\u4F1A\u8BDD";
@@ -3911,6 +4106,8 @@ function setupMobileExperience(rpcCall, ctx) {
       </svg>
     `;
     rightBtn.onclick = () => {
+      const openPanels = document.querySelectorAll('div[class*="nArs4W_panel"]:not([class*="panelHidden"]), div[class*="workbench_panel"]:not([class*="panelHidden"])');
+      openPanels.forEach((p) => p.classList.add("nArs4W_panelHidden"));
       const dshNewBtn = document.querySelector('button[aria-label="\u65B0\u5EFA\u4F1A\u8BDD"]');
       if (dshNewBtn) dshNewBtn.click();
     };
@@ -3935,6 +4132,59 @@ function setupMobileExperience(rpcCall, ctx) {
   if (typeof ctx?.sessions?.list?.subscribe === "function") {
     ctx.sessions.list.subscribe(syncMobileTitle);
   }
+  if (typeof ctx?.sessions?.active?.subscribe === "function") {
+    ctx.sessions.active.subscribe(() => {
+      if (document.body.classList.contains("dsh-drawer-open")) {
+        document.body.classList.remove("dsh-drawer-open");
+      }
+      if (typeof window !== "undefined" && window.innerWidth <= 768) {
+        document.body.classList.remove("dsh-workbench-open");
+        const openPanels = document.querySelectorAll('div[class*="nArs4W_panel"]:not([class*="panelHidden"]), div[class*="workbench_panel"]:not([class*="panelHidden"])');
+        openPanels.forEach((p) => p.classList.add("nArs4W_panelHidden"));
+      }
+    });
+  }
+  const ensurePanelCloseButton = () => {
+    if (typeof window === "undefined") return;
+    if (window.innerWidth > 768) {
+      document.querySelectorAll(".dsh-mobile-panel-close-btn").forEach((btn) => btn.remove());
+      return;
+    }
+    const panels = document.querySelectorAll('div[class*="nArs4W_panel"]:not([class*="panelHidden"]), div[class*="workbench_panel"]:not([class*="panelHidden"])');
+    panels.forEach((p) => {
+      const bar = p.querySelector('div[class*="tabBar"], div[class*="nArs4W_tabBar"]');
+      if (bar && !bar.querySelector(".dsh-mobile-panel-close-btn")) {
+        const btn = document.createElement("button");
+        btn.className = "dsh-mobile-panel-close-btn";
+        btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg><span>\u8FD4\u56DE\u5BF9\u8BDD</span>`;
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          document.body.classList.remove("dsh-workbench-open");
+          p.classList.add("nArs4W_panelHidden");
+          const collapseBtn = document.querySelector('button[class*="toggleButton"][aria-label*="\u6536\u8D77"]');
+          if (collapseBtn) collapseBtn.click();
+        };
+        bar.appendChild(btn);
+      }
+    });
+  };
+  const panelObserver = new MutationObserver(ensurePanelCloseButton);
+  panelObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
+  window.addEventListener("resize", ensurePanelCloseButton);
+  document.addEventListener("click", (e) => {
+    if (typeof window === "undefined" || window.innerWidth > 768) return;
+    const trigger = e.target.closest('button[aria-label*="\u9762\u677F"], button[aria-label*="\u5DE5\u4F5C\u533A"], div[class*="toggleCluster"] button, button[class*="subagent"], div[class*="headerActions"] button, div[class*="titleRow"] button');
+    if (trigger && !trigger.classList.contains("dsh-mobile-panel-close-btn") && !trigger.classList.contains("dsh-header-menu-btn") && !trigger.classList.contains("dsh-header-new-btn")) {
+      document.body.classList.add("dsh-workbench-open");
+    }
+  }, true);
+  document.addEventListener("click", (e) => {
+    if (typeof window === "undefined" || window.innerWidth > 768) return;
+    const toggle = e.target.closest('button[aria-label*="\u6536\u8D77\u4FA7\u8FB9\u680F"], button[title*="\u6536\u8D77\u4FA7\u8FB9\u680F"]');
+    if (toggle) {
+      document.body.classList.remove("dsh-drawer-open");
+    }
+  }, true);
   let backdrop = document.querySelector(".dsh-mobile-backdrop");
   if (!backdrop) {
     backdrop = document.createElement("div");
@@ -3971,10 +4221,16 @@ function setupMobileExperience(rpcCall, ctx) {
           return;
         }
       }
-      const sessionRow = e.target.closest('div[class*="sessionRow"], div[role="treeitem"]');
+      const sessionRow = e.target.closest('a, div[class*="sessionRow"], div[role="treeitem"]');
       if (sessionRow) {
-        document.body.classList.remove("dsh-drawer-open");
+        setTimeout(() => {
+          if (document.body.classList.contains("dsh-drawer-open")) {
+            document.body.classList.remove("dsh-drawer-open");
+          }
+        }, 80);
       }
+    } else if (e.target.classList?.contains("dsh-mobile-backdrop")) {
+      document.body.classList.remove("dsh-drawer-open");
     }
   }, true);
   let longPressTimer = null;
@@ -4570,28 +4826,7 @@ function RemoteDirectoryFlow(props) {
   const outcome = React.useRef(props);
   outcome.current = props;
   const armed = React.useRef(false);
-  React.useEffect(() => {
-    if (!open) {
-      armed.current = false;
-      return;
-    }
-    if (armed.current) return;
-    armed.current = true;
-    if (isLocalEnvironment()) {
-      const pickFn = typeof pick === "function" ? pick : typeof window.__dshClientCtx?.workspaces?.pickDirectory === "function" ? () => window.__dshClientCtx.workspaces.pickDirectory() : null;
-      if (pickFn) {
-        pickFn().then((chosenPath) => {
-          if (chosenPath === null) {
-            if (outcome.current?.onCancel) outcome.current.onCancel();
-          } else if (chosenPath) {
-            if (outcome.current?.onPicked) outcome.current.onPicked(chosenPath);
-          }
-        }, (err) => {
-          if (outcome.current?.onError) outcome.current.onError(err instanceof Error ? err.message : String(err));
-        });
-        return;
-      }
-    }
+  const openRemoteModal = () => {
     if (typeof window.__dshOpenRemoteWorkspaceModal === "function") {
       window.__dshOpenRemoteWorkspaceModal(
         (res) => {
@@ -4610,7 +4845,42 @@ function RemoteDirectoryFlow(props) {
           }
         }
       );
+    } else if (outcome.current?.onCancel) {
+      outcome.current.onCancel();
     }
+  };
+  React.useEffect(() => {
+    if (!open) {
+      armed.current = false;
+      return;
+    }
+    if (armed.current) return;
+    armed.current = true;
+    const isNativeHost = typeof window !== "undefined" && (window.electron || window.__DSH_NATIVE_HOST__);
+    if (isNativeHost || isLocalEnvironment()) {
+      const pickFn = typeof pick === "function" ? pick : typeof window.__dshClientCtx?.workspaces?.pickDirectory === "function" ? () => window.__dshClientCtx.workspaces.pickDirectory() : null;
+      if (pickFn) {
+        try {
+          const promise = pickFn();
+          if (promise && typeof promise.then === "function") {
+            promise.then((chosenPath) => {
+              if (chosenPath === null) {
+                if (outcome.current?.onCancel) outcome.current.onCancel();
+              } else if (chosenPath) {
+                if (outcome.current?.onPicked) outcome.current.onPicked(chosenPath);
+              }
+            }).catch(() => {
+              openRemoteModal();
+            });
+            return;
+          }
+        } catch {
+          openRemoteModal();
+          return;
+        }
+      }
+    }
+    openRemoteModal();
   }, [open, pick]);
   return null;
 }
