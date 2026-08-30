@@ -220,12 +220,28 @@ test('sessionsInDisplayOrder 按工作区分组，保持组内顺序', () => {
   assert.deepEqual(ordered, ['s-a1', 's-b2', 's-b1', 's-n1'])
 })
 
-test('ConversationBridge 群聊首次发言追加授权，不覆盖已有单聊白名单', async () => {
+test('ConversationBridge 群聊授权：默认关闭，显式开启 groupAutoApprove 后追加且不覆盖白名单', async () => {
   const { ctx } = makeMockCtx()
   const platform = new MockPlatform({ ctx, logger: ctx.logger })
   const persisted = []
   const bridge = new ConversationBridge({
     ctx, logger: ctx.logger, config: { allowFrom: ['user-openid'] }, platform,
+    onFirstSender: (id) => persisted.push({ id, allowFrom: [...bridge.config.allowFrom] }),
+  })
+  // T2.5：白名单非空时群聊默认不再自动授权（防止任意陌生群 @机器人 即获得访问权）
+  const denied = await bridge.handleInbound({ senderId: 'group-openid', text: '群消息', isGroup: true })
+  assert.equal(denied, 'ignored')
+  assert.deepEqual(bridge.config.allowFrom, ['user-openid'])
+  bridge.dispose()
+  platform.dispose()
+})
+
+test('ConversationBridge 群聊显式开启 groupAutoApprove 后自动授权', async () => {
+  const { ctx } = makeMockCtx()
+  const platform = new MockPlatform({ ctx, logger: ctx.logger })
+  const persisted = []
+  const bridge = new ConversationBridge({
+    ctx, logger: ctx.logger, config: { allowFrom: ['user-openid'], groupAutoApprove: true }, platform,
     onFirstSender: (id) => persisted.push({ id, allowFrom: [...bridge.config.allowFrom] }),
   })
   const out = await bridge.handleInbound({ senderId: 'group-openid', text: '群消息', isGroup: true })
