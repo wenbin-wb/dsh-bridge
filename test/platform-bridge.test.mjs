@@ -622,3 +622,36 @@ test('并发 sendText 经队列串行执行，平台抛异常不逃逸', async (
   bridge.dispose()
   platform.dispose()
 })
+
+// ---------------------------------------------------------------------------
+// 回归：真实平台适配器携带 gateway 的真实 status（T3.3，离线守卫生效）
+// ---------------------------------------------------------------------------
+
+test('QqConversationNode 的 platform.status 透传网关状态，离线时出站被拦截', async () => {
+  const { QqConversationNode } = await import('../lib/qq/node.js')
+  const sent = []
+  const gateway = {
+    status: 'idle',
+    accountId: 'qq-bot',
+    capabilities: { supportsGroup: true, maxMessageChars: 2000 },
+    sendText: async (peer, text) => { sent.push({ peer, text }); return { id: 'm1' } },
+  }
+  const ctx = {
+    on: () => () => {},
+    emit: () => {},
+    logger: { warn() {}, info() {}, error() {}, debug() {} },
+    sessions: { list: () => [] },
+    agents: { get: () => undefined },
+    qq: gateway,
+  }
+  const node = new QqConversationNode(ctx, { allowFrom: ['u1'] }, ctx.logger)
+  assert.equal(node.platform.status, 'idle', '鸭子适配器必须透传网关 status')
+  assert.equal(node.platform.id, 'qq')
+
+  await node.sendText('不该发出去')
+  assert.equal(sent.length, 0, '网关离线时出站必须被拦截')
+
+  gateway.status = 'connected'
+  assert.equal(node.platform.status, 'connected')
+  node.dispose()
+})
