@@ -28,7 +28,7 @@
 
 > **DeepSeek Harness 多通道远程访问与全域安全门禁插件**
 > 
-> 手机扫个码，人不在电脑前也能继续用 DeepSeek Harness。无论躺在沙发上、出差通勤、还是跨网协作——都不用守着电脑，也不用自己搭服务器，扫码即可在手机、平板或任意设备上接着干。
+> 手机扫个码，人不在电脑前也能继续用 DeepSeek Harness。无论躺在沙发上、出差通勤、还是跨网协作——都不用守着电脑，也不用自己搭公网服务器，扫码即可在手机、平板或任意设备上接着干。
 > 
 > 将您本地运行的 DeepSeek Harness 无缝延伸至手机网页、PWA 原生全屏应用、公网安全隧道、以及 **微信 / QQ / 飞书 / Telegram** 机器人矩阵。随时随地调度 AI 编写代码、执行任务、审批操作与管理工作区。
 
@@ -36,69 +36,70 @@
 
 ## 目录
 
-- [✨ 核心特性](#-核心特性)
-- [📦 安装与升级](#-安装与升级)
-- [🚀 快速上手](#-快速上手)
+- [✨ 功能特性](#-功能特性)
+- [📦 环境要求与安装](#-环境要求与安装)
+- [🚀 核心功能与使用指南](#-核心功能与使用指南)
   - [1. 🛜 局域网访问与多网卡智能切换](#1-🛜-局域网访问与多网卡智能切换)
-  - [2. 🌐 公网安全隧道（Cloudflare / 自建隧道）](#2-🌐-公网安全隧道cloudflare--自建隧道)
-  - [3. 🤖 全能 IM 机器人矩阵（微信 / QQ / 飞书 / Telegram）](#3-🤖-全能-im-机器人矩阵微信--qq--飞书--telegram)
+  - [2. 🌐 公网隧道（Cloudflare 临时/固定域名 & 自建隧道）](#2-🌐-公网隧道cloudflare-临时固定域名--自建隧道)
+  - [3. 📱 移动端交互与 PWA 独立全屏 App](#3-📱-移动端交互与-pwa-独立全屏-app)
   - [4. 🗂️ 远程工作区网页选择器](#4-🗂️-远程工作区网页选择器)
   - [5. 🔐 全域安全认证与防篡改门禁](#5-🔐-全域安全认证与防篡改门禁)
-  - [6. 📊 运维监控看板与一键平滑重启](#6-📊-运维监控看板与一键平滑重启)
+  - [6. 🤖 全能 IM 机器人矩阵（微信 / QQ / 飞书 / Telegram）](#6-🤖-全能-im-机器人矩阵微信--qq--飞书--telegram)
+  - [7. 📊 运维监控看板与一键平滑重启](#7-📊-运维监控看板与一键平滑重启)
 - [💬 常见问题 (FAQ)](#-常见问题-faq)
+- [📈 Star 增长趋势](#-star-增长趋势)
 - [🛠️ 开发与贡献](#️-开发与贡献)
 - [📄 开源协议](#-开源协议)
 
 ---
 
-## ✨ 核心特性
+## ✨ 功能特性
 
-| 领域 | 功能亮点 | 说明 |
-| :--- | :--- | :--- |
-| **🛜 局域网访问** | **多网卡智能识别 & 可视化切换** | 自动过滤虚拟网卡，优先推荐物理 Wi-Fi / 有线网卡；支持多网卡（WSL/VMware/Docker）下拉切换与记忆持久化 |
-| **🌐 公网隧道** | **临时随机域名 + Token 固定域名** | 免登录一键生成 Cloudflare 临时隧道；支持 Cloudflare Token 固定域名随 DSH 自启；支持自建 WebSocket 隧道 |
-| **🤖 IM 机器人** | **微信 / QQ / 飞书 / Telegram** | 4 大主流平台全覆盖；支持多工作区调度、跨重启会话持久化、Markdown 打字机流式输出、卡片一键审批与文件双向传输 |
-| **📱 移动端体验** | **原生级交互 & PWA 独立全屏** | 动态居中标题、原生侧边栏抽屉与 `[|` 收起图标、防重叠自适应工具栏、支持添加到主屏幕作为原生 App 运行 |
-| **🗂️ 远程工作区** | **网页端树形目录选择器** | 手机/远程设备点击添加工作区弹出响应式文件树浏览；电脑本机物理点击自动分流调用系统原生对话框 |
-| **🔐 安全认证** | **全域门禁与两道防线** | 专属二维码免密 Token + 外部访问密码认证 + 独立管理控制台防篡改锁；内置宿主机最高特权与终端救急重置 |
-| **📊 运维看板** | **系统看板 / 网络诊断 / 配置备份** | 实时掌握 CPU / 内存 / Uptime；一键测试端口与隧道网络连通性；全局配置一键 JSON 导出与恢复 |
-| **🔄 平滑升级** | **高速检查 + 一键升级 + 平滑重启** | npmmirror 毫秒级双源检查；自动补齐 macOS / Linux 环境变量与 Node 兄弟二进制绑定；升级后支持一键重启 DSH |
+- **🛜 局域网多网卡智能识别与切换**：自动探测物理 Wi-Fi、以太网与虚拟网卡（WSL/VMware/Docker），支持在控制台可视化一键切换并记忆持久化，彻底解决多网卡 IP 不互通问题；
+- **🌐 双模 Cloudflare 公网隧道**：免登录一键获取随机临时域名，或填入 Cloudflare Token 绑定固定域名并随 DSH 开机自启；支持 macOS 下 Gatekeeper 隔离自愈与全局探测；
+- **📱 原生级移动端交互与 PWA 全屏应用**：动态居中会话标题、复用 DSH 原生侧边栏抽屉与 `[|` 收起图标、防重叠自适应工具栏，支持手机浏览器「添加到主屏幕」作为独立原生 App 运行；
+- **🗂️ 远程工作区网页选择器**：手机端点击添加工作区唤出树形目录抽屉浏览器，电脑本机点击自动分流调用系统原生选择窗口；支持 IM 指令 `/addworkspace` 远程注册；
+- **🔐 全域安全认证与双防线门禁**：专属二维码 256-bit Token 免密直通、外部访问密码门禁、独立后台管理员防篡改锁；内置物理机（`127.0.0.1`）最高特权与终端一秒救急重置（`reset-auth`）；
+- **🤖 全能 IM 机器人矩阵（微信 / QQ / 飞书 / Telegram）**：支持多工作区会话调度、跨重启会话持久化、Markdown 打字机流式输出、Card 2.0 原生一键点击审批与文件双向直传；
+- **📊 运维看板与平滑升级**：系统 CPU / 内存 / Uptime 实时看板、网络连通性一键诊断、全局配置 JSON 导出恢复、npmmirror 极速版本检查与平滑重启。
 
 ---
 
-## 📦 安装与升级
+## 📦 环境要求与安装
 
 ### 环境要求
 
 1. **Node.js ≥ 22**（DSH 要求 `^22.19.0` 或 `≥ 24.0.0`）
-2. **dsh CLI 可用**（能在终端执行 `dsh` 命令）
+2. **dsh CLI 可用**（能在终端直接运行 `dsh` 命令）
 
 ```bash
-# 检查环境版本
+# 检查 Node 版本
 node -v   # 应显示 v22.19+ 或 v24+
+
+# 检查 dsh 是否可用
 dsh --version
 ```
 
 ### 安装插件
 
 ```bash
-# 方式一：从 npm 全局安装（推荐）
+# 方式一：从 npm 安装最新版（推荐）
 dsh plugin --profile web add @wenbin_wb/dsh-bridge
 
-# 方式二：免全局权限的 npx 安装
+# 方式二：免全局权限的 npx 方式
 npx --yes @deepseek-ai/dsh plugin --profile web add @wenbin_wb/dsh-bridge
 
-# 方式三：从 GitHub 源码安装
+# 方式三：从源码安装
 git clone https://github.com/wenbin-wb/dsh-bridge.git
 dsh plugin --profile web add ./dsh-bridge
 ```
 
-### 升级至最新版本
+### 升级至最新版
 
 ```bash
-# 推荐：在 Web 控制台「远程访问」底部直接点击「🚀 一键升级并重启」
+# 方式一：在设置页「远程访问」底部点击「🚀 一键升级到最新版并重启」（推荐，全自动）
 
-# 或通过终端强制覆盖安装最新版：
+# 方式二：终端强制覆盖安装最新版
 dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 ```
 
@@ -106,91 +107,89 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 
 ---
 
-## 🚀 快速上手
+## 🚀 核心功能与使用指南
 
-启动 DeepSeek Harness 后，在左侧设置面板找到 **「远程访问」** 即可开启全部功能：
-
-<p align="center">
-  <img src="docs/screenshots/lan-access.jpg" width="48%" alt="局域网访问控制台" />
-  <img src="docs/screenshots/tunnel-access.jpg" width="48%" alt="公网隧道配置" />
-</p>
+启动 DeepSeek Harness 后，在设置面板找到 **「远程访问」** 即可开启全部功能：
 
 ---
 
 ### 1. 🛜 局域网访问与多网卡智能切换
 
-插件启动后**自动随服务开启**局域网代理，无需手动敲命令。
+插件启动后**自动随服务开启**局域网代理，无需手动配置。
 
-* **零配置极速扫码**：手机与电脑连接同一 Wi-Fi，直接打开手机相机扫码即可直达移动端 Web 界面；
-* **多网卡智能分流与切换**：
-  * 当宿主机同时存在多张网卡（如物理 Wi-Fi、以太网、WSL 虚拟网卡、VMware、Docker 等）时，控制台自动显示 **「🛜 局域网网卡 / IP 选择」** 下拉框；
-  * 自动智能评分并高亮推荐物理网卡；如需切换网卡，点选后二维码与访问 URL 秒级联动更新并**自动持久化保存**。
+<p align="center">
+  <img src="docs/screenshots/lan-access.jpg" width="600" alt="局域网扫码访问控制台" />
+</p>
+
+* **零配置极速扫码**：同一 Wi-Fi 下打开手机相机扫码即可直达移动端 Web 界面；
+* **多网卡智能切换**：当主机存在多张网卡（如物理 Wi-Fi、以太网、WSL 虚拟网卡、VMware、Docker 等）时，控制台自动展示 **「🛜 局域网网卡 / IP 选择」** 下拉框；智能评分高亮推荐物理网卡，点选后二维码与访问 URL 秒级重新生成并**自动持久化保存**。
 
 ---
 
-### 2. 🌐 公网安全隧道（Cloudflare / 自建隧道）
+### 2. 🌐 公网隧道（Cloudflare 临时/固定域名 & 自建隧道）
 
 无需公网 IP 与路由器端口映射，随时随地从外网访问电脑上的 DeepSeek Harness：
 
-* **Cloudflare 免登录临时隧道（默认）**：
-  * 点击「开启」按钮，系统全自动下载并运行 `cloudflared`（macOS / Windows / Linux 全架构自动适配与权限自愈）；
-  * 几秒内生成随机公网 `https://*.trycloudflare.com` 临时链接与二维码。
-* **Cloudflare Token 固定域名（永久不变 · 免费）**：
-  * 在 [Cloudflare Zero Trust 控制台](https://one.dash.cloudflare.com/) 免费创建 Tunnel 并绑定自己的域名；
-  * 在高级配置中填入 Tunnel Token 与自定义域名并勾选 **「随 DSH 启动自动开启」**，重启后域名永久固定不变！
-* **自建 WebSocket 隧道**：
-  * 支持连接个人 VPS 自建中转服务器（[查看自建隧道部署教程](docs/custom-tunnel.md)），具备数据端到端 gzip 压缩与 SSE 响应优化。
+<p align="center">
+  <img src="docs/screenshots/tunnel-access.jpg" width="600" alt="公网隧道配置控制台" />
+</p>
+
+- **模式 1：极速免登录临时隧道（默认）**
+  1. 直接点击「Cloudflare 隧道」卡片中的「开启」按钮；
+  2. 系统全自动准备 `cloudflared` 二进制（macOS 自动剥离 Gatekeeper 隔离属性与自愈校验）；
+  3. 几秒内自动生成公网 URL 和二维码，点「重置链接」可随时换新。
+
+- **模式 2：Cloudflare Token 固定域名（永久不变 · 免费）**
+  1. 在 [Cloudflare Zero Trust 控制台](https://one.dash.cloudflare.com/) 免费创建 Tunnel 并绑定域名（如 `dsh.yourdomain.com`）；
+  2. 展开卡片底部的 **「⚙️ 高级配置：固定域名 (Cloudflare Token)」**，填入自定义域名与 Tunnel Token 并保存；
+  3. 勾选 **「随 DSH 启动自动开启」**，每次 DSH 重启即可自动恢复隧道，**URL 永久固定不变**！
+
+- **模式 3：自建 WebSocket 隧道**
+  * 支持连接个人 VPS 隧道中转服务器（[查看自建隧道部署教程](docs/custom-tunnel.md)），具备数据端到端 gzip 压缩与 SSE 响应优化。
 
 ---
 
-### 3. 🤖 全能 IM 机器人矩阵（微信 / QQ / 飞书 / Telegram）
+### 3. 📱 移动端交互与 PWA 独立全屏 App
 
-无需打开浏览器，直接在常用聊天软件中与本地 Agent 对话、下达任务、接收进度与审批操作：
+针对手机屏幕与触控操作进行深度优化，无需额外配置即可获得原生 App 级流畅体验：
+
+- **极简顶栏布局**：保留左侧菜单抽屉与右侧快速新建会话，顶部动态居中显示当前会话标题；
+- **原生侧边栏抽屉**：完整复用 DSH 原生历史记录与工作区分类，顶部集成原生 `[|` 收起图标，支持边缘滑动与手势开合；
+- **PWA 原生全屏支持**：在手机浏览器菜单点击「添加到主屏幕」即可作为 100% 独立原生全屏 App 运行（无浏览器地址栏与底栏）；
+- **自适应防重叠排版**：底部工具栏根据屏幕宽度弹性自适应，彻底消除权限预设与模型选择器重叠碰撞。
+
+#### 移动端对话与工作区管理体验
 
 <p align="center">
-  <img src="docs/screenshots/wechat-chat.jpg" width="23%" alt="微信对话与审批" />
-  <img src="docs/screenshots/qq-chat.jpg" width="23%" alt="QQ 机器人交互" />
-  <img src="docs/screenshots/feishu-chat.jpg" width="23%" alt="飞书卡片流式打字机" />
-  <img src="docs/screenshots/telegram-bot-config.jpg" width="23%" alt="Telegram 机器人配置" />
+  <img src="docs/screenshots/remote-web-mobile.jpg" width="23%" alt="移动端新会话主页" />
+  &nbsp;
+  <img src="docs/screenshots/mobile-chat.jpg" width="23%" alt="移动端已有对话交互" />
+  &nbsp;
+  <img src="docs/screenshots/mobile-drawer.jpg" width="23%" alt="移动端原生抽屉侧边栏" />
+  &nbsp;
+  <img src="docs/screenshots/mobile-workspace-picker.jpg" width="23%" alt="移动端远程工作区选择器" />
 </p>
 
-#### 各平台接入与亮点概览
+#### 远程访问与移动端设置中心
 
-| IM 平台 | 通信协议 | 公网要求 | 交互亮点 | 文档指引 |
-| :--- | :--- | :--- | :--- | :--- |
-| **微信 (WeChat)** | 腾讯官方 iLink Bot API | 100% 免公网 | 个人号扫码秒登；多工作区调度；媒体文件互传；跨重启会话持久化 | [微信配置文档](docs/wechat-usage.md) |
-| **QQ 机器人** | 腾讯 QQ OpenAPI v2 | 100% 免公网 | 官方 AppID 接入；单聊 / 群聊 @交互；Markdown 排版；快捷消息按钮 | [QQ 配置文档](docs/qq-usage.md) |
-| **飞书 (Feishu)** | 官方 WebSocket 2.0 长连接 | 100% 免公网 | 企业自建应用直连；Card 2.0 原生打字机流式更新；交互卡片一键点击审批 | [飞书配置文档](docs/feishu-usage.md) |
-| **Telegram** | 官方 Bot API (Long Polling) | 100% 免公网 | 内置零依赖 HTTP/HTTPS 代理；`/ ` 快捷菜单；Inline 卡片审批；实时流式打字 | [Telegram 配置文档](docs/telegram-usage.md) |
-
-#### 统一 IM 交互指令表
-
-在任何已连接的 IM 聊天窗口中，均可使用以下标准化指令：
-
-| 指令 | 说明 | 示例 |
-| :--- | :--- | :--- |
-| *(直接发文字)* | 驱动当前活动 Agent 进行思考与编码 | `帮我写一个快速排序算法` |
-| `/sessions` 或 `/list` | 查看所有会话列表（按工作区分组排版） | `/sessions` |
-| `/use N` 或 `/resume N` | 快速切换到指定编号的会话 | `/use 2` |
-| `/rename <新标题>` | 重命名当前活动会话 | `/rename 重构认证模块` |
-| `/workspaces` | 列出已在 DSH 注册的所有工作区目录 | `/workspaces` |
-| `/addworkspace <路径>` | 远程向电脑注册添加新的项目文件夹 | `/addworkspace D:/Projects/app` |
-| `/new <提示词>` | 在当前工作区创建并开始新会话 | `/new 编写单元测试` |
-| `/new <提示词> @N` | 在指定工作区序号下直接新建会话 | `/new 修复登录 Bug @2` |
-| `/stop` | 立即中断当前正在运行的任务 | `/stop` |
-| `/end` | 结束并挂起当前会话上下文 | `/end` |
-| `/yes` / `/no` (或 `1`/`2`) | 响应 Agent 的敏感操作权限审批 | `/yes` |
-| `/status` | 查看 Agent 状态与系统摘要看板 | `/status` |
-| `/help` | 查看完整的指令与快捷按键帮助 | `/help` |
+<p align="center">
+  <img src="docs/screenshots/mobile-settings-lan.jpg" width="23%" alt="局域网访问控制台" />
+  &nbsp;
+  <img src="docs/screenshots/mobile-settings-tunnel.jpg" width="23%" alt="公网隧道配置" />
+  &nbsp;
+  <img src="docs/screenshots/mobile-settings-im.jpg" width="23%" alt="IM 机器人矩阵" />
+  &nbsp;
+  <img src="docs/screenshots/mobile-settings-security.jpg" width="23%" alt="全局访问安全认证" />
+</p>
 
 ---
 
 ### 4. 🗂️ 远程工作区网页选择器
 
-针对手机端或远程浏览器无法唤起本地电脑文件选择窗的痛点，内置专为移动端打造的网页树形目录浏览器：
+针对手机端或远程浏览器无法唤起本地电脑文件弹窗的痛点，内置响应式网页树形目录浏览器：
 
 <p align="center">
-  <img src="docs/screenshots/mobile-workspace-picker.jpg" width="360" alt="移动端远程工作区网页选择器" />
+  <img src="docs/screenshots/mobile-workspace-picker.jpg" width="380" alt="移动端远程工作区网页选择器" />
 </p>
 
 * **智能分流**：电脑本机访问（`127.0.0.1`）点击添加工作区直接呼出系统原生文件弹窗；手机或远程访问时自动弹出响应式底部目录抽屉；
@@ -200,30 +199,162 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 
 ### 5. 🔐 全域安全认证与防篡改门禁
 
-打开控制台 **「安全认证」** Tab，为您的本地开发环境构筑银行级安全防线：
+打开设置页「远程访问」→「**安全认证**」Tab 即可一键启用全方位安全守护：
 
 <p align="center">
-  <img src="docs/screenshots/remote-auth-login.jpg" width="48%" alt="外部访问安全认证登录页" />
-  <img src="docs/screenshots/admin-lock-screen.jpg" width="48%" alt="管理控制台防篡改锁定" />
+  <img src="docs/screenshots/security-auth-config.jpg" width="600" alt="安全认证配置面板" />
 </p>
 
-* **第一道防线：外部访问门禁**
-  * **扫码免密 + 密码认证**：控制台生成的二维码自带 256-bit 专属加密 Token，手机扫码一秒直入；手动输入 IP 或公网域名的设备强制输入访问密码；
-  * **通道隔离分流**：支持「全部通道防护 / 仅公网隧道开启防护 (局域网免密) / 仅局域网防护」三种策略。
-* **第二道防线：管理后台防篡改锁**
-  * 独立管理员密码，远程访问设备默认全屏锁定网络与密钥设置，输入管理密码方可解锁；
-  * 支持配置为「仅限电脑本机管理」，远程设备完全杜绝接触核心配置。
-* **三大容灾保命体系（永不自锁）**：
-  * 💻 **物理机免密直通**：宿主电脑本机（`127.0.0.1`）永久享有最高物理特权，永不锁死；
-  * 🚑 **终端一秒救急重置**：极端忘记密码时，在宿主机终端执行 `touch ~/.dsh-bridge/reset-auth`（或 `~/.dsh/dsh-bridge/reset-auth`）即可毫秒级清空密码恢复免密；
-  * ❓ **全局求助引导**：所有认证界面均内置交互式救助指引。
+#### 1. 🛡️ 第一道防线：外部访问门禁（保护谁能进 Web 界面）
+- **多通道分流生效**：
+  - `全部通道开启防护`：局域网与所有公网隧道均需认证；
+  - `仅公网隧道开启防护 (推荐)`：局域网同一 Wi-Fi 内保持免密，暴露至公网的隧道强制开启认证门禁；
+  - `仅局域网开启防护`：仅对局域网进行门禁拦截。
+- **三种灵活验证模式**：
+  - 🟢 **扫码免密 + 密码认证 (默认推荐)**：控制台生成的二维码已自动注入 256-bit 专属安全 Token，手机扫码即可免密秒进；直接在浏览器手动输入 IP 或公网域名的访客，需输入您设置的访客访问密码；
+  - 🔑 **仅密码 / PIN 码**：所有外部设备一律要求输入访问密码；
+  - 🎫 **仅专属 Token 免密**：仅允许通过控制台生成的二维码或带 Token 的专属链接进入。
+- **一键轮换凭据**：点击「🔄 重置安全 Token」即可使之前分享的旧二维码和链接立即全部失效。
+
+<details>
+  <summary>📱 点击展开外部访问安全认证登录页截图</summary>
+  <br/>
+  <p align="center">
+    <img src="docs/screenshots/remote-auth-login.jpg" width="500" alt="外部访问安全认证登录页" />
+  </p>
+</details>
+
+#### 2. 🔒 第二道防线：管理后台防篡改（保护谁能改插件设置）
+- **独立管理员密码**：访客访问密码与管理控制密码彻底分离，即使将访问密码告诉外部朋友，对方也无法查看或篡改您的插件设置；
+- **三种后台权限策略**：
+  - 🔑 **需密码解锁 (默认推荐)**：远程设备进入控制台时全屏锁定，输入管理密码后解锁临时会话；
+  - 🛡️ **仅限电脑本机管理 (最高安全)**：远程设备一律禁止查看与修改任何网络、机器人配置与 Token，仅允许在电脑本机（`127.0.0.1`）操作；
+  - 🌐 **宽松模式**：允许通过访客认证的远程设备直接管理。
+
+<details>
+  <summary>🖥️ 点击展开远程设备管理控制台防篡改锁定截图</summary>
+  <br/>
+  <p align="center">
+    <img src="docs/screenshots/admin-lock-screen.jpg" width="500" alt="管理控制台防篡改锁定" />
+  </p>
+</details>
+
+#### 3. 🛟 三重容灾保命体系（永不自锁）
+- **物理机免密直通**：运行 DSH 的宿主电脑（`127.0.0.1` / `localhost`）享有全局最高物理特权，**永不要求输入访问密码，设置面板永不会被锁定**；
+- **服务器一键救急指令**：无头 Linux 服务器或极端忘记密码时，在宿主电脑终端执行单行命令：
+  ```bash
+  touch ~/.dsh-bridge/reset-auth
+  ```
+  插件将在毫秒级自动清空密码与策略并删除标记，瞬间恢复初始免密状态；
+- **全界面忘记密码指引**：访客登录页与锁屏页均提供 `❓ 忘记密码？` 救助展开卡片。
 
 ---
 
-### 6. 📊 运维监控看板与一键平滑重启
+### 6. 🤖 全能 IM 机器人矩阵（微信 / QQ / 飞书 / Telegram）
+
+无需打开浏览器，直接在常用聊天软件中与本地 Agent 对话、下达任务、接收进度与审批操作：
+
+---
+
+#### 🟢 微信 Bot（ClawBot / iLink）
+
+基于腾讯官方开放的微信 ClawBot 插件功能（底层 iLink Bot API），扫码登录微信个人号后即可对话与审批，全程走腾讯官方服务器，无需公网与隧道。
 
 <p align="center">
-  <img src="docs/screenshots/mobile-remote-settings.jpg" width="360" alt="运维监控看板与系统状态" />
+  <img src="docs/screenshots/wechat-bot-config.jpg" width="600" alt="微信 Bot 配置" />
+</p>
+
+<details>
+  <summary>📱 点击展开手机微信对话与审批截图</summary>
+  <br/>
+  <p align="center">
+    <img src="docs/screenshots/wechat-chat.jpg" width="380" alt="微信对话示例" />
+  </p>
+</details>
+
+* **使用步骤**：设置页「远程访问」→「IM 机器人」→ 选中「微信」→ 点「扫码登录」并扫码确认 → 向该微信 Bot 发送第一条消息即**自动完成白名单授权**。完整文档见 [微信使用说明](docs/wechat-usage.md)。
+
+---
+
+#### 🐧 QQ Bot（OpenAPI v2）
+
+接入 QQ 官方机器人，支持单聊与群聊（群聊需 @机器人），支持 Markdown 渲染、快捷按钮键盘与富媒体文件直传。
+
+<p align="center">
+  <img src="docs/screenshots/qq-bot-config.jpg" width="600" alt="QQ Bot 配置" />
+</p>
+
+<details>
+  <summary>📱 点击展开手机 QQ 单聊与群聊对话截图</summary>
+  <br/>
+  <p align="center">
+    <img src="docs/screenshots/qq-chat.jpg" width="48%" alt="QQ 单聊对话" />
+    <img src="docs/screenshots/qq-group.jpg" width="48%" alt="QQ 群聊对话" />
+  </p>
+</details>
+
+* **使用步骤**：在 [QQ 开放平台](https://q.qq.com) 创建机器人获取 AppID 和 ClientSecret → 填入并保存连接 → 添加机器人好友发送首条消息（或群聊首次 @机器人）自动加白名单。完整文档见 [QQ Bot 使用说明](docs/qq-usage.md)。
+
+---
+
+#### 🐦 飞书 Bot（官方 WebSocket 2.0）
+
+接入飞书开放平台企业自建应用，采用官方 WebSocket 全双工长连接，**100% 免公网 IP / 免域名 / 免配置 Webhook**。
+
+<p align="center">
+  <img src="docs/screenshots/feishu-bot-config.jpg" width="600" alt="飞书 Bot 配置" />
+</p>
+
+<details>
+  <summary>📱 点击展开手机飞书对话与卡片审批截图</summary>
+  <br/>
+  <p align="center">
+    <img src="docs/screenshots/feishu-chat.jpg" width="380" alt="飞书对话与卡片审批示例" />
+  </p>
+</details>
+
+* **使用步骤**：在 [飞书开放平台](https://open.feishu.cn/app) 创建企业自建应用并开启长连接接收事件 → 填入 App ID 与 App Secret 并连接。完整文档见 [飞书接入指南](docs/feishu-usage.md)。
+
+---
+
+#### ✈️ Telegram Bot（官方 Bot API + 代理支持）
+
+接入 Telegram 官方 Bot API，单聊/群聊实时交互。采用官方 Long Polling（长轮询）机制，内置**零依赖 HTTP/HTTPS CONNECT 代理隧道**。
+
+<p align="center">
+  <img src="docs/screenshots/telegram-bot-config.jpg" width="600" alt="Telegram Bot 配置" />
+</p>
+
+* **使用步骤**：向 [@BotFather](https://t.me/BotFather) 发送 `/newbot` 创建机器人获取 **Bot Token** → 填入 Token（国内可填代理如 `http://127.0.0.1:7890`）并保存 → 发送第一条消息自动完成授权。完整文档见 [Telegram 使用说明](docs/telegram-usage.md)。
+
+---
+
+#### 统一 IM 交互指令表
+
+| 指令 | 说明 |
+| :--- | :--- |
+| *(普通文本)* | 驱动当前活动 Agent 思考与编码 |
+| `/sessions`（或 `/list`） | 列出所有历史会话（按工作区分组排版） |
+| `/use N`（或 `/resume N`） | 切换到指定序号的会话 |
+| `/rename <新标题>` | 重命名当前活动会话 |
+| `/workspaces` | 列出已在 DSH 注册的所有工作区目录 |
+| `/addworkspace <路径>` | 远程向电脑注册添加新的项目文件夹 |
+| `/new <提示词>` | 在当前工作区创建并开始新会话 |
+| `/new <提示词> @N` | 在指定工作区序号下直接新建会话 |
+| `/stop` | 立即中断当前正在运行的任务 |
+| `/end` | 结束并挂起当前会话上下文 |
+| `/yes` / `/no` (或 `1`/`2`) | 响应敏感操作权限审批（或直接点击卡片按钮） |
+| `/status` | 查看 Agent 状态与系统摘要看板 |
+| `/help` | 查看完整的指令与快捷帮助 |
+
+---
+
+### 7. 📊 运维监控看板与一键平滑重启
+
+打开控制台 **「运维监控」** Tab，实时掌控系统状态与一键维护：
+
+<p align="center">
+  <img src="docs/screenshots/mobile-remote-settings.jpg" width="380" alt="运维监控看板与系统状态" />
 </p>
 
 * **📊 宿主系统运行监控看板**：实时展示 CPU 核心型号、系统总内存与实时占用率、Node 进程堆内存与 DSH 服务连续运行时间（Uptime）；
@@ -270,6 +401,16 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
   2. **会话无感恢复**：会话历史由 DSH 核心引擎持久化管理，重启后在聊天软件中发送消息或使用 `/resume` 命令即可自动恢复上下文；
   3. **一键备份迁移**：支持在「运维监控」Tab 内一键导出全局配置 `.json` 文件，方便跨设备迁移。
 </details>
+
+---
+
+## 📈 Star 增长趋势
+
+<p align="center">
+  <a href="https://star-history.com/#wenbin-wb/dsh-bridge&Date">
+    <img src="https://api.star-history.com/svg?repos=wenbin-wb/dsh-bridge&type=Date" alt="Star History Chart" width="100%" />
+  </a>
+</p>
 
 ---
 

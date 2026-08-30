@@ -37,15 +37,17 @@
 ## Table of Contents
 
 - [✨ Key Features](#-key-features)
-- [📦 Installation & Upgrade](#-installation--upgrade)
-- [🚀 Quick Start](#-quick-start)
+- [📦 Requirements & Installation](#-requirements--installation)
+- [🚀 Core Features & Usage Guide](#-core-features--usage-guide)
   - [1. 🛜 LAN Access & Multi-NIC Smart Selection](#1-🛜-lan-access--multi-nic-smart-selection)
   - [2. 🌐 Public Tunnels (Cloudflare & Custom)](#2-🌐-public-tunnels-cloudflare--custom)
-  - [3. 🤖 All-in-One IM Bot Matrix (WeChat / QQ / Feishu / Telegram)](#3-🤖-all-in-one-im-bot-matrix-wechat--qq--feishu--telegram)
+  - [3. 📱 Mobile Experience & Standalone PWA](#3-📱-mobile-experience--standalone-pwa)
   - [4. 🗂️ Web Remote Workspace Directory Picker](#4-🗂️-web-remote-workspace-directory-picker)
   - [5. 🔐 Comprehensive Access Security & Admin Lock](#5-🔐-comprehensive-access-security--admin-lock)
-  - [6. 📊 Maintenance Dashboard & Graceful Restart](#6-📊-maintenance-dashboard--graceful-restart)
+  - [6. 🤖 All-in-One IM Bot Matrix (WeChat / QQ / Feishu / Telegram)](#6-🤖-all-in-one-im-bot-matrix-wechat--qq--feishu--telegram)
+  - [7. 📊 Maintenance Dashboard & Graceful Restart](#7-📊-maintenance-dashboard--graceful-restart)
 - [💬 FAQ](#-faq)
+- [📈 Star History](#-star-history)
 - [🛠️ Development & Contribution](#️-development--contribution)
 - [📄 License](#-license)
 
@@ -53,20 +55,17 @@
 
 ## ✨ Key Features
 
-| Domain | Highlights | Description |
-| :--- | :--- | :--- |
-| **🛜 LAN Access** | **Multi-NIC Smart Detection & Switching** | Filters virtual NICs, prioritizes physical Wi-Fi/Ethernet; supports visual switching & persistent memory for WSL/VMware/Docker |
-| **🌐 Public Tunnels** | **Temporary Random & Token Fixed Domains** | 1-click zero-config Cloudflare temporary tunnel; Cloudflare Named Tunnel Token with auto-start on boot; custom WebSocket tunnel |
-| **🤖 IM Bot Matrix** | **WeChat / QQ / Feishu / Telegram** | Covers all 4 major platforms; multi-workspace dispatching, cross-restart session persistence, streaming Markdown typewriter, card approvals & file sharing |
-| **📱 Mobile Experience** | **Native UI & Standalone PWA** | Dynamic centered header title, native drawer sidebar with `[|` fold icon, anti-overlap responsive layout, PWA install support |
-| **🗂️ Remote Workspace** | **Web-based Tree Directory Picker** | Mobile/remote click triggers responsive bottom drawer directory browser; localhost clicks seamlessly route to OS native dialog |
-| **🔐 Access Security** | **Dual Defense Lines & Zero-Lock Guard** | QR code secret Token login + visitor password gate + standalone admin tamper-proof lock; localhost privilege & emergency CLI reset |
-| **📊 Maintenance** | **System Metrics / Network Diagnostics / Backup** | Real-time CPU / RAM / Uptime monitoring; 1-click port & tunnel latency diagnosis; 1-click JSON configuration backup & restore |
-| **🔄 Smooth Upgrade** | **High-Speed Check + 1-Click Upgrade & Restart** | npmmirror millisecond check; auto-augments macOS/Linux PATH and binds sibling Node binaries; 1-click restart with auto-reconnect |
+- **🛜 Multi-NIC Smart Detection & Switching**: Automatically detects physical Wi-Fi, Ethernet, and virtual NICs (WSL/VMware/Docker); provides visual switching with persistent memory;
+- **🌐 Dual-Mode Cloudflare Public Tunnels**: Zero-login 1-click random temporary domains or Cloudflare Named Tunnel Token with auto-start on boot;
+- **📱 Native-Grade Mobile UI & PWA**: Centered session header, native drawer sidebar with `[|` fold icon, anti-overlap responsive layout, PWA install support;
+- **🗂️ Web Remote Workspace Directory Picker**: Mobile/remote visits pop up responsive tree directory browser; localhost visits route to OS native dialogs; supports `/addworkspace` IM command;
+- **🔐 Comprehensive Access Security & Dual Defenses**: QR code secret Token login, visitor password gate, independent admin anti-tamper lock; host physical privilege (`127.0.0.1`) & emergency terminal reset (`reset-auth`);
+- **🤖 All-in-One IM Bot Matrix (WeChat / QQ / Feishu / Telegram)**: Multi-workspace dispatching, cross-restart session persistence, streaming Markdown typewriter, Card 2.0 interactive approvals, and bidirectional file sharing;
+- **📊 Maintenance & Smooth Upgrades**: Host CPU / RAM / Uptime metrics, 1-click network diagnosis, JSON configuration backup & restore, npmmirror fast check & graceful restart.
 
 ---
 
-## 📦 Installation & Upgrade
+## 📦 Requirements & Installation
 
 ### Requirements
 
@@ -104,14 +103,9 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Core Features & Usage Guide
 
 Launch DeepSeek Harness, open Settings in the left sidebar, and click **"Remote Access"**:
-
-<p align="center">
-  <img src="docs/screenshots/lan-access.jpg" width="48%" alt="LAN Access Console" />
-  <img src="docs/screenshots/tunnel-access.jpg" width="48%" alt="Tunnel Access Configuration" />
-</p>
 
 ---
 
@@ -119,10 +113,12 @@ Launch DeepSeek Harness, open Settings in the left sidebar, and click **"Remote 
 
 Starts **automatically with DSH service**, zero configuration required.
 
+<p align="center">
+  <img src="docs/screenshots/lan-access.jpg" width="600" alt="LAN Access Console" />
+</p>
+
 * **Instant QR Code Scan**: Connect phone and PC to the same Wi-Fi, scan the QR code with phone camera to access mobile web UI;
-* **Multi-NIC Detection & Switching**:
-  * Automatically detects multiple network interfaces (physical Wi-Fi, Ethernet, WSL, VMware, Docker) and presents **"🛜 Network Interface / IP Selection"** dropdown;
-  * Smart scoring highlights physical network cards; instantly regenerates QR codes upon selection and **persists choice across restarts**.
+* **Multi-NIC Detection & Switching**: Automatically detects multiple network interfaces (physical Wi-Fi, Ethernet, WSL, VMware, Docker) and presents **"🛜 Network Interface / IP Selection"** dropdown; instantly regenerates QR codes upon selection and **persists choice across restarts**.
 
 ---
 
@@ -130,54 +126,53 @@ Starts **automatically with DSH service**, zero configuration required.
 
 Access DeepSeek Harness from anywhere outside your home network without public IP or router port forwarding:
 
-* **Cloudflare Zero-Login Temporary Tunnel (Default)**:
-  * Click "Start"; automatically downloads & prepares `cloudflared` binary with permission self-healing;
-  * Instantly generates `https://*.trycloudflare.com` URL and QR code.
-* **Cloudflare Token Fixed Domain (Permanent · Free)**:
-  * Create a Tunnel in [Cloudflare Zero Trust Console](https://one.dash.cloudflare.com/) and bind your custom domain;
-  * Enter Tunnel Token & hostname in Advanced Settings, enable **"Auto-start with DSH"** for permanent fixed URL!
-* **Custom WebSocket Tunnel**:
-  * Connect to your personal VPS reverse proxy server ([View Setup Guide](docs/custom-tunnel.md)), equipped with per-message gzip and SSE optimization.
+<p align="center">
+  <img src="docs/screenshots/tunnel-access.jpg" width="600" alt="Tunnel Access Configuration" />
+</p>
+
+- **Mode 1: Zero-Login Temporary Tunnel (Default)**:
+  - Click "Start"; automatically prepares `cloudflared` binary with permission self-healing;
+  - Instantly generates `https://*.trycloudflare.com` URL and QR code.
+- **Mode 2: Cloudflare Token Fixed Domain (Permanent · Free)**:
+  - Create a Tunnel in [Cloudflare Zero Trust Console](https://one.dash.cloudflare.com/) and bind your custom domain;
+  - Enter Tunnel Token & hostname in Advanced Settings, enable **"Auto-start with DSH"** for permanent fixed URL!
+- **Mode 3: Custom WebSocket Tunnel**:
+  - Connect to your personal VPS reverse proxy server ([View Setup Guide](docs/custom-tunnel.md)), equipped with per-message gzip and SSE optimization.
 
 ---
 
-### 3. 🤖 All-in-One IM Bot Matrix (WeChat / QQ / Feishu / Telegram)
+### 3. 📱 Mobile Experience & Standalone PWA
 
-Interact with local AI agents directly inside your favorite messaging apps without opening a browser:
+Deeply optimized for mobile screens and touch interactions:
+
+- **Clean Top Header**: Retains left drawer and right new session button, with centered dynamic session title;
+- **Native Sidebar Drawer**: Full DSH history & workspace grouping with native `[|` fold icon and swipe gestures;
+- **Standalone PWA Support**: Click "Add to Home Screen" in mobile browser to run as a 100% standalone fullscreen app;
+- **Anti-Overlap Responsive Layout**: Bottom toolbar adapts to screen width, preventing button collision.
+
+#### Mobile Chat & Workspace Experience
 
 <p align="center">
-  <img src="docs/screenshots/wechat-chat.jpg" width="23%" alt="WeChat Bot Chat" />
-  <img src="docs/screenshots/qq-chat.jpg" width="23%" alt="QQ Bot Chat" />
-  <img src="docs/screenshots/feishu-chat.jpg" width="23%" alt="Feishu Card Typewriter" />
-  <img src="docs/screenshots/telegram-bot-config.jpg" width="23%" alt="Telegram Bot Config" />
+  <img src="docs/screenshots/remote-web-mobile.jpg" width="23%" alt="Mobile Home" />
+  &nbsp;
+  <img src="docs/screenshots/mobile-chat.jpg" width="23%" alt="Mobile Chat" />
+  &nbsp;
+  <img src="docs/screenshots/mobile-drawer.jpg" width="23%" alt="Mobile Drawer" />
+  &nbsp;
+  <img src="docs/screenshots/mobile-workspace-picker.jpg" width="23%" alt="Mobile Workspace Picker" />
 </p>
 
-#### Platform Overview
+#### Remote Settings Center on Mobile
 
-| Platform | Protocol | Public IP Required | Highlights | Documentation |
-| :--- | :--- | :--- | :--- | :--- |
-| **WeChat** | Official iLink Bot API | 100% No | QR code personal login; multi-workspace; media sharing; session persistence | [WeChat Guide](docs/wechat-usage.md) |
-| **QQ Bot** | Official OpenAPI v2 | 100% No | Official AppID; direct/group @chat; Markdown rendering; interactive buttons | [QQ Guide](docs/qq-usage.md) |
-| **Feishu (Lark)**| Official WebSocket 2.0 | 100% No | Enterprise self-built app; Card 2.0 streaming typewriter; 1-click button approval | [Feishu Guide](docs/feishu-usage.md) |
-| **Telegram** | Official Bot API (Long Polling) | 100% No | Built-in HTTP/HTTPS proxy; `/ ` quick menu; Inline card approval; live typewriter | [Telegram Guide](docs/telegram-usage.md) |
-
-#### Standardized IM Commands
-
-| Command | Description | Example |
-| :--- | :--- | :--- |
-| *(Direct Text)* | Drives current active agent to think and code | `Write a quicksort algorithm` |
-| `/sessions` or `/list` | List all sessions grouped by workspace | `/sessions` |
-| `/use N` or `/resume N` | Switch context to session number N | `/use 2` |
-| `/rename <new title>` | Rename active session title | `/rename Refactor Auth` |
-| `/workspaces` | List all registered workspaces in DSH | `/workspaces` |
-| `/addworkspace <path>` | Remotely register a local project folder | `/addworkspace D:/Projects/app` |
-| `/new <prompt>` | Start a new session in current workspace | `/new Write unit tests` |
-| `/new <prompt> @N` | Start a new session in workspace N | `/new Fix login bug @2` |
-| `/stop` | Immediately abort current running task | `/stop` |
-| `/end` | End and suspend active session | `/end` |
-| `/yes` / `/no` (or `1`/`2`) | Respond to sensitive operation permission approvals | `/yes` |
-| `/status` | View agent status and system summary | `/status` |
-| `/help` | View full command and shortcut button help | `/help` |
+<p align="center">
+  <img src="docs/screenshots/mobile-settings-lan.jpg" width="23%" alt="LAN Settings" />
+  &nbsp;
+  <img src="docs/screenshots/mobile-settings-tunnel.jpg" width="23%" alt="Tunnel Settings" />
+  &nbsp;
+  <img src="docs/screenshots/mobile-settings-im.jpg" width="23%" alt="IM Bot Settings" />
+  &nbsp;
+  <img src="docs/screenshots/mobile-settings-security.jpg" width="23%" alt="Security Settings" />
+</p>
 
 ---
 
@@ -186,7 +181,7 @@ Interact with local AI agents directly inside your favorite messaging apps witho
 Solves the pain point of mobile browsers being unable to trigger PC native folder dialogs:
 
 <p align="center">
-  <img src="docs/screenshots/mobile-workspace-picker.jpg" width="360" alt="Mobile Workspace Picker" />
+  <img src="docs/screenshots/mobile-workspace-picker.jpg" width="380" alt="Mobile Workspace Picker" />
 </p>
 
 * **Smart Routing**: PC localhost visits (`127.0.0.1`) invoke OS native file dialogs; mobile/remote visits pop up responsive bottom directory browser;
@@ -199,26 +194,145 @@ Solves the pain point of mobile browsers being unable to trigger PC native folde
 Open **"Security"** tab to establish bank-grade protection for your local development environment:
 
 <p align="center">
-  <img src="docs/screenshots/remote-auth-login.jpg" width="48%" alt="Remote Access Login Page" />
-  <img src="docs/screenshots/admin-lock-screen.jpg" width="48%" alt="Admin Console Lock" />
+  <img src="docs/screenshots/security-auth-config.jpg" width="600" alt="Security Config" />
 </p>
 
-* **Line 1: External Access Gateway**
-  * **QR Token Passwordless + Password Verification**: QR codes carry 256-bit encrypted Token for instant access; manual IP/domain visits require password;
-  * **Channel Isolation**: Choose between "All Channels / Public Tunnels Only (LAN Passwordless) / LAN Only".
-* **Line 2: Admin Console Anti-Tamper Lock**
-  * Independent admin password; remote devices enter locked console, requiring admin password to view or modify tokens and bot configs.
-* **Triple Disaster Recovery (Never Locked Out)**:
-  * 💻 **Host Physical Privilege**: PC localhost (`127.0.0.1`) enjoys permanent highest privilege, never locked;
-  * 🚑 **Terminal Emergency Reset**: Run `touch ~/.dsh-bridge/reset-auth` in terminal to reset passwords instantly;
-  * ❓ **Interactive Guidance**: Built-in interactive recovery guides on all auth pages.
+#### 1. 🛡️ Line 1: External Access Gateway
+- **QR Token Passwordless + Password Verification**: QR codes carry 256-bit encrypted Token for instant access; manual IP/domain visits require password;
+- **Channel Isolation**: Choose between "All Channels / Public Tunnels Only (LAN Passwordless) / LAN Only".
+
+<details>
+  <summary>📱 Click to view Remote Access Login Page</summary>
+  <br/>
+  <p align="center">
+    <img src="docs/screenshots/remote-auth-login.jpg" width="500" alt="Remote Access Login Page" />
+  </p>
+</details>
+
+#### 2. 🔒 Line 2: Admin Console Anti-Tamper Lock
+- **Independent Admin Password**: Remote devices enter locked console, requiring admin password to view or modify tokens and bot configs;
+- **Strict Host Policy**: Option to restrict management solely to host machine (`127.0.0.1`).
+
+<details>
+  <summary>🖥️ Click to view Admin Console Lock Screen</summary>
+  <br/>
+  <p align="center">
+    <img src="docs/screenshots/admin-lock-screen.jpg" width="500" alt="Admin Console Lock Screen" />
+  </p>
+</details>
+
+#### 3. 🛟 Triple Disaster Recovery (Never Locked Out)
+- **Host Physical Privilege**: PC localhost (`127.0.0.1`) enjoys permanent highest privilege, never locked;
+- **Terminal Emergency Reset**: Run `touch ~/.dsh-bridge/reset-auth` in terminal to reset passwords instantly;
+- **Interactive Guidance**: Built-in interactive recovery guides on all auth pages.
 
 ---
 
-### 6. 📊 Maintenance Dashboard & Graceful Restart
+### 6. 🤖 All-in-One IM Bot Matrix (WeChat / QQ / Feishu / Telegram)
+
+Interact with local AI agents directly inside your favorite messaging apps without opening a browser:
+
+---
+
+#### 🟢 WeChat Bot (ClawBot / iLink)
+
+Scan QR code with personal WeChat account to chat, manage sessions, and approve permissions via official Tencent servers without public IP.
 
 <p align="center">
-  <img src="docs/screenshots/mobile-remote-settings.jpg" width="360" alt="Maintenance Dashboard" />
+  <img src="docs/screenshots/wechat-bot-config.jpg" width="600" alt="WeChat Bot Config" />
+</p>
+
+<details>
+  <summary>📱 Click to view WeChat Chat & Approval</summary>
+  <br/>
+  <p align="center">
+    <img src="docs/screenshots/wechat-chat.jpg" width="380" alt="WeChat Chat" />
+  </p>
+</details>
+
+* **Quick Setup**: Remote Access > IM Bot > WeChat > Scan QR code > Send first message to auto-authorize. See [WeChat Guide](docs/wechat-usage.md).
+
+---
+
+#### 🐧 QQ Bot (OpenAPI v2)
+
+Official QQ Bot with direct/group @chat, Markdown rendering, interactive button keyboards, and rich media transfers.
+
+<p align="center">
+  <img src="docs/screenshots/qq-bot-config.jpg" width="600" alt="QQ Bot Config" />
+</p>
+
+<details>
+  <summary>📱 Click to view QQ Direct & Group Chat</summary>
+  <br/>
+  <p align="center">
+    <img src="docs/screenshots/qq-chat.jpg" width="48%" alt="QQ Direct Chat" />
+    <img src="docs/screenshots/qq-group.jpg" width="48%" alt="QQ Group Chat" />
+  </p>
+</details>
+
+* **Quick Setup**: Create bot on [QQ Open Platform](https://q.qq.com), fill AppID & Secret > Send first message to auto-authorize. See [QQ Guide](docs/qq-usage.md).
+
+---
+
+#### 🐦 Feishu (Lark) Bot (WebSocket 2.0)
+
+Enterprise self-built app via official full-duplex WebSocket long connection—**100% No Public IP / No Webhook required**.
+
+<p align="center">
+  <img src="docs/screenshots/feishu-bot-config.jpg" width="600" alt="Feishu Bot Config" />
+</p>
+
+<details>
+  <summary>📱 Click to view Feishu Chat & Card Approval</summary>
+  <br/>
+  <p align="center">
+    <img src="docs/screenshots/feishu-chat.jpg" width="380" alt="Feishu Chat" />
+  </p>
+</details>
+
+* **Quick Setup**: Create self-built app on [Feishu Open Platform](https://open.feishu.cn/app), enable long connection > Fill App ID & Secret. See [Feishu Guide](docs/feishu-usage.md).
+
+---
+
+#### ✈️ Telegram Bot (Bot API + Proxy Support)
+
+Official Telegram Bot API with Long Polling and **built-in zero-dependency HTTP/HTTPS proxy tunnel**.
+
+<p align="center">
+  <img src="docs/screenshots/telegram-bot-config.jpg" width="600" alt="Telegram Bot Config" />
+</p>
+
+* **Quick Setup**: Create bot with [@BotFather](https://t.me/BotFather) > Fill Bot Token (and optional proxy) > Send first message to auto-authorize. See [Telegram Guide](docs/telegram-usage.md).
+
+---
+
+#### Standardized IM Commands
+
+| Command | Description |
+| :--- | :--- |
+| *(Direct Text)* | Drives current active agent to think and code |
+| `/sessions` (or `/list`) | List all sessions grouped by workspace |
+| `/use N` (or `/resume N`) | Switch context to session number N |
+| `/rename <new title>` | Rename active session title |
+| `/workspaces` | List all registered workspaces in DSH |
+| `/addworkspace <path>` | Remotely register a local project folder |
+| `/new <prompt>` | Start a new session in current workspace |
+| `/new <prompt> @N` | Start a new session in workspace N |
+| `/stop` | Immediately abort current running task |
+| `/end` | End and suspend active session |
+| `/yes` / `/no` (or `1`/`2`) | Respond to sensitive operation permission approvals |
+| `/status` | View agent status and system summary |
+| `/help` | View full command and shortcut button help |
+
+---
+
+### 7. 📊 Maintenance Dashboard & Graceful Restart
+
+Open **"Maintenance"** tab to monitor health and manage operations:
+
+<p align="center">
+  <img src="docs/screenshots/mobile-remote-settings.jpg" width="380" alt="Maintenance Dashboard" />
 </p>
 
 * **📊 Host System Metrics Dashboard**: Real-time CPU model, total/used RAM, Node heap memory, and DSH uptime;
@@ -265,6 +379,16 @@ Open **"Security"** tab to establish bank-grade protection for your local develo
   2. **Session Context Recovery**: Session history is persisted by DSH core engine; resume conversations with `/resume` anytime;
   3. **Backup & Migration**: 1-click `.json` export/import in Maintenance tab.
 </details>
+
+---
+
+## 📈 Star History
+
+<p align="center">
+  <a href="https://star-history.com/#wenbin-wb/dsh-bridge&Date">
+    <img src="https://api.star-history.com/svg?repos=wenbin-wb/dsh-bridge&type=Date" alt="Star History Chart" width="100%" />
+  </a>
+</p>
 
 ---
 
