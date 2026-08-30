@@ -16,7 +16,7 @@
   - 隧道令牌掩码保护：非管理员视图的 `******` 掩码回显不再覆盖真实 Token，未变更字段不上传；
   - 登录页与锁屏页不再向访客泄露救急重置明文命令，改为指向文档；修正 README 救急路径笔误（`~/.dsh-bridge` → `~/.dsh/dsh-bridge`）。
 - **🐞 稳定性修复（含 eslint 静态分析新抓出的 4 个必崩 BUG）**：
-  - 修复低版本 Node（<20.3）下通过桥接发送消息报 `AbortSignal.any is not a function (internal)` 的问题：DSH 核心链路（dsh-timeout ← dsh-llm）每次 agent 请求都调用该 API，插件加载时自动安装兼容垫片并告警引导升级；代理注入页同步为旧移动端浏览器补齐同语义垫片；
+  - 修复 iOS 16 等旧移动端浏览器访问面板发送消息报 `AbortSignal.any is not a function (internal)` 的问题：DSH 网页客户端用该 API 组合请求超时/取消信号，而 Safari 17.4 才支持；代理注入页自动补齐兼容垫片（服务端运行在低版本 Node <20.3 时同样自动垫片并告警引导升级）；
   - 修复微信入站媒体下载 100% 抛 ReferenceError（`downloadMedia` 缺失 `fetch()` 调用，旧测试未覆盖）；
   - 修复 QQ 流式输出失败后补发收尾必崩（`streamMsgId` 作用域错误）；
   - 修复前端「查看手动升级命令」渲染崩溃（`UpgradeCommandRow` 组件缺失）；
