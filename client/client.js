@@ -43,6 +43,7 @@ var BRIDGE_ENDPOINTS = {
   saveCloudflaredConfig: "saveCloudflaredConfig",
   setTunnelAutoStart: "setTunnelAutoStart",
   saveCustomTunnelConfig: "saveCustomTunnelConfig",
+  setLanIp: "setLanIp",
   checkVersion: "checkVersion",
   upgradePlugin: "upgradePlugin",
   restartDsh: "restartDsh",
@@ -376,6 +377,84 @@ function QrBlock({ url, qr, onReset, auth, onNavigateSecurity }) {
     )
   );
 }
+var LanNetworkSelector = React.memo(function LanNetworkSelector2({ lan, onSelectIp }) {
+  const interfaces = lan?.interfaces || [];
+  const selectedIp = lan?.selectedIp || "";
+  const currentIp = lan?.ip || "";
+  const [switching, setSwitching] = React.useState(false);
+  if (!interfaces || interfaces.length <= 1) return null;
+  const handleChange = async (e) => {
+    const val = e.target.value;
+    setSwitching(true);
+    try {
+      await onSelectIp(val || null);
+    } finally {
+      setSwitching(false);
+    }
+  };
+  return React.createElement(
+    "div",
+    {
+      style: {
+        ...s.block,
+        background: "var(--dsw-alias-bg-layer-2, rgba(243, 244, 246, 0.6))",
+        padding: "10px 12px",
+        borderRadius: 8,
+        border: "1px solid var(--dsw-alias-border-l2, #e5e7eb)",
+        marginTop: 8,
+        marginBottom: 6
+      }
+    },
+    React.createElement(
+      "div",
+      {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 6,
+          fontSize: 12,
+          fontWeight: 500,
+          color: "var(--dsw-alias-label-primary, currentColor)"
+        }
+      },
+      React.createElement(
+        "span",
+        { style: { display: "inline-flex", alignItems: "center", gap: 5 } },
+        "\u{1F6DC} \u5C40\u57DF\u7F51\u7F51\u5361 / IP \u9009\u62E9"
+      ),
+      switching && React.createElement("span", {
+        style: { fontSize: 11, color: "var(--dsw-alias-brand-primary, #4f6ef7)" }
+      }, "\u5207\u6362\u4E2D\u2026")
+    ),
+    React.createElement(
+      "div",
+      { style: { ...s.muted, fontSize: 11, marginBottom: 6 } },
+      "\u68C0\u6D4B\u5230\u4E3B\u673A\u5B58\u5728\u591A\u5F20\u7F51\u5361\uFF08\u5982\u7269\u7406 Wi-Fi\u3001\u4EE5\u592A\u7F51\u3001WSL \u6216\u865A\u62DF\u673A\uFF09\u3002\u82E5\u9ED8\u8BA4 IP \u65E0\u6CD5\u88AB\u79FB\u52A8\u7AEF\u8BBF\u95EE\uFF0C\u53EF\u624B\u52A8\u5207\u6362\uFF1A"
+    ),
+    React.createElement(
+      "select",
+      {
+        style: {
+          ...s.input,
+          height: 32,
+          fontSize: 12,
+          padding: "0 8px",
+          background: "var(--dsw-alias-bg-layer-1, #ffffff)",
+          cursor: "pointer"
+        },
+        value: selectedIp,
+        onChange: handleChange,
+        disabled: switching
+      },
+      React.createElement("option", { value: "" }, `\u26A1 \u81EA\u52A8\u63A8\u8350 (${interfaces[0]?.address || currentIp} \xB7 ${interfaces[0]?.label || interfaces[0]?.name || ""})`),
+      interfaces.map((iface) => React.createElement("option", {
+        key: `${iface.name}-${iface.address}`,
+        value: iface.address
+      }, `${iface.address} \xB7 ${iface.label || iface.name}${iface.isVirtual ? " [\u865A\u62DF/WSL]" : ""}`))
+    )
+  );
+});
 var CustomTunnelGuide = React.memo(function CustomTunnelGuide2() {
   return React.createElement(
     "div",
@@ -2783,6 +2862,7 @@ function BridgePanel({ rpcCall }) {
     ({ token, hostname }) => act(BRIDGE_ENDPOINTS.saveCloudflaredConfig, { token, hostname }),
     [act]
   );
+  const onSelectLanIp = React.useCallback((ip) => act(BRIDGE_ENDPOINTS.setLanIp, { ip }), [act]);
   const onStartCustom = React.useCallback(() => act(BRIDGE_ENDPOINTS.startCustomTunnel), [act]);
   const onStopCustom = React.useCallback(() => act(BRIDGE_ENDPOINTS.stopCustomTunnel), [act]);
   const onToggleCustomAutoStart = React.useCallback(
@@ -2811,13 +2891,20 @@ function BridgePanel({ rpcCall }) {
   };
   let tabContent;
   if (activeTab === "lan") {
-    tabContent = React.createElement(TunnelCard, {
-      title: "\u5C40\u57DF\u7F51\u8BBF\u95EE",
-      desc: "\u540C\u4E00 Wi-Fi \u4E0B\u7684\u8BBE\u5907\u53EF\u76F4\u63A5\u626B\u7801\u8BBF\u95EE",
-      data: { running: status?.proxy?.running, url: status?.lan?.url, qr: status?.lan?.qr },
-      auth: status?.auth,
-      onNavigateSecurity: navSecurity
-    });
+    tabContent = React.createElement(
+      TunnelCard,
+      {
+        title: "\u5C40\u57DF\u7F51\u8BBF\u95EE",
+        desc: "\u540C\u4E00 Wi-Fi \u4E0B\u7684\u8BBE\u5907\u53EF\u76F4\u63A5\u626B\u7801\u8BBF\u95EE",
+        data: { running: status?.proxy?.running, url: status?.lan?.url, qr: status?.lan?.qr },
+        auth: status?.auth,
+        onNavigateSecurity: navSecurity
+      },
+      React.createElement(LanNetworkSelector, {
+        lan: status?.lan,
+        onSelectIp: onSelectLanIp
+      })
+    );
   } else if (activeTab === "tunnel") {
     tabContent = React.createElement(
       React.Fragment,

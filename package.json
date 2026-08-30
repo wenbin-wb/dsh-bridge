@@ -1,8 +1,8 @@
 {
   "name": "@wenbin_wb/dsh-bridge",
-  "version": "2.8.6",
+  "version": "2.8.7",
   "description": "手机扫码即可在移动端/公网继续用 DeepSeek Harness，人不在电脑前也能接着干。一键局域网二维码、Cloudflare 公网隧道、自建隧道与微信 / QQ / 飞书 / Telegram Bot（多工作区/会话持久化/媒体/卡片审批/流式输出），无需自己搭公网服务器。",
-  "releaseNotes": "【v2.8.6 移动端交互适配重构 & 隧道保活与传输优化】\n• 📱 修复移动端工作区面板遮挡对话与白屏问题：重构工作区显隐状态机，新增常驻「✕ 返回对话」胶囊与多途径秒级回切机制，收起时彻底离场\n• 🗂️ 移动端侧边栏抽屉顶部集成收起图标：完整适配复用 DSH 原生自带收起图标（`[|`），支持双向顺畅开合与点击背景收起\n• 🖥️ 移动端样式与 PC 桌面端严格隔离：采用媒体查询与运行期断点隔离，PC 桌面端 100% 保持官方原生多列分栏与纯净体验\n• 🛡️ 修复 Cloudflared 守护进程异常退出问题：增加子进程退出监听与指数退避自动重启机制，确保长时间公网访问不断连\n• ⚡ 优化自建隧道 SSE 稳定性与传输效率：修复弱网下 SSE 断线重连，精简 Session 列表大数据负载，显著降低移动端带宽与卡顿\n• 🤖 优化 IM 机器人会话管理与推送：会话列表按工作区分组对齐官方账本排序，产物文件采用 AI 显式驱动直传",
+  "releaseNotes": "【v2.8.7 多网卡智能切换与 macOS 升级与隧道自愈加固】\n• 🛜 支持局域网多网卡可视化切换与持久化 (Issue #5)：自动探测并列出物理网卡与虚拟网卡（Wi-Fi、以太网、WSL、VMware、Docker 等），支持在面板一键切换局域网 IP 并记忆持久化，彻底解决多网卡/WSL 下移动端无法访问的问题\n• 🍏 加固 macOS 一键平滑升级：`upgradePlugin` 自动补全 macOS 环境下的全量 PATH 环境变量（自动兼容 Homebrew、NVM 等），并自动优先绑定当前 Node 配对的同级 `npm`/`npx` 绝对路径，杜绝 `spawn ENOENT` 升级失败\n• 🛡️ 优化 macOS Cloudflared 二进制探测与隔离自愈：优先复用系统全局/Homebrew 已安装的 `cloudflared`，网络下载解压后自动移除 Gatekeeper 隔离标记（`xattr -d com.apple.quarantine`）并加入 `--version` 运行期校验自愈",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

@@ -317,6 +317,78 @@ function QrBlock({ url, qr, onReset, auth, onNavigateSecurity }) {
   );
 }
 
+const LanNetworkSelector = React.memo(function LanNetworkSelector({ lan, onSelectIp }) {
+  const interfaces = lan?.interfaces || [];
+  const selectedIp = lan?.selectedIp || '';
+  const currentIp = lan?.ip || '';
+  const [switching, setSwitching] = React.useState(false);
+
+  if (!interfaces || interfaces.length <= 1) return null;
+
+  const handleChange = async (e) => {
+    const val = e.target.value;
+    setSwitching(true);
+    try {
+      await onSelectIp(val || null);
+    } finally {
+      setSwitching(false);
+    }
+  };
+
+  return React.createElement('div', {
+    style: {
+      ...s.block,
+      background: 'var(--dsw-alias-bg-layer-2, rgba(243, 244, 246, 0.6))',
+      padding: '10px 12px',
+      borderRadius: 8,
+      border: '1px solid var(--dsw-alias-border-l2, #e5e7eb)',
+      marginTop: 8,
+      marginBottom: 6,
+    },
+  },
+    React.createElement('div', {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 6,
+        fontSize: 12,
+        fontWeight: 500,
+        color: 'var(--dsw-alias-label-primary, currentColor)',
+      },
+    },
+      React.createElement('span', { style: { display: 'inline-flex', alignItems: 'center', gap: 5 } },
+        '🛜 局域网网卡 / IP 选择'
+      ),
+      switching && React.createElement('span', {
+        style: { fontSize: 11, color: 'var(--dsw-alias-brand-primary, #4f6ef7)' },
+      }, '切换中…')
+    ),
+    React.createElement('div', { style: { ...s.muted, fontSize: 11, marginBottom: 6 } },
+      '检测到主机存在多张网卡（如物理 Wi-Fi、以太网、WSL 或虚拟机）。若默认 IP 无法被移动端访问，可手动切换：'
+    ),
+    React.createElement('select', {
+      style: {
+        ...s.input,
+        height: 32,
+        fontSize: 12,
+        padding: '0 8px',
+        background: 'var(--dsw-alias-bg-layer-1, #ffffff)',
+        cursor: 'pointer',
+      },
+      value: selectedIp,
+      onChange: handleChange,
+      disabled: switching,
+    },
+      React.createElement('option', { value: '' }, `⚡ 自动推荐 (${interfaces[0]?.address || currentIp} · ${interfaces[0]?.label || interfaces[0]?.name || ''})`),
+      interfaces.map((iface) => React.createElement('option', {
+        key: `${iface.name}-${iface.address}`,
+        value: iface.address,
+      }, `${iface.address} · ${iface.label || iface.name}${iface.isVirtual ? ' [虚拟/WSL]' : ''}`)),
+    ),
+  );
+});
+
 const CustomTunnelGuide = React.memo(function CustomTunnelGuide() {
   return React.createElement('div', { style: s.block },
     React.createElement('a', {
@@ -2497,6 +2569,8 @@ function BridgePanel({ rpcCall }) {
     act(BRIDGE_ENDPOINTS.saveCloudflaredConfig, { token, hostname })
   , [act]);
 
+  const onSelectLanIp = React.useCallback((ip) => act(BRIDGE_ENDPOINTS.setLanIp, { ip }), [act]);
+
   const onStartCustom = React.useCallback(() => act(BRIDGE_ENDPOINTS.startCustomTunnel), [act]);
   const onStopCustom  = React.useCallback(() => act(BRIDGE_ENDPOINTS.stopCustomTunnel), [act]);
   const onToggleCustomAutoStart = React.useCallback((autoStart) =>
@@ -2536,7 +2610,12 @@ function BridgePanel({ rpcCall }) {
       data: { running: status?.proxy?.running, url: status?.lan?.url, qr: status?.lan?.qr },
       auth: status?.auth,
       onNavigateSecurity: navSecurity,
-    });
+    },
+      React.createElement(LanNetworkSelector, {
+        lan: status?.lan,
+        onSelectIp: onSelectLanIp,
+      })
+    );
   } else if (activeTab === 'tunnel') {
     tabContent = React.createElement(React.Fragment, null,
       React.createElement(TunnelCard, {

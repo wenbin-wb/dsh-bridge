@@ -215,3 +215,30 @@ test('selectLanIPv4 优先选择物理局域网网卡并过滤虚拟网卡 (WSL/
   }
 });
 
+test('listAllLanIPv4 & BridgeService 多网卡 IP 选择与持久化 (Issue #5)', async () => {
+  const persisted = [];
+  const service = new BridgeService({
+    dshPort: 3080,
+    proxyPort: 3082,
+    lanConfig: { selectedIp: '192.168.1.100' },
+    onPersist: async (patch) => {
+      persisted.push(patch);
+    },
+  });
+
+  const status = await service.getStatus();
+  assert.ok(status.lan);
+  assert.ok(Array.isArray(status.lan.interfaces));
+
+  // 1. 设置有效自定义 IP
+  await service.setLanIp({ ip: '10.0.0.5' });
+  assert.equal(service.selectedLanIp, '10.0.0.5');
+  assert.deepEqual(persisted[persisted.length - 1], { lan: { selectedIp: '10.0.0.5' } });
+
+  // 2. 清除自定义 IP 恢复自动推荐
+  await service.setLanIp({ ip: '' });
+  assert.equal(service.selectedLanIp, null);
+  assert.deepEqual(persisted[persisted.length - 1], { lan: { selectedIp: null } });
+});
+
+
