@@ -47,7 +47,6 @@
   - [6. 🤖 全能 IM 机器人矩阵（微信 / QQ / 飞书 / Telegram）](#6-🤖-全能-im-机器人矩阵微信--qq--飞书--telegram)
   - [7. 📊 运维监控看板与一键平滑重启](#7-📊-运维监控看板与一键平滑重启)
 - [💬 常见问题 (FAQ)](#-常见问题-faq)
-- [📈 Star 增长趋势](#-star-增长趋势)
 - [🛠️ 开发与贡献](#️-开发与贡献)
 - [📄 开源协议](#-开源协议)
 
@@ -401,16 +400,6 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
   2. **会话无感恢复**：会话历史由 DSH 核心引擎持久化管理，重启后在聊天软件中发送消息或使用 `/resume` 命令即可自动恢复上下文；
   3. **一键备份迁移**：支持在「运维监控」Tab 内一键导出全局配置 `.json` 文件，方便跨设备迁移。
 </details>
-
----
-
-## 📈 Star 增长趋势
-
-<p align="center">
-  <a href="https://star-history.com/#wenbin-wb/dsh-bridge&Date">
-    <img src="https://api.star-history.com/svg?repos=wenbin-wb/dsh-bridge&type=Date" alt="Star History Chart" width="100%" />
-  </a>
-</p>
 
 ---
 

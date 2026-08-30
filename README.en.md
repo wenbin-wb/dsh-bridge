@@ -47,7 +47,6 @@
   - [6. 🤖 All-in-One IM Bot Matrix (WeChat / QQ / Feishu / Telegram)](#6-🤖-all-in-one-im-bot-matrix-wechat--qq--feishu--telegram)
   - [7. 📊 Maintenance Dashboard & Graceful Restart](#7-📊-maintenance-dashboard--graceful-restart)
 - [💬 FAQ](#-faq)
-- [📈 Star History](#-star-history)
 - [🛠️ Development & Contribution](#️-development--contribution)
 - [📄 License](#-license)
 
@@ -379,16 +378,6 @@ Open **"Maintenance"** tab to monitor health and manage operations:
   2. **Session Context Recovery**: Session history is persisted by DSH core engine; resume conversations with `/resume` anytime;
   3. **Backup & Migration**: 1-click `.json` export/import in Maintenance tab.
 </details>
-
----
-
-## 📈 Star History
-
-<p align="center">
-  <a href="https://star-history.com/#wenbin-wb/dsh-bridge&Date">
-    <img src="https://api.star-history.com/svg?repos=wenbin-wb/dsh-bridge&type=Date" alt="Star History Chart" width="100%" />
-  </a>
-</p>
 
 ---
 
