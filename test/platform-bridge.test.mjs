@@ -576,3 +576,33 @@ test('ConversationBridge.dispose 解绑 session/event 监听器（P0-1 回归）
   )
   assert.equal(platform.sent.length, 0, 'dispose 后不应有任何外发')
 })
+
+// ---------------------------------------------------------------------------
+// 回归：出站发送队列（T2.1/T2.2）
+// ---------------------------------------------------------------------------
+
+test('并发 sendText 经队列串行执行，平台抛异常不逃逸', async () => {
+  const { ctx } = makeMockCtx()
+  const platform = new MockPlatform({ ctx, logger: ctx.logger })
+  const order = []
+  platform.sendText = async (peer, text) => {
+    order.push(text)
+    await new Promise(r => setTimeout(r, text === 'first' ? 30 : 1))
+    if (text === 'boom') throw new Error('gateway exploded')
+    return { success: true }
+  }
+  const bridge = new ConversationBridge({ ctx, logger: ctx.logger, config: { allowFrom: ['u1'] }, platform })
+  bridge.activeSessionId = 's1'
+  bridge.peerId = 'u1'
+  ctx.sessions.list = () => [{ id: 's1', events: [], header: {}, seq: 0 }]
+
+  await Promise.all([
+    bridge.sendText('first'),
+    bridge.sendText('boom'),
+    bridge.sendText('last'),
+  ])
+
+  assert.deepEqual(order, ['first', 'boom', 'last'], '发送顺序必须与调用顺序一致')
+  bridge.dispose()
+  platform.dispose()
+})
