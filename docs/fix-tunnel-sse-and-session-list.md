@@ -33,6 +33,7 @@ DSH 的 `session.list` RPC 返回所有会话的完整投影数据。在会话�
 
 ### 修复 1：SSE 流式响应提前返回
 
+<<<<<<< HEAD
 在 `_handleHttpRequest()` 中检测 `text/event-stream` content-type，收集初始数据（2 个 chunk 或 500ms 超时）后立即返回响应，不等 `res.end()`。
 
 ### 修复 2：剥离 session.list 中的大字段
@@ -46,6 +47,79 @@ DSH 的 `session.list` RPC 返回所有会话的完整投影数据。在会话�
 ### 修复 4：启用 WebSocket per-message 压缩
 
 将隧道 WebSocket 的 `perMessageDeflate` 从 `false` 改为启用，进一步减少隧道传输量。
+=======
+在 `_handleHttpRequest()` 中检测 `text/event-stream` content-type，收集初始数据（2 个 chunk 或 500ms 超时）后立即返回响应，不等 `res.end()`：
+
+```javascript
+if (isSSE) {
+  let sseSent = false;
+  const sseTimer = setTimeout(() => { /* 发送已收集数据 */ }, 500);
+  res.on('data', (c) => {
+    if (sseSent) return;
+    chunks.push(c);
+    if (chunks.length >= 2) {
+      clearTimeout(sseTimer);
+      sseSent = true;
+      // 立即发送已收集的初始数据
+      this._sendMessage({ type: 'response', ... });
+      res.destroy();
+    }
+  });
+  // ... error/end 处理
+  return;
+}
+```
+
+### 修复 2：剥离 session.list 中的大字段
+
+对 `/api/session.list` 的 200 响应，解析 JSON 并删除每个会话投影中的 `contextHeaders` 和 `contextTimeline`：
+
+```javascript
+if (path === '/api/session.list' && res.statusCode === 200) {
+  try {
+    const json = JSON.parse(bodyBuf.toString('utf8'));
+    if (json?.result?.ok && json.result.value?.items) {
+      for (const item of json.result.value.items) {
+        const proj = item?.projections?.values;
+        if (proj) {
+          delete proj.contextHeaders;
+          delete proj.contextTimeline;
+        }
+      }
+      bodyBuf = Buffer.from(JSON.stringify(json), 'utf8');
+    }
+  } catch {}
+}
+```
+
+### 修复 3：大响应 gzip 压缩
+
+对超过 100KB 的可压缩响应（`text/*`、`application/json` 等）自动 gzip 压缩，设置 `content-encoding: gzip` 头：
+
+```javascript
+if (bodyBuf.length > GZIP_THRESHOLD && compressible && !alreadyEncoded) {
+  bodyBuf = gzipSync(bodyBuf);
+  respHeaders['content-encoding'] = 'gzip';
+  respHeaders['content-length'] = String(bodyBuf.length);
+}
+```
+
+### 修复 4：启用 WebSocket per-message 压缩
+
+将隧道 WebSocket 的 `perMessageDeflate` 从 `false` 改为启用，进一步减少隧道传输量：
+
+```javascript
+this.ws = new WebSocket(url.toString(), {
+  handshakeTimeout: 10000,
+  perMessageDeflate: {
+    clientNoContextTakeover: true,
+    serverNoContextTakeover: true,
+    clientMaxWindowBits: 15,
+    serverMaxWindowBits: 15,
+  },
+});
+```
+>>>>>>> pr-21
 
 ## 效果
 
@@ -55,3 +129,22 @@ DSH 的 `session.list` RPC 返回所有会话的完整投影数据。在会话�
 | `session.list` 隧道传输时间 | 33s (超时) | 0.74s |
 | `/plugins/events` SSE | 504 超时 | 正常返回初始数据 |
 | 侧边栏会话列表 | 不显示 | 正常显示 |
+<<<<<<< HEAD
+=======
+
+## 影响范围
+
+- **非隧道模式不受影响**：所有修改仅在 `_handleHttpRequest()` 中，只影响自建隧道的 HTTP 代理路径
+- **WebSocket 透传不受影响**：`/api/events.mux` 和 `/api/events.host` 的 WebSocket 升级走独立的 `_handleWsOpen()` 路径，不受此修改影响
+- **非 session.list 请求不受影响**：contextHeaders 剥离仅对 `/api/session.list` 路径生效
+- **小响应不受影响**：gzip 压缩仅对超过 100KB 的可压缩响应生效
+- **已有 content-encoding 的响应不受影响**：不重复压缩
+
+## 测试验证
+
+- ✅ 本地 WebSocket 直连 DSH（`/api/events.mux`）正常接收 `session/subscribed` 事件
+- ✅ 通过隧道的 WebSocket（`wss://ds.missus.top/api/events.mux`）正常接收 26+ 条消息
+- ✅ 通过隧道的 `session.list` 请求：31KB / 0.74s（修复前 63MB / 33s 超时）
+- ✅ 响应包含 234 个会话，`contextHeaders` 和 `contextTimeline` 已剥离，`title` 等字段完整
+- ✅ TLS 证书有效，gzip content-encoding 头正确传递
+>>>>>>> pr-21
