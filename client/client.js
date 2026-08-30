@@ -1270,7 +1270,7 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
     )
   );
 });
-function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatusChange }) {
+function PlatformCard({ platformId, platformName, platformDesc, rpcCall }) {
   const [platform, setPlatform] = React.useState(null);
   const [err, setErr] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
@@ -1294,10 +1294,6 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
       });
     }
   }, [platform?.config, platformId]);
-  React.useEffect(() => {
-    const connected2 = platform?.status === "connected" || platform?.status === "starting" || platform?.status === "reconnecting";
-    onStatusChange?.(connected2);
-  }, [platform?.status, onStatusChange]);
   const loadInFlightRef = React.useRef(false);
   const seqRef = React.useRef(0);
   const load = React.useCallback(async (quiet = false) => {
@@ -2744,7 +2740,6 @@ function BridgePanel({ rpcCall }) {
   const [showUnlockModal, setShowUnlockModal] = React.useState(false);
   const fetchLoopbackToken = React.useCallback(async () => {
     if (!isLocalhost) return null;
-    const currentPort = typeof window !== "undefined" ? window.location.port || (window.location.protocol === "https:" ? "443" : "80") : "3082";
     const proxyPort = status?.proxy?.port || 3082;
     const candidateUrls = [
       "/__dsh_bridge__/loopback-token",
@@ -3085,10 +3080,7 @@ function BridgePanel({ rpcCall }) {
         platformId: selectedPlatform,
         platformName: IM_PLATFORMS.find((p) => p.id === selectedPlatform)?.label ?? selectedPlatform,
         platformDesc: IM_PLATFORMS.find((p) => p.id === selectedPlatform)?.desc ?? "",
-        rpcCall: authRpcCall,
-        onStatusChange: () => {
-        }
-        // 状态变化已由 listPlatforms 轮询处理，不需要回调
+        rpcCall: authRpcCall
       })
     );
   }
