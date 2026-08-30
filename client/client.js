@@ -170,6 +170,7 @@ var s = {
   tag: { display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "3px 10px", borderRadius: 999, fontSize: 12, fontWeight: 500, whiteSpace: "nowrap", flexShrink: 0, minWidth: "max-content", lineHeight: 1.4 },
   input: { width: "100%", font: "inherit", fontSize: 13, padding: "7px 10px", borderRadius: 8, border: "1px solid var(--dsw-alias-border-l2,#d1d5db)", background: "var(--dsw-alias-bg-layer-2,#f9fafb)", color: "var(--dsw-alias-label-primary,currentColor)", outline: "none", boxSizing: "border-box" },
   warn: { background: "var(--dsw-alias-state-warn-bg,#fffbeb)", border: "1px solid var(--dsw-alias-state-warn-border,#fde68a)", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "var(--dsw-alias-state-warn-primary,#92400e)", lineHeight: 1.6 },
+  err: { background: "var(--dsw-alias-state-error-bg,#fef2f2)", border: "1px solid var(--dsw-alias-state-error-border,#fecaca)", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "var(--dsw-alias-state-error-primary,#991b1b)", lineHeight: 1.6 },
   tip: { background: "var(--dsw-alias-bg-layer-2,#f9fafb)", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "var(--dsw-alias-label-secondary,#6b7280)", lineHeight: 1.6 }
 };
 var Icons = {
@@ -1372,11 +1373,15 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
   }, [platformId]);
   const saveConfig = React.useCallback(async () => {
     if (!cfgDraft) return;
+    const num = (v, fallback) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : fallback;
+    };
     const payload = {
-      digestIntervalSec: Number(cfgDraft.digestIntervalSec),
-      approvalTimeoutSec: Number(cfgDraft.approvalTimeoutSec),
-      maxMessageChars: Number(cfgDraft.maxMessageChars),
-      sendChunkDelayMs: Number(cfgDraft.sendChunkDelayMs)
+      digestIntervalSec: num(cfgDraft.digestIntervalSec, platform?.config?.digestIntervalSec ?? 300),
+      approvalTimeoutSec: num(cfgDraft.approvalTimeoutSec, platform?.config?.approvalTimeoutSec ?? 600),
+      maxMessageChars: num(cfgDraft.maxMessageChars, platform?.config?.maxMessageChars ?? 2e3),
+      sendChunkDelayMs: num(cfgDraft.sendChunkDelayMs, platform?.config?.sendChunkDelayMs ?? 1500)
     };
     if (platformId === "qq") {
       payload.appId = cfgDraft.appId.trim();
@@ -2149,28 +2154,41 @@ function BackupRestoreWidget({ rpcCall, onUpdate }) {
     }, msg.text)
   );
 }
-function RestartDshCard({ rpcCall }) {
+function useDshRestart({ rpcCall, maxAttempts = 30, texts = {} } = {}) {
+  const T = {
+    restarting: "\u6B63\u5728\u5411 DSH \u670D\u52A1\u53D1\u9001\u91CD\u542F\u6307\u4EE4\u2026",
+    reconnecting: "DSH \u670D\u52A1\u6B63\u5728\u91CD\u542F\u4E2D\uFF0C\u6B63\u5728\u81EA\u52A8\u91CD\u65B0\u8FDE\u63A5\u2026",
+    success: "\u{1F389} \u91CD\u542F\u6210\u529F\uFF01\u5DF2\u91CD\u65B0\u5EFA\u7ACB\u8FDE\u63A5\uFF0C\u6B63\u5728\u5237\u65B0\u9875\u9762\u2026",
+    timeout: "\u91CD\u8FDE\u7B49\u5F85\u8D85\u65F6\uFF0C\u8BF7\u624B\u52A8\u5237\u65B0\u9875\u9762\u3002",
+    ...texts
+  };
   const [restarting, setRestarting] = React.useState(false);
   const [status, setStatus] = React.useState(null);
-  const handleRestart = async () => {
+  const pollRef = React.useRef(null);
+  const reloadRef = React.useRef(null);
+  React.useEffect(() => () => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    if (reloadRef.current) clearTimeout(reloadRef.current);
+  }, []);
+  const startRestart = React.useCallback(async () => {
     setRestarting(true);
-    setStatus({ phase: "restarting", text: "\u6B63\u5728\u5411 DSH \u670D\u52A1\u53D1\u9001\u91CD\u542F\u6307\u4EE4\u2026" });
+    setStatus({ phase: "restarting", text: T.restarting });
     try {
       await rpcCall(BRIDGE_ENDPOINTS.restartDsh, {});
     } catch {
     }
-    setStatus({ phase: "reconnecting", text: "DSH \u670D\u52A1\u6B63\u5728\u91CD\u542F\u4E2D\uFF0C\u6B63\u5728\u81EA\u52A8\u91CD\u65B0\u8FDE\u63A5\u2026" });
+    setStatus({ phase: "reconnecting", text: T.reconnecting });
     await new Promise((r) => setTimeout(r, 2e3));
     let attempts = 0;
-    const maxAttempts = 30;
-    const pollHealth = setInterval(async () => {
+    pollRef.current = setInterval(async () => {
       attempts++;
       try {
         const r = await rpcCall(BRIDGE_ENDPOINTS.checkVersion, {});
         if (r?.ok) {
-          clearInterval(pollHealth);
-          setStatus({ phase: "success", text: "\u{1F389} \u91CD\u542F\u6210\u529F\uFF01\u5DF2\u91CD\u65B0\u5EFA\u7ACB\u8FDE\u63A5\uFF0C\u6B63\u5728\u5237\u65B0\u9875\u9762\u2026" });
-          setTimeout(() => {
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+          setStatus({ phase: "success", text: T.success });
+          reloadRef.current = setTimeout(() => {
             window.location.reload();
           }, 1e3);
           return;
@@ -2178,12 +2196,18 @@ function RestartDshCard({ rpcCall }) {
       } catch {
       }
       if (attempts >= maxAttempts) {
-        clearInterval(pollHealth);
-        setStatus({ phase: "timeout", text: "\u91CD\u8FDE\u7B49\u5F85\u8D85\u65F6\uFF0C\u8BF7\u624B\u52A8\u5237\u65B0\u9875\u9762\u3002" });
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+        setStatus({ phase: "timeout", text: T.timeout });
         setRestarting(false);
       }
     }, 1e3);
-  };
+  }, [rpcCall, maxAttempts]);
+  const resetStatus = React.useCallback(() => setStatus(null), []);
+  return { restarting, status, startRestart, resetStatus };
+}
+function RestartDshCard({ rpcCall }) {
+  const { restarting, status, startRestart: handleRestart } = useDshRestart({ rpcCall });
   return React.createElement(
     "div",
     { style: { ...s.card, marginBottom: 16 } },
@@ -2272,8 +2296,6 @@ function RemoteWorkspaceCard({ rpcCall }) {
         onClick: () => {
           if (typeof window.__dshOpenRemoteWorkspaceModal === "function") {
             window.__dshOpenRemoteWorkspaceModal();
-          } else if (typeof showRemoteWorkspaceDialog === "function") {
-            showRemoteWorkspaceDialog(rpcCall, () => load());
           }
         }
       }, "+ \u8FDC\u7A0B\u6DFB\u52A0\u5DE5\u4F5C\u533A")
@@ -2330,14 +2352,20 @@ function VersionBanner({ rpcCall }) {
   const [upgrading, setUpgrading] = React.useState(false);
   const [upgradeResult, setUpgradeResult] = React.useState(null);
   const [showManual, setShowManual] = React.useState(false);
-  const [restarting, setRestarting] = React.useState(false);
-  const [restartStatus, setRestartStatus] = React.useState(null);
   const [dismissRestart, setDismissRestart] = React.useState(false);
+  const { restarting, status: restartStatus, startRestart: handleRestart, resetStatus: resetRestartStatus } = useDshRestart({
+    rpcCall,
+    texts: {
+      restarting: "\u6B63\u5728\u8C03\u5EA6 DSH \u670D\u52A1\u91CD\u542F\u2026",
+      success: "\u{1F389} \u91CD\u542F\u6210\u529F\uFF01\u5DF2\u81EA\u52A8\u52A0\u8F7D\u6700\u65B0\u7248\u672C\u3002\u6B63\u5728\u5237\u65B0\u9875\u9762\u2026"
+    }
+  });
   const check = React.useCallback(async () => {
     setLoading(true);
     try {
       const r = await rpcCall(BRIDGE_ENDPOINTS.checkVersion, {});
       if (r?.ok) setInfo(r.value);
+    } catch {
     } finally {
       setLoading(false);
     }
@@ -2352,7 +2380,7 @@ function VersionBanner({ rpcCall }) {
     setUpgrading(true);
     setUpgradeResult(null);
     setDismissRestart(false);
-    setRestartStatus(null);
+    resetRestartStatus();
     try {
       const r = await rpcCall(BRIDGE_ENDPOINTS.upgradePlugin, { version: info.latest });
       if (r?.ok && r.value?.ok) {
@@ -2368,38 +2396,6 @@ function VersionBanner({ rpcCall }) {
       setUpgrading(false);
     }
   }, [info?.latest, upgrading, rpcCall]);
-  const handleRestart = React.useCallback(async () => {
-    setRestarting(true);
-    setRestartStatus({ phase: "restarting", text: "\u6B63\u5728\u8C03\u5EA6 DSH \u670D\u52A1\u91CD\u542F\u2026" });
-    try {
-      await rpcCall(BRIDGE_ENDPOINTS.restartDsh, {});
-    } catch {
-    }
-    setRestartStatus({ phase: "reconnecting", text: "DSH \u670D\u52A1\u6B63\u5728\u91CD\u542F\u4E2D\uFF0C\u6B63\u5728\u81EA\u52A8\u91CD\u65B0\u8FDE\u63A5\u2026" });
-    await new Promise((r) => setTimeout(r, 2e3));
-    let attempts = 0;
-    const maxAttempts = 30;
-    const pollHealth = setInterval(async () => {
-      attempts++;
-      try {
-        const r = await rpcCall(BRIDGE_ENDPOINTS.checkVersion, {});
-        if (r?.ok) {
-          clearInterval(pollHealth);
-          setRestartStatus({ phase: "success", text: "\u{1F389} \u91CD\u542F\u6210\u529F\uFF01\u5DF2\u81EA\u52A8\u52A0\u8F7D\u6700\u65B0\u7248\u672C\u3002\u6B63\u5728\u5237\u65B0\u9875\u9762\u2026" });
-          setTimeout(() => {
-            window.location.reload();
-          }, 1e3);
-          return;
-        }
-      } catch {
-      }
-      if (attempts >= maxAttempts) {
-        clearInterval(pollHealth);
-        setRestartStatus({ phase: "timeout", text: "\u91CD\u8FDE\u7B49\u5F85\u8D85\u65F6\uFF0C\u8BF7\u624B\u52A8\u5237\u65B0\u9875\u9762\u3002" });
-        setRestarting(false);
-      }
-    }, 1e3);
-  }, [rpcCall]);
   const links = React.createElement(
     "div",
     { style: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" } },

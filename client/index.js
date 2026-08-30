@@ -111,6 +111,7 @@ const s = {
   tag:      { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap', flexShrink: 0, minWidth: 'max-content', lineHeight: 1.4 },
   input:    { width: '100%', font: 'inherit', fontSize: 13, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--dsw-alias-border-l2,#d1d5db)', background: 'var(--dsw-alias-bg-layer-2,#f9fafb)', color: 'var(--dsw-alias-label-primary,currentColor)', outline: 'none', boxSizing: 'border-box' },
   warn:     { background: 'var(--dsw-alias-state-warn-bg,#fffbeb)', border: '1px solid var(--dsw-alias-state-warn-border,#fde68a)', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: 'var(--dsw-alias-state-warn-primary,#92400e)', lineHeight: 1.6 },
+  err:      { background: 'var(--dsw-alias-state-error-bg,#fef2f2)', border: '1px solid var(--dsw-alias-state-error-border,#fecaca)', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: 'var(--dsw-alias-state-error-primary,#991b1b)', lineHeight: 1.6 },
   tip:      { background: 'var(--dsw-alias-bg-layer-2,#f9fafb)', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: 'var(--dsw-alias-label-secondary,#6b7280)', lineHeight: 1.6 },
 };
 
@@ -1183,11 +1184,16 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
   // 高级设置保存
   const saveConfig = React.useCallback(async () => {
     if (!cfgDraft) return;
+    // 非法数字输入回落到当前配置值/默认值，避免 NaN 发到服务端且使 cfgDirty 永真
+    const num = (v, fallback) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : fallback;
+    };
     const payload = {
-      digestIntervalSec:  Number(cfgDraft.digestIntervalSec),
-      approvalTimeoutSec: Number(cfgDraft.approvalTimeoutSec),
-      maxMessageChars:    Number(cfgDraft.maxMessageChars),
-      sendChunkDelayMs:   Number(cfgDraft.sendChunkDelayMs),
+      digestIntervalSec:  num(cfgDraft.digestIntervalSec,  platform?.config?.digestIntervalSec  ?? 300),
+      approvalTimeoutSec: num(cfgDraft.approvalTimeoutSec, platform?.config?.approvalTimeoutSec ?? 600),
+      maxMessageChars:    num(cfgDraft.maxMessageChars,    platform?.config?.maxMessageChars    ?? 2000),
+      sendChunkDelayMs:   num(cfgDraft.sendChunkDelayMs,   platform?.config?.sendChunkDelayMs   ?? 1500),
     };
     // QQ / 飞书 / Telegram 平台额外携带凭证
     if (platformId === 'qq') {
@@ -1846,41 +1852,71 @@ function BackupRestoreWidget({ rpcCall, onUpdate }) {
 }
 
 // 运维 Tab 内的手动重启 DSH 服务小卡片
-function RestartDshCard({ rpcCall }) {
+// 重启 + 健康轮询公共逻辑：定时器保存在 ref 中，组件卸载即清理。
+// 修复点：原先两处复制粘贴的 setInterval 不随组件卸载清理，用户切走 Tab 后
+// 轮询仍会继续运行，并在服务恢复时无条件执行 window.location.reload()。
+function useDshRestart({ rpcCall, maxAttempts = 30, texts = {} } = {}) {
+  const T = {
+    restarting: '正在向 DSH 服务发送重启指令…',
+    reconnecting: 'DSH 服务正在重启中，正在自动重新连接…',
+    success: '🎉 重启成功！已重新建立连接，正在刷新页面…',
+    timeout: '重连等待超时，请手动刷新页面。',
+    ...texts,
+  };
   const [restarting, setRestarting] = React.useState(false);
   const [status, setStatus] = React.useState(null);
+  const pollRef = React.useRef(null);
+  const reloadRef = React.useRef(null);
 
-  const handleRestart = async () => {
+  React.useEffect(() => () => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    if (reloadRef.current) clearTimeout(reloadRef.current);
+  }, []);
+
+  const startRestart = React.useCallback(async () => {
     setRestarting(true);
-    setStatus({ phase: 'restarting', text: '正在向 DSH 服务发送重启指令…' });
+    setStatus({ phase: 'restarting', text: T.restarting });
     try {
       await rpcCall(BRIDGE_ENDPOINTS.restartDsh, {});
-    } catch {}
+    } catch {
+      // 服务可能瞬间关闭导致连接断开，忽略
+    }
 
-    setStatus({ phase: 'reconnecting', text: 'DSH 服务正在重启中，正在自动重新连接…' });
+    setStatus({ phase: 'reconnecting', text: T.reconnecting });
     await new Promise(r => setTimeout(r, 2000));
 
     let attempts = 0;
-    const maxAttempts = 30;
-    const pollHealth = setInterval(async () => {
+    pollRef.current = setInterval(async () => {
       attempts++;
       try {
         const r = await rpcCall(BRIDGE_ENDPOINTS.checkVersion, {});
         if (r?.ok) {
-          clearInterval(pollHealth);
-          setStatus({ phase: 'success', text: '🎉 重启成功！已重新建立连接，正在刷新页面…' });
-          setTimeout(() => { window.location.reload(); }, 1000);
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+          setStatus({ phase: 'success', text: T.success });
+          reloadRef.current = setTimeout(() => { window.location.reload(); }, 1000);
           return;
         }
-      } catch {}
+      } catch {
+        // 仍在启动中，继续等待
+      }
 
       if (attempts >= maxAttempts) {
-        clearInterval(pollHealth);
-        setStatus({ phase: 'timeout', text: '重连等待超时，请手动刷新页面。' });
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+        setStatus({ phase: 'timeout', text: T.timeout });
         setRestarting(false);
       }
     }, 1000);
-  };
+  }, [rpcCall, maxAttempts]);
+
+  const resetStatus = React.useCallback(() => setStatus(null), []);
+
+  return { restarting, status, startRestart, resetStatus };
+}
+
+function RestartDshCard({ rpcCall }) {
+  const { restarting, status, startRestart: handleRestart } = useDshRestart({ rpcCall });
 
   return React.createElement('div', { style: { ...s.card, marginBottom: 16 } },
     React.createElement('div', { style: { marginBottom: 10 } },
@@ -1954,8 +1990,6 @@ function RemoteWorkspaceCard({ rpcCall }) {
         onClick: () => {
           if (typeof window.__dshOpenRemoteWorkspaceModal === 'function') {
             window.__dshOpenRemoteWorkspaceModal();
-          } else if (typeof showRemoteWorkspaceDialog === 'function') {
-            showRemoteWorkspaceDialog(rpcCall, () => load());
           }
         },
       }, '+ 远程添加工作区'),
@@ -2008,15 +2042,22 @@ function VersionBanner({ rpcCall }) {
   const [upgrading, setUpgrading] = React.useState(false);
   const [upgradeResult, setUpgradeResult] = React.useState(null);
   const [showManual, setShowManual] = React.useState(false);
-  const [restarting, setRestarting] = React.useState(false);
-  const [restartStatus, setRestartStatus] = React.useState(null);
   const [dismissRestart, setDismissRestart] = React.useState(false);
+  const { restarting, status: restartStatus, startRestart: handleRestart, resetStatus: resetRestartStatus } = useDshRestart({
+    rpcCall,
+    texts: {
+      restarting: '正在调度 DSH 服务重启…',
+      success: '🎉 重启成功！已自动加载最新版本。正在刷新页面…',
+    },
+  });
 
   const check = React.useCallback(async () => {
     setLoading(true);
     try {
       const r = await rpcCall(BRIDGE_ENDPOINTS.checkVersion, {});
       if (r?.ok) setInfo(r.value);
+    } catch {
+      // 版本检查失败：保留现有 info，不打断面板
     } finally {
       setLoading(false);
     }
@@ -2032,7 +2073,7 @@ function VersionBanner({ rpcCall }) {
     setUpgrading(true);
     setUpgradeResult(null);
     setDismissRestart(false);
-    setRestartStatus(null);
+    resetRestartStatus();
     try {
       const r = await rpcCall(BRIDGE_ENDPOINTS.upgradePlugin, { version: info.latest });
       if (r?.ok && r.value?.ok) {
@@ -2048,46 +2089,6 @@ function VersionBanner({ rpcCall }) {
       setUpgrading(false);
     }
   }, [info?.latest, upgrading, rpcCall]);
-
-  const handleRestart = React.useCallback(async () => {
-    setRestarting(true);
-    setRestartStatus({ phase: 'restarting', text: '正在调度 DSH 服务重启…' });
-    try {
-      await rpcCall(BRIDGE_ENDPOINTS.restartDsh, {});
-    } catch {
-      // 忽略 RPC 错误（因为服务可能瞬间关闭导致网络连接断开）
-    }
-
-    setRestartStatus({ phase: 'reconnecting', text: 'DSH 服务正在重启中，正在自动重新连接…' });
-
-    // 等待 2 秒后开始健康检查轮询
-    await new Promise(r => setTimeout(r, 2000));
-
-    let attempts = 0;
-    const maxAttempts = 30; // 最多探测 30 次（约 30 秒）
-    const pollHealth = setInterval(async () => {
-      attempts++;
-      try {
-        const r = await rpcCall(BRIDGE_ENDPOINTS.checkVersion, {});
-        if (r?.ok) {
-          clearInterval(pollHealth);
-          setRestartStatus({ phase: 'success', text: '🎉 重启成功！已自动加载最新版本。正在刷新页面…' });
-          setTimeout(() => {
-            window.location.reload();
-          }, 1000);
-          return;
-        }
-      } catch {
-        // 仍在启动中，继续等待
-      }
-
-      if (attempts >= maxAttempts) {
-        clearInterval(pollHealth);
-        setRestartStatus({ phase: 'timeout', text: '重连等待超时，请手动刷新页面。' });
-        setRestarting(false);
-      }
-    }, 1000);
-  }, [rpcCall]);
 
   const links = React.createElement('div', { style: { display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' } },
     React.createElement('a', {
