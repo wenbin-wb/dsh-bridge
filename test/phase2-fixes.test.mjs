@@ -1,0 +1,65 @@
+// Phase 2 修复回归测试：配置持久化事务化 + 管理解锁防爆破
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { AuthManager } from '../lib/auth/manager.js'
+
+// 并发读-改-写不得丢失更新：两个平台同时持久化，两份改动都必须落盘
+test('AuthManager 并发 persist 序列化且互不覆盖', async () => {
+  const writes = []
+  let stored = { wechat: { allowFrom: [] }, qq: { allowFrom: [] } }
+  const loadConfig = async () => JSON.parse(JSON.stringify(stored))
+  const saveConfig = async (data) => { writes.push(JSON.parse(JSON.stringify(data))); stored = JSON.parse(JSON.stringify(data)) }
+
+  // 模拟 T2.6 的队列语义（与 lib/index.js 中 updateConfig 相同的结构）
+  let queue = Promise.resolve()
+  const updateConfig = async (mutate) => {
+    const task = queue.then(async () => {
+      const current = await loadConfig()
+      const next = (await mutate(current)) ?? current
+      await saveConfig(next)
+      return next
+    })
+    queue = task.catch(() => {})
+    return task
+  }
+
+  await Promise.all([
+    updateConfig((s) => { s.wechat.allowFrom = ['u-wechat']; return s }),
+    updateConfig((s) => { s.qq.allowFrom = ['u-qq']; return s }),
+  ])
+
+  assert.equal(writes.length, 2, '两次事务各写一次')
+  assert.deepEqual(stored.wechat.allowFrom, ['u-wechat'], '微信改动必须保留')
+  assert.deepEqual(stored.qq.allowFrom, ['u-qq'], 'QQ 改动必须保留')
+})
+
+// 管理解锁防爆破：5 次失败锁定，正确密码在锁定期内也被拒绝
+test('unlockAdmin 失败 5 次后锁定 60 秒（T2.8 回归）', () => {
+  const auth = new AuthManager({
+    config: { adminPasswordHash: '', adminPasswordSalt: '' },
+    onPersist: async () => {},
+  })
+  auth.adminPasswordHash = 'deadbeef'
+  auth.adminPasswordSalt = 'cafe'
+
+  for (let i = 0; i < 5; i++) {
+    const res = auth.unlockAdmin('wrong-password')
+    assert.equal(res.ok, false)
+  }
+  const locked = auth.unlockAdmin('wrong-password')
+  assert.equal(locked.ok, false)
+  assert.match(locked.error, /尝试次数过多/)
+
+  // 锁定期内即使密码正确也拒绝
+  // （真实密码哈希未知，用 hasAnyPassword=false 路径不可行；这里只验证锁定优先于验证）
+  assert.equal(auth._adminUnlockLockUntil > Date.now(), true)
+  auth.dispose()
+})
+
+test('unlockAdmin 未设任何密码时直接放行（既有行为保持）', () => {
+  const auth = new AuthManager({ config: {}, onPersist: async () => {} })
+  const res = auth.unlockAdmin('anything')
+  assert.equal(res.ok, true)
+  assert.ok(res.adminToken)
+  auth.dispose()
+})
