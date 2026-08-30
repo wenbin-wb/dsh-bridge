@@ -236,6 +236,32 @@ var Icons = {
     React.createElement("path", { d: "M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" })
   )
 };
+function useCopy() {
+  const [copied, setCopied] = React.useState(false);
+  const copy = React.useCallback((text) => {
+    const done = () => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2e3);
+    };
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy());
+    } else {
+      fallbackCopy();
+    }
+    function fallbackCopy() {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      const success = document.execCommand("copy");
+      document.body.removeChild(textarea);
+      if (success) done();
+    }
+  }, []);
+  return [copied, copy];
+}
 function StatusTag({ running, status }) {
   let bg = "var(--dsw-alias-bg-layer-2,#f3f4f6)";
   let color = "var(--dsw-alias-label-secondary,#6b7280)";
@@ -2282,6 +2308,20 @@ function RemoteWorkspaceCard({ rpcCall }) {
     ) : React.createElement("div", {
       style: { ...s.muted, marginTop: 6, padding: "10px 14px", background: "var(--dsw-alias-bg-layer-1,#ffffff)", border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", borderRadius: 8, textAlign: "center" }
     }, loading ? "\u6B63\u5728\u8BFB\u53D6\u5DE5\u4F5C\u533A\u5217\u8868\u2026" : "\u6682\u65E0\u5DF2\u6CE8\u518C\u5DE5\u4F5C\u533A\uFF0C\u70B9\u51FB\u53F3\u4E0A\u89D2\u300C+ \u8FDC\u7A0B\u6DFB\u52A0\u5DE5\u4F5C\u533A\u300D\u5373\u53EF\u6D4F\u89C8\u6DFB\u52A0\u3002")
+  );
+}
+function UpgradeCommandRow({ cmd }) {
+  const [copied, copy] = useCopy();
+  return React.createElement(
+    "div",
+    { style: { display: "flex", gap: 6, alignItems: "center" } },
+    React.createElement("code", {
+      style: { ...s.code, flex: "1 1 auto", fontSize: 12, lineHeight: 1.5, wordBreak: "break-all" }
+    }, cmd),
+    React.createElement("button", {
+      style: { ...s.btnGhost, height: 26, padding: "0 10px", fontSize: 11, flex: "0 0 auto" },
+      onClick: () => copy(cmd)
+    }, copied ? "\u2713 \u5DF2\u590D\u5236" : "\u590D\u5236")
   );
 }
 function VersionBanner({ rpcCall }) {

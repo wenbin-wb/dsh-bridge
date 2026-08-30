@@ -1987,6 +1987,20 @@ function RemoteWorkspaceCard({ rpcCall }) {
   );
 }
 
+// 手动升级命令行：展示命令 + 一键复制
+function UpgradeCommandRow({ cmd }) {
+  const [copied, copy] = useCopy();
+  return React.createElement('div', { style: { display: 'flex', gap: 6, alignItems: 'center' } },
+    React.createElement('code', {
+      style: { ...s.code, flex: '1 1 auto', fontSize: 12, lineHeight: 1.5, wordBreak: 'break-all' },
+    }, cmd),
+    React.createElement('button', {
+      style: { ...s.btnGhost, height: 26, padding: '0 10px', fontSize: 11, flex: '0 0 auto' },
+      onClick: () => copy(cmd),
+    }, copied ? '✓ 已复制' : '复制'),
+  );
+}
+
 // 版本检查 + 一键升级 + GitHub/反馈入口
 function VersionBanner({ rpcCall }) {
   const [info, setInfo] = React.useState(null);
