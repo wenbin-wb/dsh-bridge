@@ -51,6 +51,10 @@ function makeMockCtx(extra = {}) {
       resume: async ({ resumeSessionId }) => ({ agent: { session: { id: resumeSessionId }, followup: () => {}, status: 'idle', cancel: () => {} } }),
       get: () => undefined,
     },
+    // 内存优先的存储注入点：避免 dsh-storage.js 的磁盘兜底读到开发机真实的 ~/.dsh
+    // （旧实现靠 ctx._mock 后门跳过磁盘读取，拆分后由这里显式提供内存服务/缓存）
+    workspaceRegistry: { archivedSessionIds: [], list: async () => [] },
+    sessionProjCache: {},
     ...extra,
   }
   return { ctx, events }
@@ -444,6 +448,7 @@ test('ConversationBridge listSessions 严格过滤已归档会话（内存与持
 
   ctx.workspaceRegistry = {
     archivedSessionIds: ['archived-s1', 'archived-s2'],
+    list: async () => [], // 内存服务齐全，避免 dsh-storage 磁盘兜底读到真实 ~/.dsh
   }
   ctx.sessions.list = () => [
     { id: 'live-s1', header: { createdAt: 100, cwd: '/app' }, events: [{ type: 'session/title', data: { title: '活跃会话1' } }] },
