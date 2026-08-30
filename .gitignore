@@ -56,6 +56,9 @@ bin/cloudflared*
 # Debug
 debug.log
 
+# AI agent local skills and workspace data
+.agents/
+
 # Credentials (never commit)
 .credentials
 
