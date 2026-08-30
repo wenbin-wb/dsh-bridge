@@ -63,3 +63,36 @@ test('unlockAdmin 未设任何密码时直接放行（既有行为保持）', ()
   assert.ok(res.adminToken)
   auth.dispose()
 })
+
+// T2.4：审批决议发起者校验——非发起者回复 /yes 不得批准
+test('resolveApproval 校验发起者，他人 /yes 被拒绝', () => {
+  const { ctx } = { ctx: { on: () => () => {}, emit: () => {}, logger: { warn() {}, info() {}, error() {} } } }
+  return import('../lib/platform/index.js').then(({ ConversationBridge }) => {
+    const platform = { id: 'mock', sendText: async () => ({ success: true }) }
+    const bridge = new ConversationBridge({ ctx, logger: ctx.logger, config: { allowFrom: ['u1'] }, platform })
+    let decision = null
+    bridge.registerApproval(1, { number: 1, request: {}, peerId: 'u1', resolve: (v) => { decision = v }, timer: null })
+
+    // 他人决议：拒绝生效
+    assert.equal(bridge.resolveApproval('/yes', 'u-evil'), false)
+    assert.equal(decision, null)
+    // 发起者决议：生效
+    assert.equal(bridge.resolveApproval('/yes', 'u1'), true)
+    assert.equal(decision, 'allowed-once')
+    bridge.dispose()
+  })
+})
+
+// T2.5：群聊自动授权必须显式开启（默认关闭）
+test('群聊消息在白名单非空且未开启 groupAutoApprove 时不再自动授权', async () => {
+  const { ConversationBridge } = await import('../lib/platform/index.js')
+  const ctx = { on: () => () => {}, emit: () => {}, logger: { warn() {}, info() {}, error() {} }, sessions: { list: () => [] }, agents: { get: () => undefined } }
+  const platform = { id: 'mock', capabilities: { supportsGroup: true }, sendText: async () => ({ success: true }) }
+  const bridge = new ConversationBridge({ ctx, logger: ctx.logger, config: { allowFrom: ['u1'] }, platform })
+  bridge.activeSessionId = 's1'
+
+  const out = await bridge.handleInbound({ senderId: 'u-stranger', text: 'hello', isGroup: true })
+  assert.equal(out, 'ignored', '陌生群成员不应被自动授权')
+  assert.deepEqual(bridge.config.allowFrom, ['u1'])
+  bridge.dispose()
+})
