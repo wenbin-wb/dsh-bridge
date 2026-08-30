@@ -96,3 +96,43 @@ test('群聊消息在白名单非空且未开启 groupAutoApprove 时不再自�
   assert.deepEqual(bridge.config.allowFrom, ['u1'])
   bridge.dispose()
 })
+
+// T2.10：loopback-token 的 CORS 收敛——真实 HTTP 层验证陌生 Origin 不回显 ACAO
+test('ProxyServer loopback-token 仅对白名单 Origin 放开跨域', async () => {
+  const { ProxyServer } = await import('../lib/index.js')
+  const { request } = await import('node:http')
+  const proxy = new ProxyServer({
+    localPort: 0, targetPort: 1, authManager: null,
+    logger: { info() {}, error() {} },
+    allowedOrigins: () => ['http://127.0.0.1:30882', 'http://192.168.1.5:30882'],
+  })
+  await proxy.start()
+  try {
+    const port = proxy.server.address().port
+    const call = (method, origin) => new Promise((resolve, reject) => {
+      const req = request({ host: '127.0.0.1', port, method, path: '/__dsh_bridge__/loopback-token',
+        headers: origin ? { origin } : {} }, (res) => {
+        const chunks = []
+        res.on('data', (c) => chunks.push(c))
+        res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks).toString() }))
+      })
+      req.on('error', reject)
+      req.end()
+    })
+
+    const preflightEvil = await call('OPTIONS', 'https://evil.example')
+    assert.equal(preflightEvil.status, 204)
+    assert.equal(preflightEvil.headers['access-control-allow-origin'], undefined, '陌生来源不得获得 ACAO 回显')
+    assert.equal(preflightEvil.headers.vary, 'Origin')
+
+    const preflightGood = await call('OPTIONS', 'http://192.168.1.5:30882')
+    assert.equal(preflightGood.status, 204)
+    assert.equal(preflightGood.headers['access-control-allow-origin'], 'http://192.168.1.5:30882')
+
+    const post = await call('POST', 'https://evil.example')
+    assert.equal(post.status, 403, 'authManager 缺失时拒绝签发')
+    assert.equal(post.headers['access-control-allow-origin'], undefined)
+  } finally {
+    await proxy.stop()
+  }
+})
