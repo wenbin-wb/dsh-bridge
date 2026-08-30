@@ -222,7 +222,7 @@ Open **"Security"** tab to establish bank-grade protection for your local develo
 
 #### 3. 🛟 Triple Disaster Recovery (Never Locked Out)
 - **Host Physical Privilege**: PC localhost (`127.0.0.1`) enjoys permanent highest privilege, never locked;
-- **Terminal Emergency Reset**: Run `touch ~/.dsh-bridge/reset-auth` in terminal to reset passwords instantly;
+- **Terminal Emergency Reset**: Run `touch ~/.dsh/dsh-bridge/reset-auth` in terminal to reset passwords instantly;
 - **Interactive Guidance**: Built-in interactive recovery guides on all auth pages.
 
 ---

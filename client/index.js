@@ -2793,7 +2793,7 @@ function BridgePanel({ rpcCall }) {
           },
             React.createElement('div', { style: { fontWeight: 600, color: 'var(--dsw-alias-label-primary,currentColor)', marginBottom: 4 } }, '🛟 救急解除锁定指引：'),
             React.createElement('div', null, '1. ', React.createElement('strong', null, '电脑本机直连修改'), '：直接在运行本程序的电脑本机打开本控制台（127.0.0.1 享有物理免锁特权），可随时修改策略或清除密码。'),
-            React.createElement('div', { style: { marginTop: 4 } }, '2. ', React.createElement('strong', null, '服务器救急指令'), '：在宿主电脑/服务器终端执行 ', React.createElement('code', { style: s.code }, 'touch ~/.dsh/dsh-bridge/reset-auth'), ' 即可瞬间清空密码恢复初始状态。'),
+            React.createElement('div', { style: { marginTop: 4 } }, '2. ', React.createElement('strong', null, '服务器 / 无头环境'), '：救急重置步骤参见 GitHub README 的「三重容灾保命体系」章节。'),
           ),
         )
       ) : (
@@ -2844,7 +2844,7 @@ function BridgePanel({ rpcCall }) {
           },
             React.createElement('div', { style: { fontWeight: 600, color: 'var(--dsw-alias-label-primary,currentColor)', marginBottom: 4 } }, '🛟 找回与重置密码指引：'),
             React.createElement('div', null, '1. ', React.createElement('strong', null, '电脑本机直连修改'), '：直接在运行本程序的电脑本机打开本控制台（127.0.0.1 享有物理免锁特权），可随时修改管理密码。'),
-            React.createElement('div', { style: { marginTop: 4 } }, '2. ', React.createElement('strong', null, '服务器救急指令'), '：在宿主电脑终端执行 ', React.createElement('code', { style: s.code }, 'touch ~/.dsh/dsh-bridge/reset-auth'), ' 即可瞬间清空密码恢复初始状态。'),
+            React.createElement('div', { style: { marginTop: 4 } }, '2. ', React.createElement('strong', null, '服务器 / 无头环境'), '：救急重置步骤参见 GitHub README 的「三重容灾保命体系」章节。'),
           ),
         )
       )

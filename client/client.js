@@ -3131,7 +3131,7 @@ function BridgePanel({ rpcCall }) {
           },
           React.createElement("div", { style: { fontWeight: 600, color: "var(--dsw-alias-label-primary,currentColor)", marginBottom: 4 } }, "\u{1F6DF} \u6551\u6025\u89E3\u9664\u9501\u5B9A\u6307\u5F15\uFF1A"),
           React.createElement("div", null, "1. ", React.createElement("strong", null, "\u7535\u8111\u672C\u673A\u76F4\u8FDE\u4FEE\u6539"), "\uFF1A\u76F4\u63A5\u5728\u8FD0\u884C\u672C\u7A0B\u5E8F\u7684\u7535\u8111\u672C\u673A\u6253\u5F00\u672C\u63A7\u5236\u53F0\uFF08127.0.0.1 \u4EAB\u6709\u7269\u7406\u514D\u9501\u7279\u6743\uFF09\uFF0C\u53EF\u968F\u65F6\u4FEE\u6539\u7B56\u7565\u6216\u6E05\u9664\u5BC6\u7801\u3002"),
-          React.createElement("div", { style: { marginTop: 4 } }, "2. ", React.createElement("strong", null, "\u670D\u52A1\u5668\u6551\u6025\u6307\u4EE4"), "\uFF1A\u5728\u5BBF\u4E3B\u7535\u8111/\u670D\u52A1\u5668\u7EC8\u7AEF\u6267\u884C ", React.createElement("code", { style: s.code }, "touch ~/.dsh/dsh-bridge/reset-auth"), " \u5373\u53EF\u77AC\u95F4\u6E05\u7A7A\u5BC6\u7801\u6062\u590D\u521D\u59CB\u72B6\u6001\u3002")
+          React.createElement("div", { style: { marginTop: 4 } }, "2. ", React.createElement("strong", null, "\u670D\u52A1\u5668 / \u65E0\u5934\u73AF\u5883"), "\uFF1A\u6551\u6025\u91CD\u7F6E\u6B65\u9AA4\u53C2\u89C1 GitHub README \u7684\u300C\u4E09\u91CD\u5BB9\u707E\u4FDD\u547D\u4F53\u7CFB\u300D\u7AE0\u8282\u3002")
         )
       ) : React.createElement(
         "div",
@@ -3198,7 +3198,7 @@ function BridgePanel({ rpcCall }) {
           },
           React.createElement("div", { style: { fontWeight: 600, color: "var(--dsw-alias-label-primary,currentColor)", marginBottom: 4 } }, "\u{1F6DF} \u627E\u56DE\u4E0E\u91CD\u7F6E\u5BC6\u7801\u6307\u5F15\uFF1A"),
           React.createElement("div", null, "1. ", React.createElement("strong", null, "\u7535\u8111\u672C\u673A\u76F4\u8FDE\u4FEE\u6539"), "\uFF1A\u76F4\u63A5\u5728\u8FD0\u884C\u672C\u7A0B\u5E8F\u7684\u7535\u8111\u672C\u673A\u6253\u5F00\u672C\u63A7\u5236\u53F0\uFF08127.0.0.1 \u4EAB\u6709\u7269\u7406\u514D\u9501\u7279\u6743\uFF09\uFF0C\u53EF\u968F\u65F6\u4FEE\u6539\u7BA1\u7406\u5BC6\u7801\u3002"),
-          React.createElement("div", { style: { marginTop: 4 } }, "2. ", React.createElement("strong", null, "\u670D\u52A1\u5668\u6551\u6025\u6307\u4EE4"), "\uFF1A\u5728\u5BBF\u4E3B\u7535\u8111\u7EC8\u7AEF\u6267\u884C ", React.createElement("code", { style: s.code }, "touch ~/.dsh/dsh-bridge/reset-auth"), " \u5373\u53EF\u77AC\u95F4\u6E05\u7A7A\u5BC6\u7801\u6062\u590D\u521D\u59CB\u72B6\u6001\u3002")
+          React.createElement("div", { style: { marginTop: 4 } }, "2. ", React.createElement("strong", null, "\u670D\u52A1\u5668 / \u65E0\u5934\u73AF\u5883"), "\uFF1A\u6551\u6025\u91CD\u7F6E\u6B65\u9AA4\u53C2\u89C1 GitHub README \u7684\u300C\u4E09\u91CD\u5BB9\u707E\u4FDD\u547D\u4F53\u7CFB\u300D\u7AE0\u8282\u3002")
         )
       )
     );
