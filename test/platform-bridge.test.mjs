@@ -655,3 +655,34 @@ test('QqConversationNode 的 platform.status 透传网关状态，离线时出�
   assert.equal(node.platform.status, 'connected')
   node.dispose()
 })
+
+// ---------------------------------------------------------------------------
+// 回归：出站事件流绑定发起轮次的 peer（T2.3）
+// ---------------------------------------------------------------------------
+
+test('assistant/message 与 turn/end 绑定发起会话的 outboundPeer，而非被覆盖的 peerId', async () => {
+  const { ctx } = makeMockCtx()
+  const platform = new MockPlatform({ ctx, logger: ctx.logger })
+  const bridge = new ConversationBridge({ ctx, logger: ctx.logger, config: { allowFrom: ['a'] }, platform })
+  bridge.activeSessionId = 's-a'
+  ctx.sessions.list = () => [{ id: 's-a', events: [], header: {}, seq: 0 }]
+  ctx.agents.get = () => ({ session: { id: 's-a' }, status: 'idle', followup() {}, cancel() {} })
+
+  await bridge.handleInbound({ senderId: 'a', text: 'run long task', outboundPeer: { peerId: 'chat-a' } })
+  // 模拟任务进行期间 this.peerId 被其他来源覆盖（旧实现会把回复串到别的窗口）
+  bridge.peerId = 'someone-else'
+
+  const session = { id: 's-a', events: [], header: {}, seq: 0 }
+  ctx.emit('session/event', session, { type: 'assistant/message', data: { message: { content: [{ type: 'text', text: 'partial output' }] } } })
+  await new Promise(r => setTimeout(r, 20))
+  const outs = platform.sent.filter(s => s.text === 'partial output')
+  assert.equal(outs.length, 1)
+  assert.equal(outs[0].peerId, 'chat-a', '回复必须发到发起轮次绑定的会话 peer')
+
+  // turn/end 后轮次绑定释放，Map 不累积
+  ctx.emit('session/event', session, { type: 'turn/end', data: { reason: { kind: 'completed' } } })
+  await new Promise(r => setTimeout(r, 20))
+  assert.equal(bridge._turnPeers.has('s-a'), false)
+  bridge.dispose()
+  platform.dispose()
+})
