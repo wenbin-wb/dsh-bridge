@@ -673,7 +673,10 @@ var CloudflareConfigForm = React.memo(function CloudflareConfigForm2({ token, ho
     setSaving(true);
     setMsg(null);
     try {
-      await onSave({ token: tokenVal, hostname: hostnameVal });
+      const patch = {};
+      if (hostnameVal !== (hostname || "")) patch.hostname = hostnameVal;
+      if (tokenVal !== (token || "")) patch.token = tokenVal;
+      if (Object.keys(patch).length > 0) await onSave(patch);
       setMsg({ ok: true, text: "\u2713 \u56FA\u5B9A\u57DF\u540D\u914D\u7F6E\u5DF2\u4FDD\u5B58" });
     } catch (err) {
       setMsg({ ok: false, text: err.message || "\u4FDD\u5B58\u5931\u8D25" });

@@ -558,7 +558,11 @@ const CloudflareConfigForm = React.memo(function CloudflareConfigForm({ token, h
     setSaving(true);
     setMsg(null);
     try {
-      await onSave({ token: tokenVal, hostname: hostnameVal });
+      // 只回传被修改的字段：掩码 '******' 与未变更的 token 都不上传，服务端保留现值
+      const patch = {};
+      if (hostnameVal !== (hostname || '')) patch.hostname = hostnameVal;
+      if (tokenVal !== (token || '')) patch.token = tokenVal;
+      if (Object.keys(patch).length > 0) await onSave(patch);
       setMsg({ ok: true, text: '✓ 固定域名配置已保存' });
     } catch (err) {
       setMsg({ ok: false, text: err.message || '保存失败' });
