@@ -1,8 +1,8 @@
 {
   "name": "@wenbin_wb/dsh-bridge",
-  "version": "2.8.7",
+  "version": "2.9.0",
   "description": "手机扫码即可在移动端/公网继续用 DeepSeek Harness，人不在电脑前也能接着干。一键局域网二维码、Cloudflare 公网隧道、自建隧道与微信 / QQ / 飞书 / Telegram Bot（多工作区/会话持久化/媒体/卡片审批/流式输出），无需自己搭公网服务器。",
-  "releaseNotes": "【v2.8.7 多网卡智能切换与 macOS 升级与隧道自愈加固】\n• 🛜 支持局域网多网卡可视化切换与持久化 (Issue #5)：自动探测并列出物理网卡与虚拟网卡（Wi-Fi、以太网、WSL、VMware、Docker 等），支持在面板一键切换局域网 IP 并记忆持久化，彻底解决多网卡/WSL 下移动端无法访问的问题\n• 🍏 加固 macOS 一键平滑升级：`upgradePlugin` 自动补全 macOS 环境下的全量 PATH 环境变量（自动兼容 Homebrew、NVM 等），并自动优先绑定当前 Node 配对的同级 `npm`/`npx` 绝对路径，杜绝 `spawn ENOENT` 升级失败\n• 🛡️ 优化 macOS Cloudflared 二进制探测与隔离自愈：优先复用系统全局/Homebrew 已安装的 `cloudflared`，网络下载解压后自动移除 Gatekeeper 隔离标记（`xattr -d com.apple.quarantine`）并加入 `--version` 运行期校验自愈",
+  "releaseNotes": "【v2.9.0 全面安全加固与代码质量大修】\n• 🔐 密码哈希 PBKDF2 迭代升级至 600,000（存量旧哈希登录时透明升级，无需重设）；管理解锁防爆破；未设密码时高危操作强制先设密码；loopback-token CORS 收敛；隧道令牌掩码不再覆盖真实值\n• 🐞 修复微信收图必崩、QQ 流式兜底崩溃、面板升级命令渲染崩溃、卸载监听器泄漏、digest Map 无限增长、隧道僵尸与状态失真、/use 编号错位等 10+ 问题\n• 🚦 出站消息串行队列消除乱序与 QQ msgSeq 竞态；入站串行化 + 出站绑定发起会话防串扰；审批发起者校验；群聊授权改显式配置（默认关闭，行为变更）；配置持久化事务化\n• 🧹 引入 eslint + CI 全矩阵测试；conversation-bridge 按职责拆分四模块；平台装配工厂化；删除废弃端点与死代码",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
