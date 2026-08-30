@@ -33,21 +33,8 @@ DSH 的 `session.list` RPC 返回所有会话的完整投影数据。在会话�
 
 ### 修复 1：SSE 流式响应提前返回
 
-<<<<<<< HEAD
-在 `_handleHttpRequest()` 中检测 `text/event-stream` content-type，收集初始数据（2 个 chunk 或 500ms 超时）后立即返回响应，不等 `res.end()`。
+### 修复 1：SSE 流式响应提前返回
 
-### 修复 2：剥离 session.list 中的大字段
-
-对 `/api/session.list` 的 200 响应，解析 JSON 并删除每个会话投影中的 `contextHeaders` 和 `contextTimeline`。
-
-### 修复 3：大响应 gzip 压缩
-
-对超过 100KB 的可压缩响应（`text/*`、`application/json` 等）自动 gzip 压缩，设置 `content-encoding: gzip` 头。
-
-### 修复 4：启用 WebSocket per-message 压缩
-
-将隧道 WebSocket 的 `perMessageDeflate` 从 `false` 改为启用，进一步减少隧道传输量。
-=======
 在 `_handleHttpRequest()` 中检测 `text/event-stream` content-type，收集初始数据（2 个 chunk 或 500ms 超时）后立即返回响应，不等 `res.end()`：
 
 ```javascript
@@ -119,7 +106,6 @@ this.ws = new WebSocket(url.toString(), {
   },
 });
 ```
->>>>>>> pr-21
 
 ## 效果
 
@@ -129,8 +115,6 @@ this.ws = new WebSocket(url.toString(), {
 | `session.list` 隧道传输时间 | 33s (超时) | 0.74s |
 | `/plugins/events` SSE | 504 超时 | 正常返回初始数据 |
 | 侧边栏会话列表 | 不显示 | 正常显示 |
-<<<<<<< HEAD
-=======
 
 ## 影响范围
 
