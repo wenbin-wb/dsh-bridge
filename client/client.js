@@ -4804,16 +4804,24 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
   async function authRpc(endpoint, payload = {}) {
     let token = getGlobalAdminToken();
     if (!token && isLocalEnvironment()) {
-      try {
-        const res = await fetch("/__dsh_bridge__/loopback-token", { method: "POST" });
-        if (res.ok) {
-          const data = await res.json();
-          if (data?.adminToken) {
-            token = data.adminToken;
-            setGlobalAdminToken(token);
+      const candidates = [
+        "/__dsh_bridge__/loopback-token",
+        "http://127.0.0.1:3082/__dsh_bridge__/loopback-token",
+        "http://localhost:3082/__dsh_bridge__/loopback-token"
+      ];
+      for (const url of [...new Set(candidates)]) {
+        try {
+          const res = await fetch(url, { method: "POST" });
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.ok && data.adminToken) {
+              token = data.adminToken;
+              setGlobalAdminToken(token);
+              break;
+            }
           }
+        } catch {
         }
-      } catch {
       }
     }
     return rpcCall(endpoint, {
@@ -4900,7 +4908,7 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
         drives = res.drives || [];
         workspaces = res.workspaces || [];
         if (res.error) {
-          statusMessage = res.error;
+          statusMessage = typeof res.error === "string" ? res.error : res.error?.message || "\u8BFB\u53D6\u76EE\u5F55\u5931\u8D25";
           isErrorMessage = true;
         }
       }
