@@ -1081,6 +1081,7 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall }) {
         approvalTimeoutSec: String(platform.config.approvalTimeoutSec ?? 600),
         maxMessageChars:    String((platform.config.maxMessageChars >= 500 ? platform.config.maxMessageChars : null) ?? (platformId === 'telegram' ? 4096 : 2000)),
         sendChunkDelayMs:   String(platform.config.sendChunkDelayMs   ?? 1500),
+        groupAutoApprove:   Boolean(platform.config.groupAutoApprove),
         appId: platform.config.appId ?? '',
         // Secret 不由后端回传；空值表示沿用已保存密钥
         clientSecret: '',
@@ -1421,6 +1422,23 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall }) {
           onClick: () => { if (window.confirm('确认解绑？这将清除保存的凭证。')) act(BRIDGE_ENDPOINTS.platformUnbind, {}); },
           title: '清除登录凭证，下次需重新配置',
         }, '解绑账号'),
+      ),
+      // 群聊自动授权开关（仅支持群聊的平台）：关闭时新群首次 @机器人 不会自动加白
+      platformId !== 'wechat' && React.createElement('label', {
+        style: { display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, fontSize: 12, cursor: 'pointer', width: 'fit-content', color: 'var(--dsw-alias-label-secondary,#6b7280)' },
+        title: '开启后，白名单之外的新群首次 @机器人 即自动授权入白名单；关闭（默认）时新群必须先在此手动添加',
+      },
+        React.createElement('input', {
+          type: 'checkbox',
+          checked: Boolean(cfgDraft?.groupAutoApprove),
+          disabled: busy,
+          onChange: (e) => {
+            const checked = e.target.checked;
+            setCfgDraft(d => ({ ...(d ?? {}), groupAutoApprove: checked }));
+            act(BRIDGE_ENDPOINTS.platformSetConfig, { groupAutoApprove: checked });
+          },
+        }),
+        React.createElement('span', null, '群聊自动授权（新群首次 @机器人 自动加入白名单，默认关闭）'),
       ),
       // 飞书 / Telegram 扫码直达对话引导卡片
       (platformId === 'feishu' || platformId === 'telegram') && platform.botQr && React.createElement('div', {

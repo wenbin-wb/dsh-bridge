@@ -2085,6 +2085,7 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall }) {
         approvalTimeoutSec: String(platform.config.approvalTimeoutSec ?? 600),
         maxMessageChars: String((platform.config.maxMessageChars >= 500 ? platform.config.maxMessageChars : null) ?? (platformId === "telegram" ? 4096 : 2e3)),
         sendChunkDelayMs: String(platform.config.sendChunkDelayMs ?? 1500),
+        groupAutoApprove: Boolean(platform.config.groupAutoApprove),
         appId: platform.config.appId ?? "",
         // Secret 不由后端回传；空值表示沿用已保存密钥
         clientSecret: "",
@@ -2425,6 +2426,25 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall }) {
           },
           title: "\u6E05\u9664\u767B\u5F55\u51ED\u8BC1\uFF0C\u4E0B\u6B21\u9700\u91CD\u65B0\u914D\u7F6E"
         }, "\u89E3\u7ED1\u8D26\u53F7")
+      ),
+      // 群聊自动授权开关（仅支持群聊的平台）：关闭时新群首次 @机器人 不会自动加白
+      platformId !== "wechat" && React.createElement(
+        "label",
+        {
+          style: { display: "flex", alignItems: "center", gap: 6, marginTop: 10, fontSize: 12, cursor: "pointer", width: "fit-content", color: "var(--dsw-alias-label-secondary,#6b7280)" },
+          title: "\u5F00\u542F\u540E\uFF0C\u767D\u540D\u5355\u4E4B\u5916\u7684\u65B0\u7FA4\u9996\u6B21 @\u673A\u5668\u4EBA \u5373\u81EA\u52A8\u6388\u6743\u5165\u767D\u540D\u5355\uFF1B\u5173\u95ED\uFF08\u9ED8\u8BA4\uFF09\u65F6\u65B0\u7FA4\u5FC5\u987B\u5148\u5728\u6B64\u624B\u52A8\u6DFB\u52A0"
+        },
+        React.createElement("input", {
+          type: "checkbox",
+          checked: Boolean(cfgDraft?.groupAutoApprove),
+          disabled: busy,
+          onChange: (e) => {
+            const checked = e.target.checked;
+            setCfgDraft((d) => ({ ...d ?? {}, groupAutoApprove: checked }));
+            act(BRIDGE_ENDPOINTS.platformSetConfig, { groupAutoApprove: checked });
+          }
+        }),
+        React.createElement("span", null, "\u7FA4\u804A\u81EA\u52A8\u6388\u6743\uFF08\u65B0\u7FA4\u9996\u6B21 @\u673A\u5668\u4EBA \u81EA\u52A8\u52A0\u5165\u767D\u540D\u5355\uFF0C\u9ED8\u8BA4\u5173\u95ED\uFF09")
       ),
       // 飞书 / Telegram 扫码直达对话引导卡片
       (platformId === "feishu" || platformId === "telegram") && platform.botQr && React.createElement(
