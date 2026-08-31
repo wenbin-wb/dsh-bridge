@@ -791,3 +791,44 @@ test('Web 端发起轮次的审批放行给宿主 GUI，不被 IM 桥劫持（�
   bridge.dispose()
   platform.dispose()
 })
+
+// ---------------------------------------------------------------------------
+// 回归：模型把工具调用协议标记（DSML）当正文输出时，不得原样转发到 IM
+// ---------------------------------------------------------------------------
+
+test('DSML 协议标记整块剥离，不转发到 IM（协议泄漏回归）', async () => {
+  const { ctx } = makeMockCtx()
+  const platform = new MockPlatform({ ctx, logger: ctx.logger })
+  const bridge = new ConversationBridge({ ctx, logger: ctx.logger, config: { allowFrom: ['u1'] }, platform })
+  bridge.activeSessionId = 's1'
+  bridge.peerId = 'u1'
+  ctx.sessions.list = () => [{ id: 's1', events: [], header: {}, seq: 0 }]
+
+  const session = { id: 's1', events: [], header: {}, seq: 0 }
+  // 用户实测样本：整条消息就是工具调用协议块
+  ctx.emit('session/event', session, {
+    type: 'assistant/message',
+    data: { message: { content: [{ type: 'text', text: '<｜｜DSML｜｜tool_calls><｜｜DSML｜｜invoke name="browser_navigate"><｜｜DSML｜｜parameter name="url" string="true">https://example.com</｜｜DSML｜｜parameter></｜｜DSML｜｜invoke></｜｜DSML｜｜tool_calls>' }] } },
+  })
+  await new Promise((r) => setTimeout(r, 30))
+  assert.equal(platform.sent.length, 0, '纯协议标记不得外发')
+
+  // 正文 + 尾部泄漏的协议块：正文保留
+  ctx.emit('session/event', session, {
+    type: 'assistant/message',
+    data: { message: { content: [{ type: 'text', text: '我已完成修改。\n<｜｜DSML｜｜tool_calls><｜｜DSML｜｜invoke name="f"></｜｜DSML｜｜invoke></｜｜DSML｜｜tool_calls>' }] } },
+  })
+  await new Promise((r) => setTimeout(r, 30))
+  assert.ok(platform.sent.some((m) => m.text === '我已完成修改。'), '正文必须保留且剥离协议块')
+
+  // 普通文本不受影响
+  ctx.emit('session/event', session, {
+    type: 'assistant/message',
+    data: { message: { content: [{ type: 'text', text: '今天聊到 DSML 的时候要注意格式' }] } },
+  })
+  await new Promise((r) => setTimeout(r, 30))
+  assert.ok(platform.sent.some((m) => m.text.includes('今天聊到 DSML')), '正文提及 DSML 不受影响')
+
+  bridge.dispose()
+  platform.dispose()
+})
