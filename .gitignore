@@ -1,7 +1,5 @@
 # Dependencies
 node_modules/
-package-lock.json
-pnpm-lock.yaml
 yarn.lock
 
 # Logs
@@ -71,6 +69,7 @@ market-submission.md
 
 # Internal design/planning docs (kept locally, not published)
 docs/wechat-bot-plan.md
+docs/fix-plan-*.md
 
 # Note: CODE_STANDARDS.md, CODE_REVIEW.md, and other docs are kept in repo
 # They are part of the project documentation

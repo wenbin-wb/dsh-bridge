@@ -1,3 +1,4 @@
+import { MOBILE_STYLES_CSS } from './mobile-styles.js'
 // dsh-bridge 客户端插件：设置页「远程访问」面板
 
 // 兼容非 HTTPS 环境（如手机局域网 HTTP 访问）：为非安全上下文补齐 crypto.randomUUID
@@ -111,6 +112,7 @@ const s = {
   tag:      { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap', flexShrink: 0, minWidth: 'max-content', lineHeight: 1.4 },
   input:    { width: '100%', font: 'inherit', fontSize: 13, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--dsw-alias-border-l2,#d1d5db)', background: 'var(--dsw-alias-bg-layer-2,#f9fafb)', color: 'var(--dsw-alias-label-primary,currentColor)', outline: 'none', boxSizing: 'border-box' },
   warn:     { background: 'var(--dsw-alias-state-warn-bg,#fffbeb)', border: '1px solid var(--dsw-alias-state-warn-border,#fde68a)', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: 'var(--dsw-alias-state-warn-primary,#92400e)', lineHeight: 1.6 },
+  err:      { background: 'var(--dsw-alias-state-error-bg,#fef2f2)', border: '1px solid var(--dsw-alias-state-error-border,#fecaca)', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: 'var(--dsw-alias-state-error-primary,#991b1b)', lineHeight: 1.6 },
   tip:      { background: 'var(--dsw-alias-bg-layer-2,#f9fafb)', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: 'var(--dsw-alias-label-secondary,#6b7280)', lineHeight: 1.6 },
 };
 
@@ -557,7 +559,11 @@ const CloudflareConfigForm = React.memo(function CloudflareConfigForm({ token, h
     setSaving(true);
     setMsg(null);
     try {
-      await onSave({ token: tokenVal, hostname: hostnameVal });
+      // 只回传被修改的字段：掩码 '******' 与未变更的 token 都不上传，服务端保留现值
+      const patch = {};
+      if (hostnameVal !== (hostname || '')) patch.hostname = hostnameVal;
+      if (tokenVal !== (token || '')) patch.token = tokenVal;
+      if (Object.keys(patch).length > 0) await onSave(patch);
       setMsg({ ok: true, text: '✓ 固定域名配置已保存' });
     } catch (err) {
       setMsg({ ok: false, text: err.message || '保存失败' });
@@ -1059,7 +1065,7 @@ const AccessAuthCard = React.memo(function AccessAuthCard({ auth, rpcCall, onUpd
 
 // ---- 通用 IM 平台卡片 ----
 
-function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatusChange }) {
+function PlatformCard({ platformId, platformName, platformDesc, rpcCall }) {
   const [platform, setPlatform] = React.useState(null);
   const [err, setErr] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
@@ -1075,6 +1081,7 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
         approvalTimeoutSec: String(platform.config.approvalTimeoutSec ?? 600),
         maxMessageChars:    String((platform.config.maxMessageChars >= 500 ? platform.config.maxMessageChars : null) ?? (platformId === 'telegram' ? 4096 : 2000)),
         sendChunkDelayMs:   String(platform.config.sendChunkDelayMs   ?? 1500),
+        groupAutoApprove:   Boolean(platform.config.groupAutoApprove),
         appId: platform.config.appId ?? '',
         // Secret 不由后端回传；空值表示沿用已保存密钥
         clientSecret: '',
@@ -1085,12 +1092,6 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
       });
     }
   }, [platform?.config, platformId]);
-
-  // 向上传递连接状态（供平台列表卡片绿点使用）
-  React.useEffect(() => {
-    const connected = platform?.status === 'connected' || platform?.status === 'starting' || platform?.status === 'reconnecting';
-    onStatusChange?.(connected);
-  }, [platform?.status, onStatusChange]);
 
   const loadInFlightRef = React.useRef(false);
   const seqRef = React.useRef(0);
@@ -1139,6 +1140,12 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
 
   const onLogin = React.useCallback(() => act(BRIDGE_ENDPOINTS.platformLogin, {}), [act]);
   const onStop  = React.useCallback(() => act(BRIDGE_ENDPOINTS.platformStop, {}), [act]);
+  // 断开后重连：凭证仍在（configured）时直接用已存凭证重启网关，无需重新扫码；
+  // 只有解绑后（无凭证）才走扫码/绑定流程
+  const onReconnect = React.useCallback(() => {
+    if (platform?.configured) return act(BRIDGE_ENDPOINTS.platformStart, {});
+    return act(BRIDGE_ENDPOINTS.platformLogin, {});
+  }, [act, platform?.configured]);
 
   // 白名单管理
   const [newId, setNewId] = React.useState('');
@@ -1183,11 +1190,16 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
   // 高级设置保存
   const saveConfig = React.useCallback(async () => {
     if (!cfgDraft) return;
+    // 非法数字输入回落到当前配置值/默认值，避免 NaN 发到服务端且使 cfgDirty 永真
+    const num = (v, fallback) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : fallback;
+    };
     const payload = {
-      digestIntervalSec:  Number(cfgDraft.digestIntervalSec),
-      approvalTimeoutSec: Number(cfgDraft.approvalTimeoutSec),
-      maxMessageChars:    Number(cfgDraft.maxMessageChars),
-      sendChunkDelayMs:   Number(cfgDraft.sendChunkDelayMs),
+      digestIntervalSec:  num(cfgDraft.digestIntervalSec,  platform?.config?.digestIntervalSec  ?? 300),
+      approvalTimeoutSec: num(cfgDraft.approvalTimeoutSec, platform?.config?.approvalTimeoutSec ?? 600),
+      maxMessageChars:    num(cfgDraft.maxMessageChars,    platform?.config?.maxMessageChars    ?? 2000),
+      sendChunkDelayMs:   num(cfgDraft.sendChunkDelayMs,   platform?.config?.sendChunkDelayMs   ?? 1500),
     };
     // QQ / 飞书 / Telegram 平台额外携带凭证
     if (platformId === 'qq') {
@@ -1401,15 +1413,32 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall, onStatu
       ),
       React.createElement('div', { style: { display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' } },
         platform.status !== 'connected' && platform.status !== 'starting' &&
-          React.createElement('button', { style: s.btnPri, onClick: onLogin, disabled: busy }, '重新连接'),
+          React.createElement('button', { style: s.btnPri, onClick: onReconnect, disabled: busy, title: platform?.configured ? '使用已保存的凭证直接恢复连接，无需重新扫码' : '首次使用需扫码绑定' }, platform?.configured ? '重新连接' : '连接'),
         (platform.status === 'connected' || platform.status === 'starting') &&
-          React.createElement('button', { style: s.btnGhost, onClick: onStop, disabled: busy }, '断开'),
+          React.createElement('button', { style: s.btnGhost, onClick: onStop, disabled: busy, title: '停止接收消息；凭证保留，可随时"重新连接"恢复' }, '断开'),
         React.createElement('button', {
           style: { ...s.btnGhost, color: 'var(--dsw-alias-state-error-primary,#dc2626)', borderColor: 'var(--dsw-alias-state-error-primary,#dc2626)', opacity: busy ? 0.5 : 1 },
           disabled: busy,
           onClick: () => { if (window.confirm('确认解绑？这将清除保存的凭证。')) act(BRIDGE_ENDPOINTS.platformUnbind, {}); },
           title: '清除登录凭证，下次需重新配置',
         }, '解绑账号'),
+      ),
+      // 群聊自动授权开关（仅支持群聊的平台）：关闭时新群首次 @机器人 不会自动加白
+      platformId !== 'wechat' && React.createElement('label', {
+        style: { display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, fontSize: 12, cursor: 'pointer', width: 'fit-content', color: 'var(--dsw-alias-label-secondary,#6b7280)' },
+        title: '开启后，白名单之外的新群首次 @机器人 即自动授权入白名单；关闭（默认）时新群必须先在此手动添加',
+      },
+        React.createElement('input', {
+          type: 'checkbox',
+          checked: Boolean(cfgDraft?.groupAutoApprove),
+          disabled: busy,
+          onChange: (e) => {
+            const checked = e.target.checked;
+            setCfgDraft(d => ({ ...(d ?? {}), groupAutoApprove: checked }));
+            act(BRIDGE_ENDPOINTS.platformSetConfig, { groupAutoApprove: checked });
+          },
+        }),
+        React.createElement('span', null, '群聊自动授权（新群首次 @机器人 自动加入白名单，默认关闭）'),
       ),
       // 飞书 / Telegram 扫码直达对话引导卡片
       (platformId === 'feishu' || platformId === 'telegram') && platform.botQr && React.createElement('div', {
@@ -1846,41 +1875,71 @@ function BackupRestoreWidget({ rpcCall, onUpdate }) {
 }
 
 // 运维 Tab 内的手动重启 DSH 服务小卡片
-function RestartDshCard({ rpcCall }) {
+// 重启 + 健康轮询公共逻辑：定时器保存在 ref 中，组件卸载即清理。
+// 修复点：原先两处复制粘贴的 setInterval 不随组件卸载清理，用户切走 Tab 后
+// 轮询仍会继续运行，并在服务恢复时无条件执行 window.location.reload()。
+function useDshRestart({ rpcCall, maxAttempts = 30, texts = {} } = {}) {
+  const T = {
+    restarting: '正在向 DSH 服务发送重启指令…',
+    reconnecting: 'DSH 服务正在重启中，正在自动重新连接…',
+    success: '🎉 重启成功！已重新建立连接，正在刷新页面…',
+    timeout: '重连等待超时，请手动刷新页面。',
+    ...texts,
+  };
   const [restarting, setRestarting] = React.useState(false);
   const [status, setStatus] = React.useState(null);
+  const pollRef = React.useRef(null);
+  const reloadRef = React.useRef(null);
 
-  const handleRestart = async () => {
+  React.useEffect(() => () => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    if (reloadRef.current) clearTimeout(reloadRef.current);
+  }, []);
+
+  const startRestart = React.useCallback(async () => {
     setRestarting(true);
-    setStatus({ phase: 'restarting', text: '正在向 DSH 服务发送重启指令…' });
+    setStatus({ phase: 'restarting', text: T.restarting });
     try {
       await rpcCall(BRIDGE_ENDPOINTS.restartDsh, {});
-    } catch {}
+    } catch {
+      // 服务可能瞬间关闭导致连接断开，忽略
+    }
 
-    setStatus({ phase: 'reconnecting', text: 'DSH 服务正在重启中，正在自动重新连接…' });
+    setStatus({ phase: 'reconnecting', text: T.reconnecting });
     await new Promise(r => setTimeout(r, 2000));
 
     let attempts = 0;
-    const maxAttempts = 30;
-    const pollHealth = setInterval(async () => {
+    pollRef.current = setInterval(async () => {
       attempts++;
       try {
         const r = await rpcCall(BRIDGE_ENDPOINTS.checkVersion, {});
         if (r?.ok) {
-          clearInterval(pollHealth);
-          setStatus({ phase: 'success', text: '🎉 重启成功！已重新建立连接，正在刷新页面…' });
-          setTimeout(() => { window.location.reload(); }, 1000);
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+          setStatus({ phase: 'success', text: T.success });
+          reloadRef.current = setTimeout(() => { window.location.reload(); }, 1000);
           return;
         }
-      } catch {}
+      } catch {
+        // 仍在启动中，继续等待
+      }
 
       if (attempts >= maxAttempts) {
-        clearInterval(pollHealth);
-        setStatus({ phase: 'timeout', text: '重连等待超时，请手动刷新页面。' });
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+        setStatus({ phase: 'timeout', text: T.timeout });
         setRestarting(false);
       }
     }, 1000);
-  };
+  }, [rpcCall, maxAttempts]);
+
+  const resetStatus = React.useCallback(() => setStatus(null), []);
+
+  return { restarting, status, startRestart, resetStatus };
+}
+
+function RestartDshCard({ rpcCall }) {
+  const { restarting, status, startRestart: handleRestart } = useDshRestart({ rpcCall });
 
   return React.createElement('div', { style: { ...s.card, marginBottom: 16 } },
     React.createElement('div', { style: { marginBottom: 10 } },
@@ -1954,8 +2013,6 @@ function RemoteWorkspaceCard({ rpcCall }) {
         onClick: () => {
           if (typeof window.__dshOpenRemoteWorkspaceModal === 'function') {
             window.__dshOpenRemoteWorkspaceModal();
-          } else if (typeof showRemoteWorkspaceDialog === 'function') {
-            showRemoteWorkspaceDialog(rpcCall, () => load());
           }
         },
       }, '+ 远程添加工作区'),
@@ -1987,6 +2044,20 @@ function RemoteWorkspaceCard({ rpcCall }) {
   );
 }
 
+// 手动升级命令行：展示命令 + 一键复制
+function UpgradeCommandRow({ cmd }) {
+  const [copied, copy] = useCopy();
+  return React.createElement('div', { style: { display: 'flex', gap: 6, alignItems: 'center' } },
+    React.createElement('code', {
+      style: { ...s.code, flex: '1 1 auto', fontSize: 12, lineHeight: 1.5, wordBreak: 'break-all' },
+    }, cmd),
+    React.createElement('button', {
+      style: { ...s.btnGhost, height: 26, padding: '0 10px', fontSize: 11, flex: '0 0 auto' },
+      onClick: () => copy(cmd),
+    }, copied ? '✓ 已复制' : '复制'),
+  );
+}
+
 // 版本检查 + 一键升级 + GitHub/反馈入口
 function VersionBanner({ rpcCall }) {
   const [info, setInfo] = React.useState(null);
@@ -1994,15 +2065,22 @@ function VersionBanner({ rpcCall }) {
   const [upgrading, setUpgrading] = React.useState(false);
   const [upgradeResult, setUpgradeResult] = React.useState(null);
   const [showManual, setShowManual] = React.useState(false);
-  const [restarting, setRestarting] = React.useState(false);
-  const [restartStatus, setRestartStatus] = React.useState(null);
   const [dismissRestart, setDismissRestart] = React.useState(false);
+  const { restarting, status: restartStatus, startRestart: handleRestart, resetStatus: resetRestartStatus } = useDshRestart({
+    rpcCall,
+    texts: {
+      restarting: '正在调度 DSH 服务重启…',
+      success: '🎉 重启成功！已自动加载最新版本。正在刷新页面…',
+    },
+  });
 
   const check = React.useCallback(async () => {
     setLoading(true);
     try {
       const r = await rpcCall(BRIDGE_ENDPOINTS.checkVersion, {});
       if (r?.ok) setInfo(r.value);
+    } catch {
+      // 版本检查失败：保留现有 info，不打断面板
     } finally {
       setLoading(false);
     }
@@ -2018,7 +2096,7 @@ function VersionBanner({ rpcCall }) {
     setUpgrading(true);
     setUpgradeResult(null);
     setDismissRestart(false);
-    setRestartStatus(null);
+    resetRestartStatus();
     try {
       const r = await rpcCall(BRIDGE_ENDPOINTS.upgradePlugin, { version: info.latest });
       if (r?.ok && r.value?.ok) {
@@ -2034,46 +2112,6 @@ function VersionBanner({ rpcCall }) {
       setUpgrading(false);
     }
   }, [info?.latest, upgrading, rpcCall]);
-
-  const handleRestart = React.useCallback(async () => {
-    setRestarting(true);
-    setRestartStatus({ phase: 'restarting', text: '正在调度 DSH 服务重启…' });
-    try {
-      await rpcCall(BRIDGE_ENDPOINTS.restartDsh, {});
-    } catch {
-      // 忽略 RPC 错误（因为服务可能瞬间关闭导致网络连接断开）
-    }
-
-    setRestartStatus({ phase: 'reconnecting', text: 'DSH 服务正在重启中，正在自动重新连接…' });
-
-    // 等待 2 秒后开始健康检查轮询
-    await new Promise(r => setTimeout(r, 2000));
-
-    let attempts = 0;
-    const maxAttempts = 30; // 最多探测 30 次（约 30 秒）
-    const pollHealth = setInterval(async () => {
-      attempts++;
-      try {
-        const r = await rpcCall(BRIDGE_ENDPOINTS.checkVersion, {});
-        if (r?.ok) {
-          clearInterval(pollHealth);
-          setRestartStatus({ phase: 'success', text: '🎉 重启成功！已自动加载最新版本。正在刷新页面…' });
-          setTimeout(() => {
-            window.location.reload();
-          }, 1000);
-          return;
-        }
-      } catch {
-        // 仍在启动中，继续等待
-      }
-
-      if (attempts >= maxAttempts) {
-        clearInterval(pollHealth);
-        setRestartStatus({ phase: 'timeout', text: '重连等待超时，请手动刷新页面。' });
-        setRestarting(false);
-      }
-    }, 1000);
-  }, [rpcCall]);
 
   const links = React.createElement('div', { style: { display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' } },
     React.createElement('a', {
@@ -2408,7 +2446,6 @@ function BridgePanel({ rpcCall }) {
   // 本机物理访问自动静默获取 adminToken，免输密码直通管理（支持 3080 原生端口与 3082 代理端口）
   const fetchLoopbackToken = React.useCallback(async () => {
     if (!isLocalhost) return null;
-    const currentPort = typeof window !== 'undefined' ? (window.location.port || (window.location.protocol === 'https:' ? '443' : '80')) : '3082';
     const proxyPort = status?.proxy?.port || 3082;
     const candidateUrls = [
       '/__dsh_bridge__/loopback-token',
@@ -2441,6 +2478,9 @@ function BridgePanel({ rpcCall }) {
     }
   }, [isLocalhost, adminUnlocked, fetchLoopbackToken]);
 
+  // 被管理员鉴权拦截的操作在此暂存：解锁成功后自动续办，用户无需再点一次
+  const pendingRetryRef = React.useRef(null);
+
   const authRpcCall = React.useCallback(async (endpoint, payload = {}, signal) => {
     let token = adminToken || getGlobalAdminToken();
     if (isLocalhost && !token) {
@@ -2455,6 +2495,7 @@ function BridgePanel({ rpcCall }) {
     if (res?.ok === false) {
       const msg = res?.error?.message || '';
       if (msg.includes('管理员权限') || msg.includes('管理密码解锁')) {
+        pendingRetryRef.current = { endpoint, payload: enriched };
         setUnlockErr(msg);
         setShowUnlockModal(true);
       }
@@ -2545,6 +2586,28 @@ function BridgePanel({ rpcCall }) {
     const t = setInterval(() => load(true), 3000);
     return () => clearInterval(t);
   }, [load]);
+
+  // 解锁成功后自动续办被拦截的操作：用户不再需要重新点击一次
+  React.useEffect(() => {
+    if (!adminUnlocked) return;
+    const pending = pendingRetryRef.current;
+    if (!pending) return;
+    pendingRetryRef.current = null;
+    const token = adminToken || getGlobalAdminToken();
+    (async () => {
+      try {
+        const r = await rpcCall(pending.endpoint, { ...pending.payload, adminToken: token });
+        if (r?.ok) {
+          if (r.value) setStatus(r.value);
+          setErr(null);
+        } else {
+          setErr(r?.error?.message || '刚才的操作重试失败，请手动重试');
+        }
+      } catch (e) {
+        setErr(e.message || '刚才的操作重试失败，请手动重试');
+      }
+    })();
+  }, [adminUnlocked, adminToken, rpcCall]);
 
   const act = React.useCallback(async (endpoint, payload) => {
     try {
@@ -2745,7 +2808,6 @@ function BridgePanel({ rpcCall }) {
         platformName: IM_PLATFORMS.find(p => p.id === selectedPlatform)?.label ?? selectedPlatform,
         platformDesc: IM_PLATFORMS.find(p => p.id === selectedPlatform)?.desc ?? '',
         rpcCall: authRpcCall,
-        onStatusChange: () => {}, // 状态变化已由 listPlatforms 轮询处理，不需要回调
       }),
     );
   }
@@ -2782,7 +2844,7 @@ function BridgePanel({ rpcCall }) {
           },
             React.createElement('div', { style: { fontWeight: 600, color: 'var(--dsw-alias-label-primary,currentColor)', marginBottom: 4 } }, '🛟 救急解除锁定指引：'),
             React.createElement('div', null, '1. ', React.createElement('strong', null, '电脑本机直连修改'), '：直接在运行本程序的电脑本机打开本控制台（127.0.0.1 享有物理免锁特权），可随时修改策略或清除密码。'),
-            React.createElement('div', { style: { marginTop: 4 } }, '2. ', React.createElement('strong', null, '服务器救急指令'), '：在宿主电脑/服务器终端执行 ', React.createElement('code', { style: s.code }, 'touch ~/.dsh/dsh-bridge/reset-auth'), ' 即可瞬间清空密码恢复初始状态。'),
+            React.createElement('div', { style: { marginTop: 4 } }, '2. ', React.createElement('strong', null, '服务器 / 无头环境'), '：救急重置步骤参见 GitHub README 的「三重容灾保命体系」章节。'),
           ),
         )
       ) : (
@@ -2833,7 +2895,7 @@ function BridgePanel({ rpcCall }) {
           },
             React.createElement('div', { style: { fontWeight: 600, color: 'var(--dsw-alias-label-primary,currentColor)', marginBottom: 4 } }, '🛟 找回与重置密码指引：'),
             React.createElement('div', null, '1. ', React.createElement('strong', null, '电脑本机直连修改'), '：直接在运行本程序的电脑本机打开本控制台（127.0.0.1 享有物理免锁特权），可随时修改管理密码。'),
-            React.createElement('div', { style: { marginTop: 4 } }, '2. ', React.createElement('strong', null, '服务器救急指令'), '：在宿主电脑终端执行 ', React.createElement('code', { style: s.code }, 'touch ~/.dsh/dsh-bridge/reset-auth'), ' 即可瞬间清空密码恢复初始状态。'),
+            React.createElement('div', { style: { marginTop: 4 } }, '2. ', React.createElement('strong', null, '服务器 / 无头环境'), '：救急重置步骤参见 GitHub README 的「三重容灾保命体系」章节。'),
           ),
         )
       )
@@ -2980,805 +3042,7 @@ function injectMobileStyles() {
 
   const style = document.createElement('style');
   style.id = 'dsh-bridge-mobile-styles';
-  style.textContent = `
-    /* DSH Bridge 隐藏 Tab 栏原生滚动条并保持平滑滑动 */
-    .dsh-tabbar-container {
-      scrollbar-width: none !important;
-      -ms-overflow-style: none !important;
-    }
-    .dsh-tabbar-container::-webkit-scrollbar {
-      display: none !important;
-      width: 0 !important;
-      height: 0 !important;
-    }
-
-    /* DSH Bridge 移动端自适应与触控交互增强样式 */
-    :root {
-      --dsh-mobile-header-h: 52px;
-      --dsh-mobile-safe-top: env(safe-area-inset-top, 0px);
-      --dsh-mobile-safe-bottom: env(safe-area-inset-bottom, 0px);
-    }
-
-    @media (max-width: 768px) {
-      /* 1. 主框架为 Header 腾出顶部空间 */
-      div[class*="_frame"] {
-        display: flex !important;
-        flex-direction: column !important;
-        width: 100vw !important;
-        height: 100dvh !important;
-        margin: 0 !important;
-        padding-top: var(--dsh-mobile-header-h) !important;
-        position: relative !important;
-        grid-template-columns: 1fr !important;
-        overflow: hidden !important;
-        box-sizing: border-box !important;
-      }
-
-      /* 2. 顶部原生导航条：100% 还原 DeepSeek App (左侧双横线，右侧(+)，中间留白，无多余设置按钮) */
-      .dsh-mobile-app-header {
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        height: var(--dsh-mobile-header-h) !important;
-        padding-top: var(--dsh-mobile-safe-top) !important;
-        background: transparent !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        padding-left: 16px !important;
-        padding-right: 16px !important;
-        z-index: 9998 !important;
-        box-sizing: border-box !important;
-        user-select: none !important;
-        pointer-events: none !important;
-      }
-
-      /* 左侧双横线按钮 (DeepSeek App 原生图标) */
-      .dsh-header-menu-btn {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        border: none;
-        background: transparent;
-        color: var(--dsw-alias-label-primary, #111827);
-        display: inline-flex;
-        align-items: center;
-        justify-content: flex-start;
-        cursor: pointer;
-        padding: 0;
-        transition: opacity 0.15s;
-        pointer-events: auto !important;
-      }
-      .dsh-header-menu-btn:active {
-        opacity: 0.6;
-      }
-
-      /* 右侧 (+) 新建会话按钮 (DeepSeek App 原生图标) */
-      .dsh-header-new-btn {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        border: none;
-        background: transparent;
-        color: var(--dsw-alias-label-primary, #111827);
-        display: inline-flex;
-        align-items: center;
-        justify-content: flex-end;
-        cursor: pointer;
-        padding: 0;
-        transition: opacity 0.15s;
-        pointer-events: auto !important;
-      }
-      .dsh-header-new-btn:active {
-        opacity: 0.6;
-      }
-
-      /* 中间动态会话标题 (单行居中打点截断，100% 还原原生 App 导航体验) */
-      .dsh-mobile-header-title {
-        flex: 1 1 auto !important;
-        min-width: 0 !important;
-        text-align: center !important;
-        font-size: 15px !important;
-        font-weight: 600 !important;
-        color: var(--dsw-alias-label-primary, #111827) !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        white-space: nowrap !important;
-        padding: 0 10px !important;
-        user-select: none !important;
-        pointer-events: none !important;
-        letter-spacing: -0.2px !important;
-      }
-
-      /* 3. 中间主内容区与输入框 */
-      div[class*="_centerCol"] {
-        flex: 1 1 100% !important;
-        width: 100% !important;
-        min-width: 0 !important;
-        max-width: 100% !important;
-        display: flex !important;
-        height: 100% !important;
-      }
-
-      div[class*="_detailsCol"],
-      div[class*="toggleCluster"],
-      div[class*="W-zNGW_toggleCluster"] {
-        display: none !important;
-      }
-
-      /* 3.0 工作区 Workbench / 任务管理 / 多 Tab 栏移动端自适应适配 */
-      body:not(.dsh-workbench-open) div[class*="nArs4W_panel"],
-      body:not(.dsh-workbench-open) div[class*="workbench_panel"],
-      body:not(.dsh-workbench-open) div[class*="workbenchPanel"],
-      div[class*="nArs4W_panel"][class*="panelHidden"],
-      div[class*="workbench_panel"][class*="panelHidden"],
-      div[class*="workbenchPanel"][class*="panelHidden"],
-      div[class*="panelHidden"] {
-        display: none !important;
-        visibility: hidden !important;
-        pointer-events: none !important;
-        width: 0 !important;
-        height: 0 !important;
-        max-height: 0 !important;
-        z-index: -1 !important;
-        opacity: 0 !important;
-        transform: translateX(105%) !important;
-      }
-
-      body.dsh-workbench-open div[class*="nArs4W_panel"]:not([class*="panelHidden"]),
-      body.dsh-workbench-open div[class*="workbench_panel"]:not([class*="panelHidden"]),
-      body.dsh-workbench-open div[class*="workbenchPanel"]:not([class*="panelHidden"]) {
-        display: flex !important;
-        visibility: visible !important;
-        pointer-events: auto !important;
-        top: var(--dsh-mobile-header-h, 52px) !important;
-        height: calc(100dvh - var(--dsh-mobile-header-h, 52px)) !important;
-        max-height: calc(100dvh - var(--dsh-mobile-header-h, 52px)) !important;
-        z-index: 50 !important;
-        box-sizing: border-box !important;
-        background: var(--dsw-alias-bg-layer-1, #ffffff) !important;
-        transform: none !important;
-        opacity: 1 !important;
-      }
-
-      /* Tab 栏：横向滑动手势 + 干净的底部边框，杜绝与顶部移动端 Header 重叠 */
-      div[class*="nArs4W_tabBar"],
-      div[class*="workbench_tabBar"],
-      div[class*="tabBar"] {
-        min-height: 40px !important;
-        height: 40px !important;
-        background: var(--dsw-alias-bg-layer-1, #ffffff) !important;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        padding: 0 8px !important;
-        gap: 6px !important;
-        overflow: visible !important;
-        box-sizing: border-box !important;
-      }
-
-      div[class*="nArs4W_tabList"],
-      div[class*="tabList"] {
-        display: flex !important;
-        align-items: center !important;
-        gap: 6px !important;
-        flex: 1 1 auto !important;
-        min-width: 0 !important;
-        overflow-x: auto !important;
-        scrollbar-width: none !important;
-        -webkit-overflow-scrolling: touch !important;
-      }
-      div[class*="nArs4W_tabList"]::-webkit-scrollbar,
-      div[class*="tabList"]::-webkit-scrollbar {
-        display: none !important;
-      }
-
-      /* 单个 Tab 胶囊化，文字超长自动打点，防止 Tab 互相挤压 */
-      div[class*="nArs4W_tab"],
-      div[class*="workbench_tab"] {
-        flex: 0 0 auto !important;
-        max-width: 170px !important;
-        min-width: 70px !important;
-        height: 30px !important;
-        padding: 0 8px 0 10px !important;
-        border-radius: 6px !important;
-        font-size: 12.5px !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        gap: 6px !important;
-        background: var(--dsw-alias-bg-layer-2, #f3f4f6) !important;
-        color: var(--dsw-alias-label-secondary, #6b7280) !important;
-        cursor: pointer !important;
-        user-select: none !important;
-        box-sizing: border-box !important;
-      }
-
-      div[class*="nArs4W_tabActive"],
-      div[class*="workbench_tabActive"] {
-        background: var(--dsw-alias-bg-layer-1, #ffffff) !important;
-        color: var(--dsw-alias-label-primary, #111827) !important;
-        font-weight: 600 !important;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
-      }
-
-      span[class*="nArs4W_tabTitle"],
-      span[class*="tabTitle"] {
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        white-space: nowrap !important;
-        flex: 1 1 auto !important;
-      }
-
-      button[class*="nArs4W_tabClose"],
-      button[class*="tabClose"] {
-        width: 18px !important;
-        height: 18px !important;
-        border-radius: 50% !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        flex-shrink: 0 !important;
-        opacity: 0.6 !important;
-        padding: 0 !important;
-      }
-
-      button[class*="nArs4W_tabBarPlus"],
-      button[class*="tabBarPlus"] {
-        width: 28px !important;
-        height: 28px !important;
-        border-radius: 50% !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        flex-shrink: 0 !important;
-      }
-
-      /* 移动端面板右上角“返回对话 / ✕ 收起”按钮：常驻右侧，醒目且易触达 */
-      .dsh-mobile-panel-close-btn {
-        margin-left: 8px !important;
-        flex: 0 0 auto !important;
-        height: 28px !important;
-        padding: 0 10px !important;
-        border-radius: 14px !important;
-        font-size: 12px !important;
-        font-weight: 600 !important;
-        background: #2563eb !important;
-        color: #ffffff !important;
-        border: none !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        gap: 4px !important;
-        cursor: pointer !important;
-        user-select: none !important;
-        box-shadow: 0 2px 6px rgba(37, 99, 235, 0.28) !important;
-        white-space: nowrap !important;
-        transition: transform 0.1s, opacity 0.15s !important;
-        z-index: 10 !important;
-      }
-      .dsh-mobile-panel-close-btn:active {
-        transform: scale(0.95) !important;
-        opacity: 0.85 !important;
-      }
-
-      /* 3.1 会话对话头部顶栏：移动端防挤压与空间释放优化（严格排除 .dsh-mobile-app-header） */
-      div[class*="_centerCol"] header,
-      header[class*="wSkVaW_header"] {
-        padding: 4px 16px 2px 16px !important;
-        position: relative !important;
-        overflow: visible !important;
-      }
-
-      div[class*="wSkVaW_titleRow"],
-      div[class*="titleRow"] {
-        display: flex !important;
-        flex-direction: row !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        gap: 8px !important;
-        min-height: 32px !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
-      }
-
-      /* 移动端将原有嵌入在内容区的长面包屑标题隐藏（已统一提升至顶部导航栏正中），彻底释放第二行空间 */
-      nav[class*="wSkVaW_crumbs"],
-      nav[class*="crumbs"],
-      div[class*="wSkVaW_crumbs"],
-      div[class*="crumbs"],
-      [class*="wSkVaW_crumbs"] {
-        display: none !important;
-      }
-
-      /* 子代理/智能体模式胶囊 (Actions)：紧凑圆角胶囊 */
-      div[class*="wSkVaW_headerActions"],
-      div[class*="headerActions"] {
-        flex: 0 0 auto !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        gap: 4px !important;
-        margin-left: 0 !important;
-      }
-
-      button[class*="h8S2Va_trigger"],
-      button[class*="subagent"] {
-        min-height: 26px !important;
-        height: 26px !important;
-        padding: 2px 8px !important;
-        font-size: 11.5px !important;
-        line-height: 16px !important;
-        border-radius: 13px !important;
-        background: var(--dsw-alias-bg-layer-2, rgba(0, 0, 0, 0.04)) !important;
-        white-space: nowrap !important;
-        flex-shrink: 0 !important;
-      }
-
-      /* Session Log 导出下载按钮 (Utilities)：在移动端极简为 28px 圆形纯图标按钮，隐藏长文本，极大释放顶部空间 */
-      div[class*="wSkVaW_headerUtilities"],
-      div[class*="headerUtilities"] {
-        flex: 0 0 auto !important;
-        margin-left: 4px !important;
-        display: inline-flex !important;
-        align-items: center !important;
-      }
-
-      button[class*="nL4_yW_sessionLogButton"],
-      button[class*="sessionLogButton"] {
-        min-width: 28px !important;
-        width: 28px !important;
-        height: 28px !important;
-        padding: 0 !important;
-        border-radius: 50% !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        flex-shrink: 0 !important;
-        border: 1px solid var(--dsw-alias-border-l2, rgba(0, 0, 0, 0.1)) !important;
-        background: var(--dsw-alias-bg-layer-2, rgba(0, 0, 0, 0.03)) !important;
-        color: var(--dsw-alias-label-secondary, #6b7280) !important;
-        margin-left: 0 !important;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
-      }
-
-      button[class*="nL4_yW_sessionLogButton"]:hover:not(:disabled),
-      button[class*="sessionLogButton"]:hover:not(:disabled) {
-        background: var(--dsw-alias-interactive-bg-hover, rgba(0, 0, 0, 0.06)) !important;
-        color: var(--dsw-alias-label-primary, #111827) !important;
-      }
-
-      button[class*="nL4_yW_sessionLogButton"] span,
-      button[class*="sessionLogButton"] span {
-        display: none !important;
-      }
-
-      button[class*="nL4_yW_sessionLogButton"] svg,
-      button[class*="sessionLogButton"] svg {
-        width: 13px !important;
-        height: 13px !important;
-        margin: 0 !important;
-      }
-
-      /* 子代理展开菜单在移动端右对齐与宽度自适应 */
-      div[class*="h8S2Va_menu"] {
-        max-width: calc(100vw - 32px) !important;
-        left: auto !important;
-        right: 0 !important;
-      }
-
-      /* 输入框底座：DeepSeek App 居中及底部固定 */
-      div[class*="wSkVaW_scrollBody"] {
-        padding-bottom: max(16px, env(safe-area-inset-bottom)) !important;
-      }
-
-      /* 输入卡片：DeepSeek App 圆角大胶囊造型 */
-      div[class*="uV2eYG_card"] {
-        border-radius: 26px !important;
-        padding: 14px 16px 12px !important;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05) !important;
-        border: 1px solid rgba(0, 0, 0, 0.07) !important;
-        background: var(--dsw-alias-bg-layer-2, #f4f4f7) !important;
-      }
-
-      /* 输入框底部工具栏：弹性自适应，彻底杜绝权限选择器(Full access)与模型选择器重叠碰撞 */
-      div[class*="uV2eYG_row"] {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        gap: 6px !important;
-        width: 100% !important;
-        padding: 2px 2px 4px !important;
-        box-sizing: border-box !important;
-      }
-
-      div[class*="uV2eYG_tools"] {
-        display: flex !important;
-        align-items: center !important;
-        gap: 6px !important;
-        flex: 0 0 auto !important;
-        min-width: 0 !important;
-      }
-
-      div[class*="uV2eYG_modes"] {
-        display: flex !important;
-        align-items: center !important;
-        gap: 4px !important;
-        flex: 0 0 auto !important;
-        min-width: 0 !important;
-      }
-
-      button[class*="Sh0Q9G_trigger"] {
-        flex: 0 0 auto !important;
-        min-width: 0 !important;
-      }
-
-      div[class*="uV2eYG_trailing"] {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: flex-end !important;
-        gap: 6px !important;
-        flex: 1 1 auto !important;
-        min-width: 0 !important;
-      }
-
-      div[class*="_7KE1Ra_root"] {
-        flex: 0 1 auto !important;
-        min-width: 0 !important;
-        max-width: 180px !important;
-      }
-
-      button[class*="_7KE1Ra_trigger"] {
-        max-width: 100% !important;
-        min-width: 0 !important;
-        flex: 1 1 auto !important;
-        padding: 0 4px 0 6px !important;
-      }
-
-      span[class*="_7KE1Ra_triggerLabel"] {
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        white-space: nowrap !important;
-        min-width: 0 !important;
-      }
-
-      /* 4. 原生侧边栏抽屉化 (Drawer) */
-      div[class*="_sidebarCol"] {
-        position: fixed !important;
-        left: 0 !important;
-        top: 0 !important;
-        bottom: 0 !important;
-        height: 100dvh !important;
-        width: 290px !important;
-        max-width: 82vw !important;
-        z-index: 10000 !important;
-        background: var(--dsw-alias-bg-layer-1, #ffffff) !important;
-        transform: translateX(-105%);
-        transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-        overflow-y: auto !important;
-        border-right: 1px solid rgba(0, 0, 0, 0.06) !important;
-        pointer-events: auto !important;
-      }
-      body.dsh-drawer-open div[class*="_sidebarCol"] {
-        transform: translateX(0) !important;
-        box-shadow: 4px 0 28px rgba(0, 0, 0, 0.25) !important;
-        pointer-events: auto !important;
-      }
-
-      /* 抽屉内部：强制 100% 宽度，无论内部状态如何均正常展开并展示 DSH 自带的顶部收起侧边栏图标 */
-      body.dsh-drawer-open div[class*="hHd-Xa_root"] {
-        width: 100% !important;
-        max-width: 100% !important;
-        min-width: 100% !important;
-        display: flex !important;
-        flex-direction: column !important;
-      }
-      body.dsh-drawer-open div[class*="hHd-Xa_collapsed"] div[class*="hHd-Xa_regionArea"],
-      body.dsh-drawer-open div[class*="hHd-Xa_collapsed"] button[class*="hHd-Xa_newSession"],
-      body.dsh-drawer-open div[class*="hHd-Xa_collapsed"] div[class*="qDHVXG_root"] {
-        display: flex !important;
-        visibility: visible !important;
-      }
-      div[class*="hHd-Xa_logoRow"] {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        width: 100% !important;
-        padding: 10px 14px 6px 14px !important;
-        box-sizing: border-box !important;
-      }
-      div[class*="hHd-Xa_logoRow"] button[class*="hHd-Xa_toggle"] {
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        width: 32px !important;
-        height: 32px !important;
-        border-radius: 8px !important;
-        color: var(--dsw-alias-label-secondary, #6b7280) !important;
-        background: transparent !important;
-        border: none !important;
-        cursor: pointer !important;
-        margin-left: auto !important;
-        transition: background 0.15s, color 0.15s !important;
-      }
-      div[class*="hHd-Xa_logoRow"] button[class*="hHd-Xa_toggle"]:active {
-        background: var(--dsw-alias-bg-layer-2, rgba(0, 0, 0, 0.06)) !important;
-        color: var(--dsw-alias-label-primary, #111827) !important;
-      }
-
-      /* 设置弹窗打开时解除抽屉隐藏限制 */
-      div[class*="_sidebarCol"]:has(div[class*="VOzbGW_overlay"]) {
-        transform: none !important;
-        width: 100vw !important;
-        max-width: 100vw !important;
-        background: transparent !important;
-        box-shadow: none !important;
-        pointer-events: none !important;
-      }
-
-      /* 5. 半透明背景遮罩 */
-      .dsh-mobile-backdrop {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.4);
-        z-index: 9999;
-        display: none !important;
-      }
-      body.dsh-drawer-open .dsh-mobile-backdrop {
-        display: block !important;
-        pointer-events: auto !important;
-      }
-
-      /* 6. 设置中心全自适应适配 */
-      div[class*="VOzbGW_overlay"] {
-        position: fixed !important;
-        inset: 0 !important;
-        width: 100vw !important;
-        height: 100dvh !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        background: rgba(0, 0, 0, 0.45) !important;
-        backdrop-filter: blur(4px) !important;
-        -webkit-backdrop-filter: blur(4px) !important;
-        z-index: 10002 !important;
-        padding: 10px !important;
-        box-sizing: border-box !important;
-        pointer-events: auto !important;
-      }
-      div[class*="VOzbGW_panel"] {
-        width: 100% !important;
-        max-width: 100% !important;
-        height: 92dvh !important;
-        max-height: 92dvh !important;
-        display: flex !important;
-        flex-direction: row !important;
-        border-radius: 18px !important;
-        overflow: hidden !important;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25) !important;
-        background: var(--dsw-alias-bg-layer-1, #ffffff) !important;
-      }
-      nav[class*="VOzbGW_nav"] {
-        width: 78px !important;
-        min-width: 78px !important;
-        max-width: 78px !important;
-        padding: 10px 4px !important;
-        box-sizing: border-box !important;
-        border-right: 1px solid var(--dsw-alias-border-l2, #e5e7eb) !important;
-        display: flex !important;
-        flex-direction: column !important;
-        gap: 6px !important;
-        overflow-y: auto !important;
-      }
-      nav[class*="VOzbGW_nav"] button[class*="VOzbGW_navCell"],
-      button[class*="VOzbGW_navCell"] {
-        padding: 8px 2px !important;
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: center !important;
-        text-align: center !important;
-        height: auto !important;
-        min-height: 48px !important;
-        gap: 4px !important;
-        border-radius: 10px !important;
-      }
-      span[class*="VOzbGW_navLabel"] {
-        font-size: 10.5px !important;
-        line-height: 1.2 !important;
-        white-space: normal !important;
-        word-break: break-all !important;
-        text-align: center !important;
-      }
-      div[class*="VOzbGW_content"] {
-        flex: 1 1 auto !important;
-        min-width: 0 !important;
-        width: calc(100% - 78px) !important;
-        max-width: calc(100% - 78px) !important;
-        display: flex !important;
-        flex-direction: column !important;
-        overflow: hidden !important;
-      }
-      div[class*="VOzbGW_options"] {
-        flex: 1 1 auto !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        box-sizing: border-box !important;
-        padding: 0 14px 20px !important;
-        overflow-x: hidden !important;
-        overflow-y: auto !important;
-        -webkit-overflow-scrolling: touch !important;
-      }
-
-      /* 设置中心选项行手机自适应（垂直流式，防文字单字折行） */
-      div[class*="VOzbGW_options"] div[class*="_row"] {
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: stretch !important;
-        gap: 8px !important;
-        width: 100% !important;
-        padding: 12px 0 !important;
-        box-sizing: border-box !important;
-      }
-      div[class*="VOzbGW_options"] div[class*="_rowText"] {
-        width: 100% !important;
-        max-width: 100% !important;
-      }
-      div[class*="VOzbGW_options"] button[class*="_selector"],
-      div[class*="VOzbGW_options"] select,
-      div[class*="VOzbGW_options"] input {
-        width: 100% !important;
-        max-width: 100% !important;
-        box-sizing: border-box !important;
-      }
-
-      /* 7. 代码块、表格与徽标自适应 */
-      pre, code, pre > code, table {
-        max-width: 100% !important;
-        overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch !important;
-        font-size: 12.5px !important;
-      }
-
-      /* 状态徽标与药丸按钮永不折字 */
-      span[style*="border-radius: 999"],
-      span[style*="border-radius:999"] {
-        white-space: nowrap !important;
-        flex-shrink: 0 !important;
-        min-width: max-content !important;
-      }
-
-      /* 二维码与图片移动端弹性缩放 */
-      img[alt="QR"], img[src^="data:image"] {
-        max-width: 100% !important;
-        box-sizing: border-box !important;
-      }
-
-      /* 8. 确保所有 Popover 弹出菜单、操作气泡、下拉框位于抽屉之上且支持触控交互 */
-      div[class*="_portal"],
-      div[class*="portal"],
-      div[class*="popup"],
-      div[class*="dropdown"],
-      div[class*="menu"],
-      div[role="menu"],
-      div[role="dialog"] {
-        z-index: 10005 !important;
-        pointer-events: auto !important;
-      }
-
-      /* 9. 移动端侧边栏：会话与工作区三点操作按钮始终清晰可见且易于点击 */
-      div[class*="sessionRow"] span[class*="rowActions"],
-      div[class*="sessionRow"] button[class*="iconButton"],
-      div[class*="treeBody"] button[class*="iconButton"] {
-        opacity: 0.8 !important;
-        display: inline-flex !important;
-        visibility: visible !important;
-        pointer-events: auto !important;
-      }
-      div[class*="sessionRow"]:active {
-        background: var(--dsw-alias-bg-layer-2, #f3f4f6) !important;
-      }
-
-      /* 全局 overlayLayer 绝不被染黑 */
-      div[class*="overlayLayer"],
-      div[class*="uV2eYG_overlayAnchor"] {
-        background: transparent !important;
-        pointer-events: none !important;
-      }
-      div[class*="overlayLayer"] > * {
-        pointer-events: auto !important;
-      }
-    }
-
-    /* 远程工作区选择弹窗移动端/桌面端自适应样式 */
-    #dsh-remote-workspace-modal {
-      position: fixed !important;
-      inset: 0 !important;
-      z-index: 100000 !important;
-      background: rgba(0, 0, 0, 0.65) !important;
-      backdrop-filter: blur(5px) !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      padding: 16px !important;
-      box-sizing: border-box !important;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-      color: var(--dsw-alias-label-primary, #111827) !important;
-    }
-
-    .dsh-ws-dialog-card {
-      background: var(--dsw-alias-bg-layer-1, #ffffff) !important;
-      border: 1px solid var(--dsw-alias-border-l1, #e5e7eb) !important;
-      border-radius: 16px !important;
-      width: 100% !important;
-      max-width: 620px !important;
-      max-height: 88vh !important;
-      display: flex !important;
-      flex-direction: column !important;
-      box-shadow: 0 25px 35px -5px rgba(0,0,0,0.3), 0 12px 16px -5px rgba(0,0,0,0.2) !important;
-      overflow: hidden !important;
-      animation: dshModalFadeIn 0.2s ease-out !important;
-    }
-
-    .dsh-ws-chips-scroll {
-      display: flex !important;
-      align-items: center !important;
-      gap: 6px !important;
-      overflow-x: auto !important;
-      white-space: nowrap !important;
-      scrollbar-width: none !important;
-      -ms-overflow-style: none !important;
-      -webkit-overflow-scrolling: touch !important;
-      padding: 2px 0 !important;
-    }
-    .dsh-ws-chips-scroll::-webkit-scrollbar {
-      display: none !important;
-    }
-
-    @media (max-width: 640px) {
-      #dsh-remote-workspace-modal {
-        align-items: flex-end !important;
-        padding: 0 !important;
-      }
-
-      .dsh-ws-dialog-card {
-        max-height: 92dvh !important;
-        height: 92dvh !important;
-        border-bottom-left-radius: 0 !important;
-        border-bottom-right-radius: 0 !important;
-        border-left: none !important;
-        border-right: none !important;
-        border-bottom: none !important;
-        max-width: 100vw !important;
-        width: 100vw !important;
-        margin: 0 !important;
-        animation: dshBottomSheetUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
-      }
-
-      .dsh-ws-drag-handle {
-        display: block !important;
-      }
-    }
-
-    @keyframes dshModalFadeIn {
-      from { opacity: 0; transform: scale(0.96); }
-      to { opacity: 1; transform: scale(1); }
-    }
-
-    @keyframes dshBottomSheetUp {
-      from { transform: translateY(100%); }
-      to { transform: translateY(0); }
-    }
-
-    @media (min-width: 769px) {
-      .dsh-mobile-app-header,
-      .dsh-mobile-backdrop,
-      .dsh-mobile-panel-close-btn {
-        display: none !important;
-      }
-    }
-  `;
+  style.textContent = MOBILE_STYLES_CSS;
   document.head.appendChild(style);
 }
 

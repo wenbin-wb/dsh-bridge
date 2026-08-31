@@ -164,9 +164,11 @@ test('ConversationBridge /addworkspace and /workspaces commands', async () => {
     on: () => () => {},
     effect: () => () => {},
     workspaceRegistry: {
+      archivedSessionIds: [], // 内存优先，避免 dsh-storage 磁盘兜底读到真实 ~/.dsh
       list: async () => registered,
       add: async (entry) => { registered.push(entry); },
     },
+    sessionProjCache: {},
     sessions: new Map(),
     agents: new Map(),
   };

@@ -26,37 +26,68 @@ test('AuthManager setPassword hashes with salt and verifies correctly', async ()
   assert.equal(persisted.length, 1)
 
   // Verify correct password
-  const okResult = auth.verifyPassword('my-secret-123', '192.168.1.50')
+  const okResult = await auth.verifyPassword('my-secret-123', '192.168.1.50')
   assert.equal(okResult.success, true)
 
   // Verify incorrect password
-  const failResult = auth.verifyPassword('wrong-password', '192.168.1.50')
+  const failResult = await auth.verifyPassword('wrong-password', '192.168.1.50')
   assert.equal(failResult.success, false)
   assert.equal(failResult.error, '访问密码错误')
+
+  // 新格式哈希应带算法前缀
+  assert.ok(auth.passwordHash.startsWith('pbkdf2-sha256$600000$'), '应使用 600k 迭代的新格式')
 
   auth.dispose()
 })
 
-test('AuthManager rate limits and locks out IP after 5 consecutive failures', () => {
+test('AuthManager transparently upgrades legacy (10k) password hashes on login', async () => {
+  const persisted = []
+  const auth = new AuthManager({
+    onPersist: (p) => persisted.push(p),
+  })
+
+  // 手工构造旧格式（裸 hex，10000 次迭代）——模拟 v2.8.x 存量数据
+  const { pbkdf2 } = await import('node:crypto')
+  const { promisify } = await import('node:util')
+  const salt = 'aabbccdd'
+  auth.passwordSalt = salt
+  auth.passwordHash = (await promisify(pbkdf2)('old-pass', salt, 10000, 32, 'sha256')).toString('hex')
+  assert.ok(!auth.passwordHash.startsWith('pbkdf2-sha256$'))
+
+  // 正确密码登录成功，且哈希被透明升级
+  const ok = await auth.verifyPassword('old-pass', '192.168.1.50')
+  assert.equal(ok.success, true)
+  assert.ok(auth.passwordHash.startsWith('pbkdf2-sha256$600000$'), '登录后必须升级到新格式')
+  assert.notEqual(auth.passwordSalt, salt, '重哈希应使用新盐')
+  assert.ok(persisted.length >= 1, '升级结果必须持久化')
+
+  // 升级后旧密码仍可登录，错误密码仍被拒
+  assert.equal((await auth.verifyPassword('old-pass', '192.168.1.50')).success, true)
+  assert.equal((await auth.verifyPassword('old-wrong', '192.168.1.50')).success, false)
+
+  auth.dispose()
+})
+
+test('AuthManager rate limits and locks out IP after 5 consecutive failures', async () => {
   const auth = new AuthManager()
-  auth.setPassword('correct-pwd')
+  await auth.setPassword('correct-pwd')
 
   const testIp = '10.0.0.99'
   assert.equal(auth.isIpBlocked(testIp), false)
 
   for (let i = 0; i < 4; i++) {
-    const res = auth.verifyPassword('wrong', testIp)
+    const res = await auth.verifyPassword('wrong', testIp)
     assert.equal(res.success, false)
     assert.equal(auth.isIpBlocked(testIp), false)
   }
 
   // 5th attempt triggers lockout
-  const res5 = auth.verifyPassword('wrong', testIp)
+  const res5 = await auth.verifyPassword('wrong', testIp)
   assert.equal(res5.success, false)
   assert.equal(auth.isIpBlocked(testIp), true)
 
   // 6th attempt is blocked immediately
-  const res6 = auth.verifyPassword('correct-pwd', testIp)
+  const res6 = await auth.verifyPassword('correct-pwd', testIp)
   assert.equal(res6.success, false)
   assert.ok(res6.error.includes('尝试次数过多'))
 
@@ -156,11 +187,11 @@ test('AuthManager handles adminPolicy and remote admin unlocking', async () => {
   assert.equal(auth.hasAdminPassword, true)
 
   // 1. Access password cannot unlock admin when adminPassword is set
-  const failRes1 = auth.unlockAdmin('access-pass-111', '192.168.1.88')
+  const failRes1 = await auth.unlockAdmin('access-pass-111', '192.168.1.88')
   assert.equal(failRes1.ok, false)
 
   // 2. Correct admin password returns valid adminToken
-  const okRes = auth.unlockAdmin('admin-pass-222', '192.168.1.88')
+  const okRes = await auth.unlockAdmin('admin-pass-222', '192.168.1.88')
   assert.equal(okRes.ok, true)
   assert.ok(okRes.adminToken)
   assert.equal(auth.validateAdminSession(okRes.adminToken), true)
@@ -170,7 +201,7 @@ test('AuthManager handles adminPolicy and remote admin unlocking', async () => {
   assert.equal(auth.validateAdminSession(okRes.adminToken), false)
 
   // 4. In local_only mode, unlockAdmin is rejected
-  const localOnlyRes = auth.unlockAdmin('admin-pass-222', '192.168.1.88')
+  const localOnlyRes = await auth.unlockAdmin('admin-pass-222', '192.168.1.88')
   assert.equal(localOnlyRes.ok, false)
   assert.ok(localOnlyRes.error.includes('仅限电脑本机'))
 

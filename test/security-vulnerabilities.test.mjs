@@ -86,12 +86,12 @@ test('P0-3: token_only 模式严格禁止密码登录', async () => {
   await auth.setPassword('password123')
 
   // 1. 提交密码被拒绝
-  const verifyRes = auth.verifyPassword('password123', '1.2.3.4')
+  const verifyRes = await auth.verifyPassword('password123', '1.2.3.4')
   assert.equal(verifyRes.success, false)
   assert.ok(verifyRes.error.includes('专属安全 Token'))
 
   // 2. 空密码同样被拒绝
-  const emptyRes = auth.verifyPassword('', '1.2.3.4')
+  const emptyRes = await auth.verifyPassword('', '1.2.3.4')
   assert.equal(emptyRes.success, false)
 
   // 3. 只有合法的 Token Query 能通过认证

@@ -51,6 +51,10 @@ function makeMockCtx(extra = {}) {
       resume: async ({ resumeSessionId }) => ({ agent: { session: { id: resumeSessionId }, followup: () => {}, status: 'idle', cancel: () => {} } }),
       get: () => undefined,
     },
+    // 内存优先的存储注入点：避免 dsh-storage.js 的磁盘兜底读到开发机真实的 ~/.dsh
+    // （旧实现靠 ctx._mock 后门跳过磁盘读取，拆分后由这里显式提供内存服务/缓存）
+    workspaceRegistry: { archivedSessionIds: [], list: async () => [] },
+    sessionProjCache: {},
     ...extra,
   }
   return { ctx, events }
@@ -220,12 +224,28 @@ test('sessionsInDisplayOrder 按工作区分组，保持组内顺序', () => {
   assert.deepEqual(ordered, ['s-a1', 's-b2', 's-b1', 's-n1'])
 })
 
-test('ConversationBridge 群聊首次发言追加授权，不覆盖已有单聊白名单', async () => {
+test('ConversationBridge 群聊授权：默认关闭，显式开启 groupAutoApprove 后追加且不覆盖白名单', async () => {
   const { ctx } = makeMockCtx()
   const platform = new MockPlatform({ ctx, logger: ctx.logger })
   const persisted = []
   const bridge = new ConversationBridge({
     ctx, logger: ctx.logger, config: { allowFrom: ['user-openid'] }, platform,
+    onFirstSender: (id) => persisted.push({ id, allowFrom: [...bridge.config.allowFrom] }),
+  })
+  // T2.5：白名单非空时群聊默认不再自动授权（防止任意陌生群 @机器人 即获得访问权）
+  const denied = await bridge.handleInbound({ senderId: 'group-openid', text: '群消息', isGroup: true })
+  assert.equal(denied, 'ignored')
+  assert.deepEqual(bridge.config.allowFrom, ['user-openid'])
+  bridge.dispose()
+  platform.dispose()
+})
+
+test('ConversationBridge 群聊显式开启 groupAutoApprove 后自动授权', async () => {
+  const { ctx } = makeMockCtx()
+  const platform = new MockPlatform({ ctx, logger: ctx.logger })
+  const persisted = []
+  const bridge = new ConversationBridge({
+    ctx, logger: ctx.logger, config: { allowFrom: ['user-openid'], groupAutoApprove: true }, platform,
     onFirstSender: (id) => persisted.push({ id, allowFrom: [...bridge.config.allowFrom] }),
   })
   const out = await bridge.handleInbound({ senderId: 'group-openid', text: '群消息', isGroup: true })
@@ -428,6 +448,7 @@ test('ConversationBridge listSessions 严格过滤已归档会话（内存与持
 
   ctx.workspaceRegistry = {
     archivedSessionIds: ['archived-s1', 'archived-s2'],
+    list: async () => [], // 内存服务齐全，避免 dsh-storage 磁盘兜底读到真实 ~/.dsh
   }
   ctx.sessions.list = () => [
     { id: 'live-s1', header: { createdAt: 100, cwd: '/app' }, events: [{ type: 'session/title', data: { title: '活跃会话1' } }] },
@@ -548,3 +569,365 @@ test('ConversationBridge createSession 默认使用首个已注册工作区并 a
 })
 
 
+
+// ---------------------------------------------------------------------------
+// 回归：dispose 必须解绑 session/event 监听器（曾因 disposer 闭包引用未定义的
+// digestState 抛 ReferenceError，被 dispose 的 try/catch 吞掉导致监听器泄漏）
+// ---------------------------------------------------------------------------
+
+test('ConversationBridge.dispose 解绑 session/event 监听器（P0-1 回归）', async () => {
+  const { ctx, events } = makeMockCtx()
+  const platform = new MockPlatform({ ctx, logger: ctx.logger })
+  const bridge = new ConversationBridge({ ctx, logger: ctx.logger, config: { allowFrom: ['u1'] }, platform })
+  bridge.activeSessionId = 's1'
+
+  const before = events['session/event']?.length ?? 0
+  assert.ok(before >= 1, 'bridge 应已订阅 session/event')
+
+  bridge.dispose()
+  platform.dispose()
+
+  assert.equal(events['session/event']?.length ?? 0, 0, 'dispose 后监听器必须被解绑')
+
+  // dispose 后派发事件不得再驱动已销毁的 bridge（幽灵事件不应触发外发）
+  ctx.emit(
+    'session/event',
+    { id: 's1', events: [], header: {}, seq: 0 },
+    { type: 'assistant/message', data: { message: { content: [{ type: 'text', text: 'ghost output' }] } } },
+  )
+  assert.equal(platform.sent.length, 0, 'dispose 后不应有任何外发')
+})
+
+// ---------------------------------------------------------------------------
+// 回归：出站发送队列（T2.1/T2.2）
+// ---------------------------------------------------------------------------
+
+test('并发 sendText 经队列串行执行，平台抛异常不逃逸', async () => {
+  const { ctx } = makeMockCtx()
+  const platform = new MockPlatform({ ctx, logger: ctx.logger })
+  const order = []
+  platform.sendText = async (peer, text) => {
+    order.push(text)
+    await new Promise(r => setTimeout(r, text === 'first' ? 30 : 1))
+    if (text === 'boom') throw new Error('gateway exploded')
+    return { success: true }
+  }
+  const bridge = new ConversationBridge({ ctx, logger: ctx.logger, config: { allowFrom: ['u1'] }, platform })
+  bridge.activeSessionId = 's1'
+  bridge.peerId = 'u1'
+  ctx.sessions.list = () => [{ id: 's1', events: [], header: {}, seq: 0 }]
+
+  await Promise.all([
+    bridge.sendText('first'),
+    bridge.sendText('boom'),
+    bridge.sendText('last'),
+  ])
+
+  assert.deepEqual(order, ['first', 'boom', 'last'], '发送顺序必须与调用顺序一致')
+  bridge.dispose()
+  platform.dispose()
+})
+
+// ---------------------------------------------------------------------------
+// 回归：真实平台适配器携带 gateway 的真实 status（T3.3，离线守卫生效）
+// ---------------------------------------------------------------------------
+
+test('QqConversationNode 的 platform.status 透传网关状态，离线时出站被拦截', async () => {
+  const { QqConversationNode } = await import('../lib/qq/node.js')
+  const sent = []
+  const gateway = {
+    status: 'idle',
+    accountId: 'qq-bot',
+    capabilities: { supportsGroup: true, maxMessageChars: 2000 },
+    sendText: async (peer, text) => { sent.push({ peer, text }); return { id: 'm1' } },
+  }
+  const ctx = {
+    on: () => () => {},
+    emit: () => {},
+    logger: { warn() {}, info() {}, error() {}, debug() {} },
+    sessions: { list: () => [] },
+    agents: { get: () => undefined },
+    qq: gateway,
+  }
+  const node = new QqConversationNode(ctx, { allowFrom: ['u1'] }, ctx.logger)
+  assert.equal(node.platform.status, 'idle', '鸭子适配器必须透传网关 status')
+  assert.equal(node.platform.id, 'qq')
+
+  await node.sendText('不该发出去')
+  assert.equal(sent.length, 0, '网关离线时出站必须被拦截')
+
+  gateway.status = 'connected'
+  assert.equal(node.platform.status, 'connected')
+  node.dispose()
+})
+
+// ---------------------------------------------------------------------------
+// 回归：出站事件流绑定发起轮次的 peer（T2.3）
+// ---------------------------------------------------------------------------
+
+test('assistant/message 与 turn/end 绑定发起会话的 outboundPeer，而非被覆盖的 peerId', async () => {
+  const { ctx } = makeMockCtx()
+  const platform = new MockPlatform({ ctx, logger: ctx.logger })
+  const bridge = new ConversationBridge({ ctx, logger: ctx.logger, config: { allowFrom: ['a'] }, platform })
+  bridge.activeSessionId = 's-a'
+  ctx.sessions.list = () => [{ id: 's-a', events: [], header: {}, seq: 0 }]
+  ctx.agents.get = () => ({ session: { id: 's-a' }, status: 'idle', followup() {}, cancel() {} })
+
+  await bridge.handleInbound({ senderId: 'a', text: 'run long task', outboundPeer: { peerId: 'chat-a' } })
+  // 模拟任务进行期间 this.peerId 被其他来源覆盖（旧实现会把回复串到别的窗口）
+  bridge.peerId = 'someone-else'
+
+  const session = { id: 's-a', events: [], header: {}, seq: 0 }
+  ctx.emit('session/event', session, { type: 'assistant/message', data: { message: { content: [{ type: 'text', text: 'partial output' }] } } })
+  await new Promise(r => setTimeout(r, 20))
+  const outs = platform.sent.filter(s => s.text === 'partial output')
+  assert.equal(outs.length, 1)
+  assert.equal(outs[0].peerId, 'chat-a', '回复必须发到发起轮次绑定的会话 peer')
+
+  // turn/end 后轮次绑定释放，Map 不累积
+  ctx.emit('session/event', session, { type: 'turn/end', data: { reason: { kind: 'completed' } } })
+  await new Promise(r => setTimeout(r, 20))
+  assert.equal(bridge._turnPeers.has('s-a'), false)
+  bridge.dispose()
+  platform.dispose()
+})
+
+// ---------------------------------------------------------------------------
+// 回归：审批桥必须 prepend 到 waterfall 最外层（微信收不到审批卡修复）
+//
+// DSH 的审批分发是 cordis waterfall：宿主 apiproxy 先注册的 GUI 认领监听器
+// 会认领 approval/asked 并 veto（不调 next()）等待网页回答。桥若不 prepend，
+// 永远轮不到执行 → IM 端收不到卡片 → 工具调用以 unavailable 失败。
+// ---------------------------------------------------------------------------
+
+const { Context: CordisContext } = await import('@deepseek-ai/cordis')
+
+async function makeApprovalHarness() {
+  const app = new CordisContext()
+  const platform = new MockPlatform({ ctx: app, logger: { info() {}, warn() {}, error() {}, debug() {} } })
+  const bridge = new ConversationBridge({
+    ctx: app, logger: platform.logger, config: { allowFrom: ['u1'] }, platform,
+  })
+  bridge.activeSessionId = 's1'
+  app.sessions = { list: () => [{ id: 's1', events: [], header: {}, seq: 0 }], get: () => undefined }
+  app.agents = {
+    get: () => undefined,
+    create: async ({ sessionId }) => ({ agent: { session: { id: sessionId }, followup() {}, cancel() {}, status: 'idle' } }),
+    resume: async ({ resumeSessionId }) => ({ agent: { session: { id: resumeSessionId }, followup() {}, cancel() {}, status: 'idle' } }),
+  }
+  app.workspaceRegistry = { archivedSessionIds: [], list: async () => [] }
+  app.sessionProjCache = {}
+
+  // 宿主式 GUI 认领监听器：先注册（模拟 dsh-host-apiproxy），认领后挂起等网页回答
+  let hostResolve = null
+  const hostClaims = []
+  app.on('approval/request', () => {
+    hostClaims.push(1)
+    return new Promise((resolve) => { hostResolve = resolve })
+  })
+  return { app, platform, bridge, get hostResolve() { return hostResolve }, hostClaims }
+}
+
+test('审批桥 prepend 最外层：卡片发到 IM，/yes 决议生效（微信收不到审批卡回归）', async () => {
+  const { app, platform, bridge, hostClaims } = await makeApprovalHarness()
+
+  await bridge.handleInbound({ senderId: 'u1', text: '把 readme 发我', outboundPeer: { peerId: 'u1' } })
+
+  // 模拟 dsh-user-approval.decide 的 waterfall 调用（含 unavailable 兜底）
+  const decidePromise = app.waterfall('approval/request', { agent: { session: { id: 's1' } }, toolName: 'read_file' }, () => Promise.resolve('unavailable'))
+  await new Promise((r) => setTimeout(r, 30))
+
+  // 归属模型：IM 轮次只在 IM 决议，不调用 next() —— 宿主 GUI 不得认领，
+  // 否则 IM 决议后 Web 弹窗会永久残留（用户实测报告）
+  assert.equal(hostClaims.length, 0, 'IM 轮次不得打开宿主 GUI 通道')
+  assert.ok(platform.sent.some((m) => m.text.includes('操作权限确认')), '审批卡片必须发到 IM')
+
+  // 用户回复 /yes → IM 侧决议
+  await bridge.handleInbound({ senderId: 'u1', text: '/yes', outboundPeer: { peerId: 'u1' } })
+  const outcome = await decidePromise
+  assert.equal(outcome, 'allowed-once')
+  await new Promise((r) => setTimeout(r, 30)) // 等待发送队列落地确认消息
+  assert.ok(platform.sent.some((m) => m.text.includes('已批准执行')))
+
+  bridge.dispose()
+  platform.dispose()
+})
+
+
+test('Web 端发起轮次的审批放行给宿主 GUI，不被 IM 桥劫持（会话归属回归）', async () => {
+  const harness = await makeApprovalHarness()
+  const { app, platform, bridge } = harness
+  // 模拟 Web 端直接驱动该会话（没有经过 handleInbound → 无 _turnPeers 轮次记录）
+  assert.equal(bridge._turnPeers.has('s1'), false)
+
+  const decidePromise = app.waterfall('approval/request', { agent: { session: { id: 's1' } }, toolName: 'read_file' }, () => Promise.resolve('unavailable'))
+  await new Promise((r) => setTimeout(r, 30))
+
+  assert.equal(harness.hostClaims.length, 1, '宿主 GUI 监听器必须被直接认领（IM 桥放行）')
+  assert.equal(platform.sent.length, 0, 'IM 端不得收到任何审批卡片')
+  assert.ok(bridge.pending.size === 0, 'IM 桥不得注册待决审批')
+
+  // GUI 回答后 waterfall 正常闭合
+  harness.hostResolve('allowed-once')
+  assert.equal(await decidePromise, 'allowed-once')
+
+  bridge.dispose()
+  platform.dispose()
+})
+
+// ---------------------------------------------------------------------------
+// 回归：模型把工具调用协议标记（DSML）当正文输出时，不得原样转发到 IM
+// ---------------------------------------------------------------------------
+
+test('DSML 协议标记整块剥离，不转发到 IM（协议泄漏回归）', async () => {
+  const { ctx } = makeMockCtx()
+  const platform = new MockPlatform({ ctx, logger: ctx.logger })
+  const bridge = new ConversationBridge({ ctx, logger: ctx.logger, config: { allowFrom: ['u1'] }, platform })
+  bridge.activeSessionId = 's1'
+  bridge.peerId = 'u1'
+  ctx.sessions.list = () => [{ id: 's1', events: [], header: {}, seq: 0 }]
+
+  const session = { id: 's1', events: [], header: {}, seq: 0 }
+  // 用户实测样本：整条消息就是工具调用协议块
+  ctx.emit('session/event', session, {
+    type: 'assistant/message',
+    data: { message: { content: [{ type: 'text', text: '<｜｜DSML｜｜tool_calls><｜｜DSML｜｜invoke name="browser_navigate"><｜｜DSML｜｜parameter name="url" string="true">https://example.com</｜｜DSML｜｜parameter></｜｜DSML｜｜invoke></｜｜DSML｜｜tool_calls>' }] } },
+  })
+  await new Promise((r) => setTimeout(r, 30))
+  assert.equal(platform.sent.length, 0, '纯协议标记不得外发')
+
+  // 正文 + 尾部泄漏的协议块：正文保留
+  ctx.emit('session/event', session, {
+    type: 'assistant/message',
+    data: { message: { content: [{ type: 'text', text: '我已完成修改。\n<｜｜DSML｜｜tool_calls><｜｜DSML｜｜invoke name="f"></｜｜DSML｜｜invoke></｜｜DSML｜｜tool_calls>' }] } },
+  })
+  await new Promise((r) => setTimeout(r, 30))
+  assert.ok(platform.sent.some((m) => m.text === '我已完成修改。'), '正文必须保留且剥离协议块')
+
+  // 普通文本不受影响
+  ctx.emit('session/event', session, {
+    type: 'assistant/message',
+    data: { message: { content: [{ type: 'text', text: '今天聊到 DSML 的时候要注意格式' }] } },
+  })
+  await new Promise((r) => setTimeout(r, 30))
+  assert.ok(platform.sent.some((m) => m.text.includes('今天聊到 DSML')), '正文提及 DSML 不受影响')
+
+  bridge.dispose()
+  platform.dispose()
+})
+
+// ---------------------------------------------------------------------------
+// 回归：宿主 cordis 上下文对未 inject 属性的读取会抛错（/list 报错修复）
+// ---------------------------------------------------------------------------
+
+/** 模拟 DSH 宿主的插件上下文：读取未声明的属性直接抛 'cannot get property ... without inject' */
+function makeHostLikeCtx(plain) {
+  const declared = new Set(['connection', 'webServer', 'sessions', 'agents', 'approval', 'workspaceRegistry', 'sessionPersistence'])
+  const allowed = new Set(['logger', 'on', 'emit', 'effect', 'get'])
+  return new Proxy(plain, {
+    get(target, prop) {
+      if (typeof prop !== 'string' || prop in target || declared.has(prop) || allowed.has(prop)) return target[prop]
+      throw new Error(`cannot get property "${String(prop)}" without inject`)
+    },
+  })
+}
+
+test('宿主强制 inject 时 /list 正常回落磁盘存储（sessionProjCache 抛错回归）', async () => {
+  const raw = makeMockCtx()
+  // 关键：不提供 sessionProjCache —— 宿主上读取它会抛错，必须安全回落
+  delete raw.ctx.sessionProjCache
+  const ctx = makeHostLikeCtx(raw.ctx)
+  const platform = new MockPlatform({ ctx, logger: ctx.logger })
+  const bridge = new ConversationBridge({ ctx, logger: ctx.logger, config: { allowFrom: ['u1'] }, platform })
+  bridge.activeSessionId = 's1'
+  ctx.sessions.list = () => [
+    { id: 'live-1', header: { createdAt: Date.now(), cwd: '/app' }, events: [{ type: 'session/title', data: { title: '活跃会话' } }], seq: 1 },
+  ]
+
+  const out = await bridge.handleInbound({ senderId: 'u1', text: '/list', outboundPeer: { peerId: 'u1' } })
+  assert.equal(out, 'routed', '命令必须成功路由而不是执行出错')
+  assert.ok(platform.sent.some((m) => m.text.includes('会话列表')), '必须正常渲染会话列表而非报错')
+
+  bridge.dispose()
+  platform.dispose()
+})
+
+// ---------------------------------------------------------------------------
+// 回归：飞书审批桥必须 prepend + 归属门槛（飞书收不到审批卡修复）
+//
+// FeishuConversationNode 曾有自己的遗留审批桥（非 prepend、无轮次门槛、
+// 还调用 next() 开 Web 通道）——宿主 GUI 认领先行否决后飞书永远收不到卡片。
+// ---------------------------------------------------------------------------
+
+const { FeishuConversationNode } = await import('../lib/feishu/node.js')
+
+async function makeFeishuHarness() {
+  const app = new CordisContext()
+  const cardSends = []
+  const markdownSends = []
+  const gateway = {
+    status: 'online',
+    configured: true,
+    accountId: 'feishu-bot',
+    capabilities: { supportsGroup: true, supportsMedia: true, supportsTyping: false, maxMessageChars: 2000 },
+    sendMarkdownCard: async (peerId, text) => { markdownSends.push({ peerId, text }); return { ok: true } },
+    sendCard: async (peerId, card) => { cardSends.push({ peerId, card }); return { ok: true, message_id: 'om_1' } },
+    sendText: async () => ({}),
+  }
+  app.feishu = gateway
+  const live = [{ id: 'session-f1', header: { createdAt: Date.now(), cwd: '/app' }, events: [], seq: 1 }]
+  app.sessions = { list: () => live, get: (id) => live.find((s) => s.id === id) }
+  app.agents = { get: () => ({ session: { id: 'session-f1' }, status: 'idle', followup() {}, cancel() {} }) }
+  app.workspaceRegistry = { archivedSessionIds: [], list: async () => [] }
+
+  const node = new FeishuConversationNode(app, { allowFrom: ['u1'] }, { info() {}, warn() {}, error() {}, debug() {} })
+  node.activeSessionId = 'session-f1'
+  return { app, node, cardSends, markdownSends }
+}
+
+test('飞书发起的审批：prepend 抢在宿主前、按钮卡片送达、按钮决议生效', async () => {
+  const harness = await makeFeishuHarness()
+  const { app, node, cardSends } = harness
+
+  app.emit('feishu/message', { peerId: 'oc_u1', senderId: 'u1', isGroup: false, text: '创建文件', messageId: 'm1' })
+  await new Promise((r) => setTimeout(r, 40))
+
+  // 宿主式 GUI 认领监听器：桥必须先于它执行（prepend），且不得调用 next()
+  let hostClaimed = false
+  app.on('approval/request', () => { hostClaimed = true; return new Promise(() => {}) })
+
+  const decide = app.waterfall('approval/request', { agent: { session: { id: 'session-f1' } }, toolName: 'write_file' }, () => Promise.resolve('unavailable'))
+  await new Promise((r) => setTimeout(r, 40))
+
+  assert.equal(hostClaimed, false, 'IM 轮次不得打开宿主 GUI 通道')
+  assert.equal(cardSends.length, 1, '飞书交互按钮卡片必须发出')
+  assert.equal(cardSends[0].peerId, 'oc_u1')
+
+  // 按钮决议：发起者点击批准
+  node._handleAction({ operatorId: 'u1', value: { action: 'approve', approvalId: 1 } })
+  assert.equal(await decide, 'allowed-once')
+
+  node.dispose()
+})
+
+test('飞书：非发起者点击按钮被拒绝', async () => {
+  const harness = await makeFeishuHarness()
+  const { app, node, cardSends } = harness
+
+  app.emit('feishu/message', { peerId: 'oc_u1', senderId: 'u1', isGroup: false, text: '创建文件', messageId: 'm1' })
+  await new Promise((r) => setTimeout(r, 40))
+  const decide = app.waterfall('approval/request', { agent: { session: { id: 'session-f1' } }, toolName: 'write_file' }, () => Promise.resolve('unavailable'))
+  await new Promise((r) => setTimeout(r, 40))
+  assert.equal(cardSends.length, 1)
+
+  node._handleAction({ operatorId: 'u-evil', value: { action: 'approve', approvalId: 1 } })
+  // 给出 50ms：若错误地决议了，decide 会立即落定；否则仍挂起
+  const winner = await Promise.race([decide.then(() => 'decided'), new Promise((r) => setTimeout(() => r('pending'), 50))])
+  assert.equal(winner, 'pending', '非发起者的按钮点击不得决议')
+
+  // 发起者仍可决议
+  node._handleAction({ operatorId: 'u1', value: { action: 'reject', approvalId: 1 } })
+  assert.equal(await decide, 'rejected')
+
+  node.dispose()
+})

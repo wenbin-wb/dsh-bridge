@@ -242,7 +242,7 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 - **物理机免密直通**：运行 DSH 的宿主电脑（`127.0.0.1` / `localhost`）享有全局最高物理特权，**永不要求输入访问密码，设置面板永不会被锁定**；
 - **服务器一键救急指令**：无头 Linux 服务器或极端忘记密码时，在宿主电脑终端执行单行命令：
   ```bash
-  touch ~/.dsh-bridge/reset-auth
+  touch ~/.dsh/dsh-bridge/reset-auth
   ```
   插件将在毫秒级自动清空密码与策略并删除标记，瞬间恢复初始免密状态；
 - **全界面忘记密码指引**：访客登录页与锁屏页均提供 `❓ 忘记密码？` 救助展开卡片。
