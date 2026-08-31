@@ -2594,7 +2594,14 @@ function BridgePanel({ rpcCall }) {
       setStatus(r.value);
       if (!quiet) setErr(null);
     } catch (e) {
-      if (currentSeq === loadSeqRef.current) setErr(e.message);
+      if (currentSeq === loadSeqRef.current) {
+        // transport failure（HTTP 401）＝ 访问会话失效：重置解锁状态，回到锁屏/登录
+        if (String(e?.message || '').includes('401') || String(e?.message || '').includes('transport failure')) {
+          setAdminUnlocked(false);
+          clearAdminToken();
+        }
+        setErr(e.message);
+      }
     } finally {
       loadInFlightRef.current = false;
     }

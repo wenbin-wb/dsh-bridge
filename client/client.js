@@ -3798,7 +3798,13 @@ function BridgePanel({ rpcCall }) {
       setStatus(r.value);
       if (!quiet) setErr(null);
     } catch (e) {
-      if (currentSeq === loadSeqRef.current) setErr(e.message);
+      if (currentSeq === loadSeqRef.current) {
+        if (String(e?.message || "").includes("401") || String(e?.message || "").includes("transport failure")) {
+          setAdminUnlocked(false);
+          clearAdminToken();
+        }
+        setErr(e.message);
+      }
     } finally {
       loadInFlightRef.current = false;
     }
