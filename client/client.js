@@ -4227,6 +4227,8 @@ function injectMobileStyles() {
   if (document.getElementById("dsh-bridge-mobile-styles")) return;
   const style = document.createElement("style");
   style.id = "dsh-bridge-mobile-styles";
+  style.dataset.plugin = "@wenbin_wb/dsh-bridge";
+  style.dataset.pluginCss = "@wenbin_wb/dsh-bridge/mobile-styles";
   style.textContent = MOBILE_STYLES_CSS;
   document.head.appendChild(style);
 }

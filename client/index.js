@@ -3042,6 +3042,11 @@ function injectMobileStyles() {
 
   const style = document.createElement('style');
   style.id = 'dsh-bridge-mobile-styles';
+  // 归属标记（Issue #24）：本样式由 apply() 运行时创建，晚于宿主的 claimStyles
+  // 物化阶段——若不声明归属，宿主会把无主 <style> 认领给其它插件，HMR 重载时
+  // 误删整张样式表，导致移动端导航条在桌面端泄漏（≡/新会话/⊕ 元素）
+  style.dataset.plugin = '@wenbin_wb/dsh-bridge';
+  style.dataset.pluginCss = '@wenbin_wb/dsh-bridge/mobile-styles';
   style.textContent = MOBILE_STYLES_CSS;
   document.head.appendChild(style);
 }
