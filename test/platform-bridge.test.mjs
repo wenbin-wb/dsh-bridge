@@ -770,3 +770,24 @@ test('GUI 先决议时 IM 收到（Web 端操作）通知', async () => {
   bridge.dispose()
   platform.dispose()
 })
+
+test('Web 端发起轮次的审批放行给宿主 GUI，不被 IM 桥劫持（会话归属回归）', async () => {
+  const harness = await makeApprovalHarness()
+  const { app, platform, bridge } = harness
+  // 模拟 Web 端直接驱动该会话（没有经过 handleInbound → 无 _turnPeers 轮次记录）
+  assert.equal(bridge._turnPeers.has('s1'), false)
+
+  const decidePromise = app.waterfall('approval/request', { agent: { session: { id: 's1' } }, toolName: 'read_file' }, () => Promise.resolve('unavailable'))
+  await new Promise((r) => setTimeout(r, 30))
+
+  assert.equal(harness.hostClaims.length, 1, '宿主 GUI 监听器必须被直接认领（IM 桥放行）')
+  assert.equal(platform.sent.length, 0, 'IM 端不得收到任何审批卡片')
+  assert.ok(bridge.pending.size === 0, 'IM 桥不得注册待决审批')
+
+  // GUI 回答后 waterfall 正常闭合
+  harness.hostResolve('allowed-once')
+  assert.equal(await decidePromise, 'allowed-once')
+
+  bridge.dispose()
+  platform.dispose()
+})
