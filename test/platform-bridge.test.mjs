@@ -737,7 +737,9 @@ test('审批桥 prepend 最外层：卡片发到 IM，/yes 决议生效（微信
   const decidePromise = app.waterfall('approval/request', { agent: { session: { id: 's1' } }, toolName: 'read_file' }, () => Promise.resolve('unavailable'))
   await new Promise((r) => setTimeout(r, 30))
 
-  assert.equal(hostClaims.length, 1, "宿主 GUI 监听器应经由 next() 并行挂起")
+  // 归属模型：IM 轮次只在 IM 决议，不调用 next() —— 宿主 GUI 不得认领，
+  // 否则 IM 决议后 Web 弹窗会永久残留（用户实测报告）
+  assert.equal(hostClaims.length, 0, 'IM 轮次不得打开宿主 GUI 通道')
   assert.ok(platform.sent.some((m) => m.text.includes('操作权限确认')), '审批卡片必须发到 IM')
 
   // 用户回复 /yes → IM 侧决议
@@ -751,25 +753,6 @@ test('审批桥 prepend 最外层：卡片发到 IM，/yes 决议生效（微信
   platform.dispose()
 })
 
-test('GUI 先决议时 IM 收到（Web 端操作）通知', async () => {
-  const harness = await makeApprovalHarness()
-  const { app, platform, bridge } = harness
-
-  await bridge.handleInbound({ senderId: 'u1', text: 'do work', outboundPeer: { peerId: 'u1' } })
-  const decidePromise = app.waterfall('approval/request', { agent: { session: { id: 's1' } }, toolName: 'browser_click' }, () => Promise.resolve('unavailable'))
-  await new Promise((r) => setTimeout(r, 30))
-  assert.ok(platform.sent.some((m) => m.text.includes('操作权限确认')))
-
-  // 用户在 Web GUI 上点了拒绝
-  harness.hostResolve('rejected')
-  const outcome = await decidePromise
-  assert.equal(outcome, 'rejected')
-  await new Promise((r) => setTimeout(r, 30)) // 等待发送队列落地确认消息
-  assert.ok(platform.sent.some((m) => m.text.includes('已拒绝执行') && m.text.includes('Web 端操作')))
-
-  bridge.dispose()
-  platform.dispose()
-})
 
 test('Web 端发起轮次的审批放行给宿主 GUI，不被 IM 桥劫持（会话归属回归）', async () => {
   const harness = await makeApprovalHarness()
