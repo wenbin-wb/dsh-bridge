@@ -320,13 +320,20 @@ test('P0-9: 路径穿越与敏感系统目录黑名单拦截 (Windows & POSIX)',
   assert.equal(isSensitiveFolderName('$Recycle.Bin'), true)
   assert.equal(isSensitiveFolderName('my-project'), false)
 
-  // 2. Windows 系统敏感目录拦截
-  const winCheck1 = await isSafeWorkspacePath('C:\\Windows')
-  assert.equal(winCheck1.valid, false)
-  assert.match(winCheck1.error, /安全拦截/)
+  // 2. Windows 系统敏感目录拦截（仅 Windows 运行时验证；Linux/CI 下该分支不生效，
+  //    改测"Windows 路径片段出现在路径中"的通用拦截）
+  if (process.platform === 'win32') {
+    const winCheck1 = await isSafeWorkspacePath('C:\\Windows')
+    assert.equal(winCheck1.valid, false)
+    assert.match(winCheck1.error, /安全拦截/)
 
-  const winCheck2 = await isSafeWorkspacePath('C:\\Program Files')
-  assert.equal(winCheck2.valid, false)
+    const winCheck2 = await isSafeWorkspacePath('C:\\Program Files')
+    assert.equal(winCheck2.valid, false)
+  } else {
+    const crossWinCheck = await isSafeWorkspacePath('C:\\Windows\\System32', { allowNonExistent: true })
+    assert.equal(crossWinCheck.valid, false)
+    assert.match(crossWinCheck.error, /安全拦截|系统/)
+  }
 
   // 3. POSIX 系统敏感目录拦截
   const posixCheck1 = await isSafeWorkspacePath('/etc/shadow', { allowNonExistent: true })

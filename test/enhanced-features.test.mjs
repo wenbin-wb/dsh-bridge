@@ -92,13 +92,22 @@ test('BridgeService diagnoseNetwork runs diagnostics', async () => {
   assert.ok(res.results.some(r => r.item === 'lan_interface'));
   assert.ok(res.results.some(r => r.item === 'custom_tunnel_server'));
 
-  // 测试配置了 ws:// 协议的自建隧道地址
-  service.customTunnelConfig = { serverUrl: 'ws://127.0.0.1:3082/connect' };
-  service.customTunnelClient = { running: true };
-  const res2 = await service.diagnoseNetwork();
-  const ctItem = res2.results.find(r => r.item === 'custom_tunnel_server');
-  assert.ok(ctItem);
-  assert.equal(ctItem.status, 'pass');
+  // 测试配置了自建隧道地址 + 客户端在线：起一个真实本地 HTTP 服务作为探测目标，
+  // 使断言不依赖外部网络/端口（CI 沙箱无出网时也能稳定通过）。
+  const http = await import('node:http')
+  const probeServer = http.createServer((req, res) => { res.end('ok') })
+  await new Promise((r) => probeServer.listen(0, '127.0.0.1', r))
+  try {
+    const probePort = probeServer.address().port
+    service.customTunnelConfig = { serverUrl: `ws://127.0.0.1:${probePort}/connect` }
+    service.customTunnel = { connected: true } // 与诊断实现字段一致（旧测试用 customTunnelClient 是重构前残留）
+    const res2 = await service.diagnoseNetwork()
+    const ctItem = res2.results.find(r => r.item === 'custom_tunnel_server')
+    assert.ok(ctItem)
+    assert.equal(ctItem.status, 'pass')
+  } finally {
+    await new Promise((r) => probeServer.close(r))
+  }
 });
 
 test('AuthManager and backup integration', async () => {
