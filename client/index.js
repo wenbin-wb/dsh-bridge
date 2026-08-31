@@ -1,7 +1,7 @@
 import { MOBILE_STYLES_CSS } from './mobile-styles.js'
 import {
   getAdminToken, setAdminToken, clearAdminToken,
-  queuePendingOperation, unlockAdmin,
+  queuePendingOperation, unlockAdmin, onUnlocked,
 } from './unlock-manager.js'
 // dsh-bridge 客户端插件：设置页「远程访问」面板
 
@@ -2627,9 +2627,9 @@ function BridgePanel({ rpcCall }) {
   }, [authRpcCall, adminUnlocked, isLocalhost]);
 
   React.useEffect(() => {
-    // 同上：远程上锁时暂停 getStatus 轮询
-    if (!adminUnlocked && !isLocalhost) return;
+    // 远程上锁时：加载一次（拿到 auth 判断锁定/显示锁屏），但不轮询（避免 401 风暴）
     load();
+    if (!adminUnlocked && !isLocalhost) return;
     const t = setInterval(() => load(true), 3000);
     return () => clearInterval(t);
   }, [load, adminUnlocked, isLocalhost]);

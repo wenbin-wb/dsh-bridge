@@ -891,6 +891,13 @@ async function replayPending() {
     }
   }
 }
+function onUnlocked(cb) {
+  if (!_onUnlocked) _onUnlocked = [];
+  _onUnlocked.push(cb);
+  return () => {
+    _onUnlocked = _onUnlocked.filter((f) => f !== cb);
+  };
+}
 function _emitUnlocked() {
   if (_onUnlocked) {
     for (const cb of _onUnlocked) {
@@ -3823,8 +3830,8 @@ function BridgePanel({ rpcCall }) {
     };
   }, [authRpcCall, adminUnlocked, isLocalhost]);
   React.useEffect(() => {
-    if (!adminUnlocked && !isLocalhost) return;
     load();
+    if (!adminUnlocked && !isLocalhost) return;
     const t = setInterval(() => load(true), 3e3);
     return () => clearInterval(t);
   }, [load, adminUnlocked, isLocalhost]);

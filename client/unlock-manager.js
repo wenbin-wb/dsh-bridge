@@ -156,7 +156,7 @@ export async function unlockAdmin(rpcCall, password) {
 export function _resetForTest() {
   _token = '';
   _unlockHandlers = [];
-  _pending = null;
+  _pendingOps = [];
   _onUnlocked = null;
   _onPermissionDenied = null;
 }
