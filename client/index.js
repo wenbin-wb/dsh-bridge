@@ -1,4 +1,8 @@
 import { MOBILE_STYLES_CSS } from './mobile-styles.js'
+import {
+  getAdminToken, setAdminToken, clearAdminToken,
+  notifyPermissionDenied, hideAllUnlock, queuePendingOperation, unlockAdmin,
+} from './unlock-manager.js'
 // dsh-bridge 客户端插件：设置页「远程访问」面板
 
 // 兼容非 HTTPS 环境（如手机局域网 HTTP 访问）：为非安全上下文补齐 crypto.randomUUID
@@ -2495,7 +2499,15 @@ function BridgePanel({ rpcCall }) {
     if (res?.ok === false) {
       const msg = res?.error?.message || '';
       if (msg.includes('管理员权限') || msg.includes('管理密码解锁')) {
-        pendingRetryRef.current = { endpoint, payload: enriched };
+        // 统一走 unlock-manager：暂存操作 + 通知解锁 UI
+        queuePendingOperation(async () => {
+          let fresh = getAdminToken();
+          if (!fresh && isLocalhost) fresh = await fetchLoopbackToken();
+          if (!fresh) return;
+          const retry = await rpcCall(endpoint, { ...payload, adminToken: fresh, ...(isLocalhost ? { isLocalhost: true } : {}) }, signal);
+          if (retry?.ok) { setStatus(retry.value); setErr(null); }
+        });
+        notifyPermissionDenied({ message: msg });
         setUnlockErr(msg);
         setShowUnlockModal(true);
       }
@@ -2507,36 +2519,28 @@ function BridgePanel({ rpcCall }) {
     e?.preventDefault?.();
     setUnlocking(true);
     setUnlockErr(null);
-    try {
-      const res = await rpcCall(BRIDGE_ENDPOINTS.authAdminUnlock, { password: unlockPassword });
-      if (res?.ok) {
-        const token = res.value?.adminToken || '';
-        setAdminToken(token);
-        setGlobalAdminToken(token);
-        setAdminUnlocked(true);
-        setUnlockPassword('');
-        setShowUnlockModal(false);
-        setErr(null);
-      } else {
-        setUnlockErr(res?.error?.message || '管理员密码错误');
-      }
-    } catch (err) {
-      setUnlockErr(err.message || '解锁请求失败');
-    } finally {
-      setUnlocking(false);
+    const res = await unlockAdmin(rpcCall, unlockPassword);
+    if (res.ok) {
+      setAdminUnlocked(true);
+      setUnlockPassword('');
+      setShowUnlockModal(false);
+      setErr(null);
+    } else {
+      setUnlockErr(res.error);
     }
+    setUnlocking(false);
   }, [rpcCall, unlockPassword]);
 
   const handleLockAdmin = React.useCallback(async () => {
     try {
-      if (adminToken) {
-        await rpcCall(BRIDGE_ENDPOINTS.authAdminLock, { adminToken });
+      const t = getAdminToken();
+      if (t) {
+        await rpcCall(BRIDGE_ENDPOINTS.authAdminLock, { adminToken: t });
       }
     } catch {}
-    setAdminToken('');
-    setGlobalAdminToken('');
+    clearAdminToken();
     setAdminUnlocked(false);
-  }, [rpcCall, adminToken]);
+  }, [rpcCall]);
 
   const loadInFlightRef = React.useRef(false);
   const loadSeqRef = React.useRef(0);
@@ -3423,6 +3427,10 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
   let isSubmitting = false;
   let statusMessage = null;
   let isErrorMessage = false;
+  let needUnlock = false;          // 需要管理密码解锁（远程场景）
+  let unlockInput = '';
+  let unlockErr = null;
+  let unlocking = false;
 
   function closeModal() {
     document.removeEventListener('keydown', handleKeydown);
@@ -3468,6 +3476,20 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
         </div>
         <button id="dsh-ws-close-btn" style="border: none; background: none; font-size: 18px; cursor: pointer; color: var(--dsw-alias-label-tertiary, #9ca3af); padding: 4px 8px; border-radius: 6px; line-height: 1; flex-shrink: 0;">✕</button>
       </div>
+
+      <!-- 管理权限解锁块（远程访问需要管理密码） -->
+      ${needUnlock ? `
+        <div style="padding: 14px 16px; background: var(--dsw-alias-state-warn-bg, #fffbeb); border-bottom: 1px solid var(--dsw-alias-state-warn-border, #fde68a); flex-shrink: 0;">
+          <div style="font-size: 12px; font-weight: 600; color: var(--dsw-alias-state-warn-primary, #92400e); margin-bottom: 6px;">🔒 此操作需要管理员权限</div>
+          <div style="font-size: 11px; color: var(--dsw-alias-label-secondary, #6b7280); margin-bottom: 8px; line-height: 1.5;">远程访问时浏览/添加工作区需输入后台管理密码解锁（与访问密码不同）。</div>
+          <form id="dsh-ws-unlock-form" style="display: flex; gap: 8px;">
+            <input id="dsh-ws-unlock-input" type="password" placeholder="请输入后台管理密码" value="${escapeHtml(unlockInput)}"
+              style="flex: 1; font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--dsw-alias-border-l2, #d1d5db); background: var(--dsw-alias-bg-layer-1, #fff); color: var(--dsw-alias-label-primary, currentColor); outline: none; box-sizing: border-box;" />
+            <button type="submit" style="border: none; background: var(--dsw-alias-brand-primary, #4f6ef7); color: #fff; border-radius: 8px; padding: 0 14px; font-size: 12px; font-weight: 600; cursor: pointer; flex-shrink: 0;" ${unlocking ? 'disabled' : ''}>${unlocking ? '解锁中…' : '解锁'}</button>
+          </form>
+          ${unlockErr ? `<div style="font-size: 11px; color: var(--dsw-alias-state-error-primary, #dc2626); margin-top: 6px;">${escapeHtml(unlockErr)}</div>` : ''}
+        </div>
+      ` : ''}
 
       <div style="padding: 12px 16px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 10px;">
         <!-- 提示信息横幅 -->
@@ -3632,6 +3654,34 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
     modal.querySelector('#dsh-ws-close-btn')?.addEventListener('click', closeModal);
     modal.querySelector('#dsh-ws-cancel-btn')?.addEventListener('click', closeModal);
 
+    // 管理权限解锁表单
+    const unlockForm = modal.querySelector('#dsh-ws-unlock-form');
+    if (unlockForm) {
+      unlockForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (unlocking) return;
+        const input = modal.querySelector('#dsh-ws-unlock-input');
+        const pwd = input?.value || '';
+        if (!pwd) return;
+        unlocking = true;
+        unlockErr = null;
+        render();
+        const res = await unlockAdmin(rpcCall, pwd);
+        if (res.ok) {
+          needUnlock = false;
+          unlockInput = '';
+          statusMessage = null;
+          isErrorMessage = false;
+          // 解锁成功：重新加载目录
+          await loadDirectory(currentPath);
+        } else {
+          unlockErr = res.error || '解锁失败';
+        }
+        unlocking = false;
+        render();
+      });
+    }
+
     // 面包屑点击
     modal.querySelectorAll('.dsh-ws-crumb-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -3744,33 +3794,61 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
 
   async function authRpc(endpoint, payload = {}) {
     let token = getGlobalAdminToken();
-    if (!token && isLocalEnvironment()) {
-      // 与 BridgePanel.fetchLoopbackToken 同策略：本机直连 3080 时，loopback-token
-      // 端点在 3082 代理上，相对路径打不到——多候选 URL 逐个尝试
-      const candidates = [
-        '/__dsh_bridge__/loopback-token',
-        'http://127.0.0.1:3082/__dsh_bridge__/loopback-token',
-        'http://localhost:3082/__dsh_bridge__/loopback-token',
-      ];
-      for (const url of [...new Set(candidates)]) {
-        try {
-          const res = await fetch(url, { method: 'POST' });
-          if (res.ok) {
-            const data = await res.json();
-            if (data?.ok && data.adminToken) {
-              token = data.adminToken;
-              setGlobalAdminToken(token);
-              break;
-            }
-          }
-        } catch {}
-      }
+    // 本机（回环）场景：优先用 loopback-token 端点拿一个新鲜的 adminToken。
+    // 不信任 sessionStorage 里的旧 token——DSH 重启后 adminSessions 清空，旧 token 失效。
+    if (isLocalEnvironment()) {
+      token = await fetchLoopbackTokenOnce();
     }
-    return rpcCall(endpoint, {
+    const enriched = {
       ...payload,
       ...(token ? { adminToken: token } : {}),
       ...(isLocalEnvironment() ? { isLocalhost: true } : {}),
-    });
+    };
+    const res = await rpcCall(endpoint, enriched);
+    if (res?.ok === false) {
+      const msg = res?.error?.message || '';
+      // 本机场景：token 可能已失效（如 DSH 重启），重取 loopback token 后重试一次
+      if (isLocalEnvironment() && (msg.includes('管理员权限') || msg.includes('管理密码解锁'))) {
+        const fresh = await fetchLoopbackTokenOnce(true);
+        if (fresh) {
+          return rpcCall(endpoint, { ...payload, adminToken: fresh, isLocalhost: true });
+        }
+      }
+      // 远程场景：需要管理密码解锁 → 清 token + 弹内嵌解锁 UI
+      if (msg.includes('管理员权限') || msg.includes('管理密码解锁')) {
+        clearAdminToken();
+        // 返回失败但标记需要解锁，让调用方（loadDirectory）显示解锁框
+        const err = new Error('need-unlock');
+        err.needUnlock = true;
+        err.message = msg;
+        throw err;
+      }
+    }
+    return res;
+  }
+
+  // 从多候选 URL 获取 loopback adminToken（本机专用）
+  async function fetchLoopbackTokenOnce(force = false) {
+    const existing = getAdminToken();
+    if (!force && existing) return existing;
+    const candidates = [
+      '/__dsh_bridge__/loopback-token',
+      'http://127.0.0.1:3082/__dsh_bridge__/loopback-token',
+      'http://localhost:3082/__dsh_bridge__/loopback-token',
+    ];
+    for (const url of [...new Set(candidates)]) {
+      try {
+        const res = await fetch(url, { method: 'POST' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.ok && data.adminToken) {
+            setAdminToken(data.adminToken);
+            return data.adminToken;
+          }
+        }
+      } catch {}
+    }
+    return null;
   }
 
   async function switchToWorkspace(wsId, wsPath) {
@@ -3859,8 +3937,16 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
         }
       }
     } catch (err) {
-      statusMessage = err.message || '读取目录失败';
-      isErrorMessage = true;
+      // 需要管理权限：显示内嵌解锁块（不当作普通错误）
+      if (err?.needUnlock) {
+        needUnlock = true;
+        unlockErr = null;
+        statusMessage = null;
+        isErrorMessage = false;
+      } else {
+        statusMessage = err.message || '读取目录失败';
+        isErrorMessage = true;
+      }
     } finally {
       isLoading = false;
       render();
@@ -3946,8 +4032,16 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
         render();
       }
     } catch (err) {
-      statusMessage = err.message || '添加工作区异常';
-      isErrorMessage = true;
+      // 需要管理权限：显示内嵌解锁块
+      if (err?.needUnlock) {
+        needUnlock = true;
+        unlockErr = null;
+        statusMessage = null;
+        isErrorMessage = false;
+      } else {
+        statusMessage = err.message || '添加工作区异常';
+        isErrorMessage = true;
+      }
       render();
     } finally {
       isSubmitting = false;

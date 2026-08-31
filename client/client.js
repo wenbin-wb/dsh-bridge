@@ -832,6 +832,107 @@ var MOBILE_STYLES_CSS = `
     }
 `;
 
+// client/unlock-manager.js
+var SESSION_KEY = "dsh_admin_token";
+var _token = "";
+var _unlockHandlers = [];
+var _pending = null;
+var _onUnlocked = null;
+var _onPermissionDenied = null;
+function _readStorage() {
+  try {
+    return typeof window !== "undefined" ? window.sessionStorage.getItem(SESSION_KEY) : "";
+  } catch {
+    return "";
+  }
+}
+function _writeStorage(t) {
+  try {
+    if (typeof window === "undefined") return;
+    if (t) window.sessionStorage.setItem(SESSION_KEY, t);
+    else window.sessionStorage.removeItem(SESSION_KEY);
+  } catch {
+  }
+}
+function getAdminToken() {
+  if (_token) return _token;
+  const saved = _readStorage();
+  if (saved) {
+    _token = saved;
+    return saved;
+  }
+  return "";
+}
+function setAdminToken(t) {
+  _token = t || "";
+  _writeStorage(_token);
+}
+function clearAdminToken() {
+  setAdminToken("");
+}
+function notifyPermissionDenied(context = {}) {
+  for (const h of _unlockHandlers) {
+    try {
+      h.show(context);
+    } catch {
+    }
+  }
+  if (_onPermissionDenied) {
+    for (const cb of _onPermissionDenied) {
+      try {
+        cb(context);
+      } catch {
+      }
+    }
+  }
+}
+function hideAllUnlock() {
+  for (const h of _unlockHandlers) {
+    try {
+      if (h.hide) h.hide();
+    } catch {
+    }
+  }
+}
+function queuePendingOperation(retry) {
+  _pending = retry;
+}
+async function replayPending() {
+  if (!_pending) return;
+  const retry = _pending;
+  _pending = null;
+  try {
+    await retry();
+  } catch {
+  }
+}
+function _emitUnlocked() {
+  if (_onUnlocked) {
+    for (const cb of _onUnlocked) {
+      try {
+        cb();
+      } catch {
+      }
+    }
+  }
+}
+async function unlockAdmin(rpcCall, password) {
+  try {
+    const res = await rpcCall("authAdminUnlock", { password });
+    if (res?.ok) {
+      const token = res.value?.adminToken || "";
+      setAdminToken(token);
+      hideAllUnlock();
+      _emitUnlocked();
+      await replayPending();
+      return { ok: true };
+    }
+    return { ok: false, error: res?.error?.message || "\u7BA1\u7406\u5458\u5BC6\u7801\u9519\u8BEF" };
+  } catch (err) {
+    return { ok: false, error: err?.message || "\u89E3\u9501\u8BF7\u6C42\u5931\u8D25" };
+  }
+}
+
 // lib/bridge-rpc-constants.js
 var BRIDGE_RPC_CHANNEL = "/dsh-bridge";
 var BRIDGE_ENDPOINTS = {
@@ -3556,7 +3657,7 @@ function BridgePanel({ rpcCall }) {
   const [platforms, setPlatforms] = React.useState(null);
   const [selectedPlatform, setSelectedPlatform] = React.useState("wechat");
   const isLocalhost = typeof window === "undefined" || (!window.location.hostname || window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost" || window.location.hostname === "::1" || window.location.hostname === "" || window.location.protocol === "file:" || window.location.protocol === "vscode-webview:" || window.location.protocol === "app:" || window.location.hostname.endsWith(".local"));
-  const [adminToken, setAdminToken] = React.useState("");
+  const [adminToken, setAdminToken2] = React.useState("");
   const [adminUnlocked, setAdminUnlocked] = React.useState(false);
   const [unlockPassword, setUnlockPassword] = React.useState("");
   const [unlockErr, setUnlockErr] = React.useState(null);
@@ -3579,7 +3680,7 @@ function BridgePanel({ rpcCall }) {
         if (res.ok) {
           const data = await res.json();
           if (data?.ok && data.adminToken) {
-            setAdminToken(data.adminToken);
+            setAdminToken2(data.adminToken);
             setGlobalAdminToken(data.adminToken);
             setAdminUnlocked(true);
             return data.adminToken;
@@ -3610,7 +3711,17 @@ function BridgePanel({ rpcCall }) {
     if (res?.ok === false) {
       const msg = res?.error?.message || "";
       if (msg.includes("\u7BA1\u7406\u5458\u6743\u9650") || msg.includes("\u7BA1\u7406\u5BC6\u7801\u89E3\u9501")) {
-        pendingRetryRef.current = { endpoint, payload: enriched };
+        queuePendingOperation(async () => {
+          let fresh = getAdminToken();
+          if (!fresh && isLocalhost) fresh = await fetchLoopbackToken();
+          if (!fresh) return;
+          const retry = await rpcCall(endpoint, { ...payload, adminToken: fresh, ...isLocalhost ? { isLocalhost: true } : {} }, signal);
+          if (retry?.ok) {
+            setStatus(retry.value);
+            setErr(null);
+          }
+        });
+        notifyPermissionDenied({ message: msg });
         setUnlockErr(msg);
         setShowUnlockModal(true);
       }
@@ -3621,36 +3732,28 @@ function BridgePanel({ rpcCall }) {
     e?.preventDefault?.();
     setUnlocking(true);
     setUnlockErr(null);
-    try {
-      const res = await rpcCall(BRIDGE_ENDPOINTS.authAdminUnlock, { password: unlockPassword });
-      if (res?.ok) {
-        const token = res.value?.adminToken || "";
-        setAdminToken(token);
-        setGlobalAdminToken(token);
-        setAdminUnlocked(true);
-        setUnlockPassword("");
-        setShowUnlockModal(false);
-        setErr(null);
-      } else {
-        setUnlockErr(res?.error?.message || "\u7BA1\u7406\u5458\u5BC6\u7801\u9519\u8BEF");
-      }
-    } catch (err2) {
-      setUnlockErr(err2.message || "\u89E3\u9501\u8BF7\u6C42\u5931\u8D25");
-    } finally {
-      setUnlocking(false);
+    const res = await unlockAdmin(rpcCall, unlockPassword);
+    if (res.ok) {
+      setAdminUnlocked(true);
+      setUnlockPassword("");
+      setShowUnlockModal(false);
+      setErr(null);
+    } else {
+      setUnlockErr(res.error);
     }
+    setUnlocking(false);
   }, [rpcCall, unlockPassword]);
   const handleLockAdmin = React.useCallback(async () => {
     try {
-      if (adminToken) {
-        await rpcCall(BRIDGE_ENDPOINTS.authAdminLock, { adminToken });
+      const t = getAdminToken();
+      if (t) {
+        await rpcCall(BRIDGE_ENDPOINTS.authAdminLock, { adminToken: t });
       }
     } catch {
     }
-    setAdminToken("");
-    setGlobalAdminToken("");
+    clearAdminToken();
     setAdminUnlocked(false);
-  }, [rpcCall, adminToken]);
+  }, [rpcCall]);
   const loadInFlightRef = React.useRef(false);
   const loadSeqRef = React.useRef(0);
   const load = React.useCallback(async (quiet = false) => {
@@ -4511,6 +4614,10 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
   let isSubmitting = false;
   let statusMessage = null;
   let isErrorMessage = false;
+  let needUnlock = false;
+  let unlockInput = "";
+  let unlockErr = null;
+  let unlocking = false;
   function closeModal() {
     document.removeEventListener("keydown", handleKeydown);
     overlay.style.opacity = "0";
@@ -4552,6 +4659,20 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
         </div>
         <button id="dsh-ws-close-btn" style="border: none; background: none; font-size: 18px; cursor: pointer; color: var(--dsw-alias-label-tertiary, #9ca3af); padding: 4px 8px; border-radius: 6px; line-height: 1; flex-shrink: 0;">\u2715</button>
       </div>
+
+      <!-- \u7BA1\u7406\u6743\u9650\u89E3\u9501\u5757\uFF08\u8FDC\u7A0B\u8BBF\u95EE\u9700\u8981\u7BA1\u7406\u5BC6\u7801\uFF09 -->
+      ${needUnlock ? `
+        <div style="padding: 14px 16px; background: var(--dsw-alias-state-warn-bg, #fffbeb); border-bottom: 1px solid var(--dsw-alias-state-warn-border, #fde68a); flex-shrink: 0;">
+          <div style="font-size: 12px; font-weight: 600; color: var(--dsw-alias-state-warn-primary, #92400e); margin-bottom: 6px;">\u{1F512} \u6B64\u64CD\u4F5C\u9700\u8981\u7BA1\u7406\u5458\u6743\u9650</div>
+          <div style="font-size: 11px; color: var(--dsw-alias-label-secondary, #6b7280); margin-bottom: 8px; line-height: 1.5;">\u8FDC\u7A0B\u8BBF\u95EE\u65F6\u6D4F\u89C8/\u6DFB\u52A0\u5DE5\u4F5C\u533A\u9700\u8F93\u5165\u540E\u53F0\u7BA1\u7406\u5BC6\u7801\u89E3\u9501\uFF08\u4E0E\u8BBF\u95EE\u5BC6\u7801\u4E0D\u540C\uFF09\u3002</div>
+          <form id="dsh-ws-unlock-form" style="display: flex; gap: 8px;">
+            <input id="dsh-ws-unlock-input" type="password" placeholder="\u8BF7\u8F93\u5165\u540E\u53F0\u7BA1\u7406\u5BC6\u7801" value="${escapeHtml(unlockInput)}"
+              style="flex: 1; font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--dsw-alias-border-l2, #d1d5db); background: var(--dsw-alias-bg-layer-1, #fff); color: var(--dsw-alias-label-primary, currentColor); outline: none; box-sizing: border-box;" />
+            <button type="submit" style="border: none; background: var(--dsw-alias-brand-primary, #4f6ef7); color: #fff; border-radius: 8px; padding: 0 14px; font-size: 12px; font-weight: 600; cursor: pointer; flex-shrink: 0;" ${unlocking ? "disabled" : ""}>${unlocking ? "\u89E3\u9501\u4E2D\u2026" : "\u89E3\u9501"}</button>
+          </form>
+          ${unlockErr ? `<div style="font-size: 11px; color: var(--dsw-alias-state-error-primary, #dc2626); margin-top: 6px;">${escapeHtml(unlockErr)}</div>` : ""}
+        </div>
+      ` : ""}
 
       <div style="padding: 12px 16px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 10px;">
         <!-- \u63D0\u793A\u4FE1\u606F\u6A2A\u5E45 -->
@@ -4713,6 +4834,31 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
     `;
     modal.querySelector("#dsh-ws-close-btn")?.addEventListener("click", closeModal);
     modal.querySelector("#dsh-ws-cancel-btn")?.addEventListener("click", closeModal);
+    const unlockForm = modal.querySelector("#dsh-ws-unlock-form");
+    if (unlockForm) {
+      unlockForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (unlocking) return;
+        const input = modal.querySelector("#dsh-ws-unlock-input");
+        const pwd = input?.value || "";
+        if (!pwd) return;
+        unlocking = true;
+        unlockErr = null;
+        render();
+        const res = await unlockAdmin(rpcCall, pwd);
+        if (res.ok) {
+          needUnlock = false;
+          unlockInput = "";
+          statusMessage = null;
+          isErrorMessage = false;
+          await loadDirectory(currentPath);
+        } else {
+          unlockErr = res.error || "\u89E3\u9501\u5931\u8D25";
+        }
+        unlocking = false;
+        render();
+      });
+    }
     modal.querySelectorAll(".dsh-ws-crumb-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         const p = btn.getAttribute("data-path");
@@ -4803,32 +4949,55 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
   }
   async function authRpc(endpoint, payload = {}) {
     let token = getGlobalAdminToken();
-    if (!token && isLocalEnvironment()) {
-      const candidates = [
-        "/__dsh_bridge__/loopback-token",
-        "http://127.0.0.1:3082/__dsh_bridge__/loopback-token",
-        "http://localhost:3082/__dsh_bridge__/loopback-token"
-      ];
-      for (const url of [...new Set(candidates)]) {
-        try {
-          const res = await fetch(url, { method: "POST" });
-          if (res.ok) {
-            const data = await res.json();
-            if (data?.ok && data.adminToken) {
-              token = data.adminToken;
-              setGlobalAdminToken(token);
-              break;
-            }
-          }
-        } catch {
-        }
-      }
+    if (isLocalEnvironment()) {
+      token = await fetchLoopbackTokenOnce();
     }
-    return rpcCall(endpoint, {
+    const enriched = {
       ...payload,
       ...token ? { adminToken: token } : {},
       ...isLocalEnvironment() ? { isLocalhost: true } : {}
-    });
+    };
+    const res = await rpcCall(endpoint, enriched);
+    if (res?.ok === false) {
+      const msg = res?.error?.message || "";
+      if (isLocalEnvironment() && (msg.includes("\u7BA1\u7406\u5458\u6743\u9650") || msg.includes("\u7BA1\u7406\u5BC6\u7801\u89E3\u9501"))) {
+        const fresh = await fetchLoopbackTokenOnce(true);
+        if (fresh) {
+          return rpcCall(endpoint, { ...payload, adminToken: fresh, isLocalhost: true });
+        }
+      }
+      if (msg.includes("\u7BA1\u7406\u5458\u6743\u9650") || msg.includes("\u7BA1\u7406\u5BC6\u7801\u89E3\u9501")) {
+        clearAdminToken();
+        const err = new Error("need-unlock");
+        err.needUnlock = true;
+        err.message = msg;
+        throw err;
+      }
+    }
+    return res;
+  }
+  async function fetchLoopbackTokenOnce(force = false) {
+    const existing2 = getAdminToken();
+    if (!force && existing2) return existing2;
+    const candidates = [
+      "/__dsh_bridge__/loopback-token",
+      "http://127.0.0.1:3082/__dsh_bridge__/loopback-token",
+      "http://localhost:3082/__dsh_bridge__/loopback-token"
+    ];
+    for (const url of [...new Set(candidates)]) {
+      try {
+        const res = await fetch(url, { method: "POST" });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.ok && data.adminToken) {
+            setAdminToken(data.adminToken);
+            return data.adminToken;
+          }
+        }
+      } catch {
+      }
+    }
+    return null;
   }
   async function switchToWorkspace(wsId, wsPath) {
     if (isSubmitting) return;
@@ -4913,8 +5082,15 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
         }
       }
     } catch (err) {
-      statusMessage = err.message || "\u8BFB\u53D6\u76EE\u5F55\u5931\u8D25";
-      isErrorMessage = true;
+      if (err?.needUnlock) {
+        needUnlock = true;
+        unlockErr = null;
+        statusMessage = null;
+        isErrorMessage = false;
+      } else {
+        statusMessage = err.message || "\u8BFB\u53D6\u76EE\u5F55\u5931\u8D25";
+        isErrorMessage = true;
+      }
     } finally {
       isLoading = false;
       render();
@@ -4987,8 +5163,15 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
         render();
       }
     } catch (err) {
-      statusMessage = err.message || "\u6DFB\u52A0\u5DE5\u4F5C\u533A\u5F02\u5E38";
-      isErrorMessage = true;
+      if (err?.needUnlock) {
+        needUnlock = true;
+        unlockErr = null;
+        statusMessage = null;
+        isErrorMessage = false;
+      } else {
+        statusMessage = err.message || "\u6DFB\u52A0\u5DE5\u4F5C\u533A\u5F02\u5E38";
+        isErrorMessage = true;
+      }
       render();
     } finally {
       isSubmitting = false;
