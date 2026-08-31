@@ -1,0 +1,26 @@
+# 统一 LF 行尾，消除 Windows 上 autocrlf 导致的"假修改"
+* text=auto
+
+# 源码与文档统一 LF（含 Windows 用户，避免 CRLF 噪音 diff）
+*.js text eol=lf
+*.mjs text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+*.mjs text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.svg text eol=lf
+
+# 二进制文件
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.zip binary
+*.tgz binary
+*.zstd binary
