@@ -16,7 +16,7 @@ const SESSION_KEY = 'dsh_admin_token';
 
 let _token = '';
 let _unlockHandlers = [];       // [{ id, show, hide }]
-let _pending = null;            // { endpoint, payload } 被拦截待重放的操作
+let _pendingOps = [];           // 被拦截待重放的操作队列（解锁后按序重放）
 let _onUnlocked = null;         // 解锁成功后的全局回调（可多个）
 let _onPermissionDenied = null; // 权限失败通知（可多个）
 
@@ -69,10 +69,15 @@ export function registerUnlockHandler(handler) {
   };
 }
 
-/** 通知所有活跃解锁 UI：需要解锁（用于权限被拒时） */
+/** 通知解锁 UI：需要解锁（用于权限被拒时）。只通知第一个活跃 handler，避免重复弹窗 */
 export function notifyPermissionDenied(context = {}) {
-  for (const h of _unlockHandlers) {
-    try { h.show(context); } catch {}
+  // 优先通知"当前可见"的 UI（后注册的通常更贴近当前上下文）
+  for (let i = _unlockHandlers.length - 1; i >= 0; i--) {
+    const h = _unlockHandlers[i];
+    try {
+      const handled = h.show(context);
+      if (handled !== false) return; // handler 明确返回 false 表示不处理，继续找下一个
+    } catch {}
   }
   // 业务方可监听
   if (_onPermissionDenied) {
@@ -88,24 +93,26 @@ export function hideAllUnlock() {
 }
 
 /**
- * 暂存被拦截的操作，解锁成功后自动重放。
+ * 暂存被拦截的操作，解锁成功后自动重放（队列：多个被拦操作按序重放）。
  * @param {function} retry 返回 Promise 的重试函数（带新 token 重新发起）
  */
 export function queuePendingOperation(retry) {
-  _pending = retry;
+  _pendingOps.push(retry);
 }
 
-/** 解锁成功后重放 pending 操作（若有） */
+/** 解锁成功后重放所有 pending 操作（若有） */
 export async function replayPending() {
-  if (!_pending) return;
-  const retry = _pending;
-  _pending = null;
-  try { await retry(); } catch {}
+  if (_pendingOps.length === 0) return;
+  const ops = _pendingOps;
+  _pendingOps = [];
+  for (const retry of ops) {
+    try { await retry(); } catch {}
+  }
 }
 
 /** 是否有待重放的操作 */
 export function hasPendingOperation() {
-  return Boolean(_pending);
+  return _pendingOps.length > 0;
 }
 
 /** 监听解锁成功（可多个）；返回注销函数 */

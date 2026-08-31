@@ -1,7 +1,7 @@
 import { MOBILE_STYLES_CSS } from './mobile-styles.js'
 import {
   getAdminToken, setAdminToken, clearAdminToken,
-  notifyPermissionDenied, hideAllUnlock, queuePendingOperation, unlockAdmin,
+  queuePendingOperation, unlockAdmin,
 } from './unlock-manager.js'
 // dsh-bridge 客户端插件：设置页「远程访问」面板
 
@@ -2528,7 +2528,7 @@ function BridgePanel({ rpcCall }) {
     if (res?.ok === false) {
       const msg = res?.error?.message || '';
       if (msg.includes('管理员权限') || msg.includes('管理密码解锁')) {
-        // 统一走 unlock-manager：暂存操作 + 通知解锁 UI
+        // 统一走 unlock-manager：暂存操作（解锁后自动重放）
         queuePendingOperation(async () => {
           let fresh = getAdminToken();
           if (!fresh && isLocalhost) fresh = await fetchLoopbackToken();
@@ -2536,7 +2536,7 @@ function BridgePanel({ rpcCall }) {
           const retry = await rpcCall(endpoint, { ...payload, adminToken: fresh, ...(isLocalhost ? { isLocalhost: true } : {}) }, signal);
           if (retry?.ok) { setStatus(retry.value); setErr(null); }
         });
-        notifyPermissionDenied({ message: msg });
+        // 主面板用 React 弹窗解锁（不走 manager 的通用通知，避免双弹窗）
         setUnlockErr(msg);
         setShowUnlockModal(true);
       }
@@ -3457,6 +3457,7 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
   let statusMessage = null;
   let isErrorMessage = false;
   let needUnlock = false;          // 需要管理密码解锁（远程场景）
+  let unlockable = true;           // 当前策略是否允许远程解锁（local_only 为 false）
   let unlockInput = '';
   let unlockErr = null;
   let unlocking = false;
@@ -3506,8 +3507,8 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
         <button id="dsh-ws-close-btn" style="border: none; background: none; font-size: 18px; cursor: pointer; color: var(--dsw-alias-label-tertiary, #9ca3af); padding: 4px 8px; border-radius: 6px; line-height: 1; flex-shrink: 0;">✕</button>
       </div>
 
-      <!-- 管理权限解锁块（远程访问需要管理密码） -->
-      ${needUnlock ? `
+      <!-- 管理权限解锁块（远程访问需要管理密码；local_only 策略下不显示，仅提示） -->
+      ${needUnlock && unlockable ? `
         <div style="padding: 14px 16px; background: var(--dsw-alias-state-warn-bg, #fffbeb); border-bottom: 1px solid var(--dsw-alias-state-warn-border, #fde68a); flex-shrink: 0;">
           <div style="font-size: 12px; font-weight: 600; color: var(--dsw-alias-state-warn-primary, #92400e); margin-bottom: 6px;">🔒 此操作需要管理员权限</div>
           <div style="font-size: 11px; color: var(--dsw-alias-label-secondary, #6b7280); margin-bottom: 8px; line-height: 1.5;">远程访问时浏览/添加工作区需输入后台管理密码解锁（与访问密码不同）。</div>
@@ -3850,6 +3851,8 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
         const err = new Error('need-unlock');
         err.needUnlock = true;
         err.message = msg;
+        // local_only：远程无法解锁（unlockAdmin 拒绝），标记为不可解锁
+        err.unlockable = !msg.includes('仅限电脑本机管理');
         throw err;
       }
     }
@@ -3972,6 +3975,12 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
         unlockErr = null;
         statusMessage = null;
         isErrorMessage = false;
+        // local_only 策略：远程无法解锁，只提示不弹密码框
+        unlockable = err.unlockable !== false;
+        if (!unlockable) {
+          statusMessage = err.message || '当前策略仅限电脑本机管理，远程无法解锁';
+          isErrorMessage = true;
+        }
       } else {
         statusMessage = err.message || '读取目录失败';
         isErrorMessage = true;
@@ -4061,12 +4070,17 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
         render();
       }
     } catch (err) {
-      // 需要管理权限：显示内嵌解锁块
+      // 需要管理权限：显示内嵌解锁块（local_only 策略下仅提示）
       if (err?.needUnlock) {
         needUnlock = true;
+        unlockable = err.unlockable !== false;
         unlockErr = null;
         statusMessage = null;
         isErrorMessage = false;
+        if (!unlockable) {
+          statusMessage = err.message || '当前策略仅限电脑本机管理，远程无法解锁';
+          isErrorMessage = true;
+        }
       } else {
         statusMessage = err.message || '添加工作区异常';
         isErrorMessage = true;

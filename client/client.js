@@ -836,9 +836,8 @@ var MOBILE_STYLES_CSS = `
 var SESSION_KEY = "dsh_admin_token";
 var _token = "";
 var _unlockHandlers = [];
-var _pending = null;
+var _pendingOps = [];
 var _onUnlocked = null;
-var _onPermissionDenied = null;
 function _readStorage() {
   try {
     return typeof window !== "undefined" ? window.sessionStorage.getItem(SESSION_KEY) : "";
@@ -870,22 +869,6 @@ function setAdminToken(t) {
 function clearAdminToken() {
   setAdminToken("");
 }
-function notifyPermissionDenied(context = {}) {
-  for (const h of _unlockHandlers) {
-    try {
-      h.show(context);
-    } catch {
-    }
-  }
-  if (_onPermissionDenied) {
-    for (const cb of _onPermissionDenied) {
-      try {
-        cb(context);
-      } catch {
-      }
-    }
-  }
-}
 function hideAllUnlock() {
   for (const h of _unlockHandlers) {
     try {
@@ -895,15 +878,17 @@ function hideAllUnlock() {
   }
 }
 function queuePendingOperation(retry) {
-  _pending = retry;
+  _pendingOps.push(retry);
 }
 async function replayPending() {
-  if (!_pending) return;
-  const retry = _pending;
-  _pending = null;
-  try {
-    await retry();
-  } catch {
+  if (_pendingOps.length === 0) return;
+  const ops = _pendingOps;
+  _pendingOps = [];
+  for (const retry of ops) {
+    try {
+      await retry();
+    } catch {
+    }
   }
 }
 function _emitUnlocked() {
@@ -3753,7 +3738,6 @@ function BridgePanel({ rpcCall }) {
             setErr(null);
           }
         });
-        notifyPermissionDenied({ message: msg });
         setUnlockErr(msg);
         setShowUnlockModal(true);
       }
@@ -4647,6 +4631,7 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
   let statusMessage = null;
   let isErrorMessage = false;
   let needUnlock = false;
+  let unlockable = true;
   let unlockInput = "";
   let unlockErr = null;
   let unlocking = false;
@@ -4692,8 +4677,8 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
         <button id="dsh-ws-close-btn" style="border: none; background: none; font-size: 18px; cursor: pointer; color: var(--dsw-alias-label-tertiary, #9ca3af); padding: 4px 8px; border-radius: 6px; line-height: 1; flex-shrink: 0;">\u2715</button>
       </div>
 
-      <!-- \u7BA1\u7406\u6743\u9650\u89E3\u9501\u5757\uFF08\u8FDC\u7A0B\u8BBF\u95EE\u9700\u8981\u7BA1\u7406\u5BC6\u7801\uFF09 -->
-      ${needUnlock ? `
+      <!-- \u7BA1\u7406\u6743\u9650\u89E3\u9501\u5757\uFF08\u8FDC\u7A0B\u8BBF\u95EE\u9700\u8981\u7BA1\u7406\u5BC6\u7801\uFF1Blocal_only \u7B56\u7565\u4E0B\u4E0D\u663E\u793A\uFF0C\u4EC5\u63D0\u793A\uFF09 -->
+      ${needUnlock && unlockable ? `
         <div style="padding: 14px 16px; background: var(--dsw-alias-state-warn-bg, #fffbeb); border-bottom: 1px solid var(--dsw-alias-state-warn-border, #fde68a); flex-shrink: 0;">
           <div style="font-size: 12px; font-weight: 600; color: var(--dsw-alias-state-warn-primary, #92400e); margin-bottom: 6px;">\u{1F512} \u6B64\u64CD\u4F5C\u9700\u8981\u7BA1\u7406\u5458\u6743\u9650</div>
           <div style="font-size: 11px; color: var(--dsw-alias-label-secondary, #6b7280); margin-bottom: 8px; line-height: 1.5;">\u8FDC\u7A0B\u8BBF\u95EE\u65F6\u6D4F\u89C8/\u6DFB\u52A0\u5DE5\u4F5C\u533A\u9700\u8F93\u5165\u540E\u53F0\u7BA1\u7406\u5BC6\u7801\u89E3\u9501\uFF08\u4E0E\u8BBF\u95EE\u5BC6\u7801\u4E0D\u540C\uFF09\u3002</div>
@@ -5003,6 +4988,7 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
         const err = new Error("need-unlock");
         err.needUnlock = true;
         err.message = msg;
+        err.unlockable = !msg.includes("\u4EC5\u9650\u7535\u8111\u672C\u673A\u7BA1\u7406");
         throw err;
       }
     }
@@ -5119,6 +5105,11 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
         unlockErr = null;
         statusMessage = null;
         isErrorMessage = false;
+        unlockable = err.unlockable !== false;
+        if (!unlockable) {
+          statusMessage = err.message || "\u5F53\u524D\u7B56\u7565\u4EC5\u9650\u7535\u8111\u672C\u673A\u7BA1\u7406\uFF0C\u8FDC\u7A0B\u65E0\u6CD5\u89E3\u9501";
+          isErrorMessage = true;
+        }
       } else {
         statusMessage = err.message || "\u8BFB\u53D6\u76EE\u5F55\u5931\u8D25";
         isErrorMessage = true;
@@ -5197,9 +5188,14 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
     } catch (err) {
       if (err?.needUnlock) {
         needUnlock = true;
+        unlockable = err.unlockable !== false;
         unlockErr = null;
         statusMessage = null;
         isErrorMessage = false;
+        if (!unlockable) {
+          statusMessage = err.message || "\u5F53\u524D\u7B56\u7565\u4EC5\u9650\u7535\u8111\u672C\u673A\u7BA1\u7406\uFF0C\u8FDC\u7A0B\u65E0\u6CD5\u89E3\u9501";
+          isErrorMessage = true;
+        }
       } else {
         statusMessage = err.message || "\u6DFB\u52A0\u5DE5\u4F5C\u533A\u5F02\u5E38";
         isErrorMessage = true;
