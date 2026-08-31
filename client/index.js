@@ -2861,7 +2861,11 @@ function BridgePanel({ rpcCall }) {
 
   const auth = status?.auth;
   const policy = auth?.adminPolicy ?? 'password_unlock';
-  const isLocked = !isLocalhost && auth?.enabled && policy !== 'open' && !adminUnlocked;
+  // 锁屏条件：远程 + 管理保护开启（adminProtection）+ 未解锁 + 非宽松策略。
+  // 不依赖 auth.enabled：即使访问认证关闭，管理保护仍独立生效，上锁后必须显示锁屏。
+  // local_only 也锁定（显示"仅限本机管理"专属锁屏）。
+  const isLocked = !isLocalhost && auth?.adminProtection !== false
+    && policy !== 'open' && !adminUnlocked;
 
   // 远程设备被锁定：全局展示锁定页面，阻断所有 Tab 的查看与操作
   if (isLocked) {

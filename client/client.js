@@ -4069,7 +4069,7 @@ function BridgePanel({ rpcCall }) {
   }
   const auth = status?.auth;
   const policy = auth?.adminPolicy ?? "password_unlock";
-  const isLocked = !isLocalhost && auth?.enabled && policy !== "open" && !adminUnlocked;
+  const isLocked = !isLocalhost && auth?.adminProtection !== false && policy !== "open" && !adminUnlocked;
   if (isLocked) {
     return React.createElement(
       "div",
