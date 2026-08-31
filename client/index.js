@@ -1139,6 +1139,12 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall }) {
 
   const onLogin = React.useCallback(() => act(BRIDGE_ENDPOINTS.platformLogin, {}), [act]);
   const onStop  = React.useCallback(() => act(BRIDGE_ENDPOINTS.platformStop, {}), [act]);
+  // 断开后重连：凭证仍在（configured）时直接用已存凭证重启网关，无需重新扫码；
+  // 只有解绑后（无凭证）才走扫码/绑定流程
+  const onReconnect = React.useCallback(() => {
+    if (platform?.configured) return act(BRIDGE_ENDPOINTS.platformStart, {});
+    return act(BRIDGE_ENDPOINTS.platformLogin, {});
+  }, [act, platform?.configured]);
 
   // 白名单管理
   const [newId, setNewId] = React.useState('');
@@ -1406,9 +1412,9 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall }) {
       ),
       React.createElement('div', { style: { display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' } },
         platform.status !== 'connected' && platform.status !== 'starting' &&
-          React.createElement('button', { style: s.btnPri, onClick: onLogin, disabled: busy }, '重新连接'),
+          React.createElement('button', { style: s.btnPri, onClick: onReconnect, disabled: busy, title: platform?.configured ? '使用已保存的凭证直接恢复连接，无需重新扫码' : '首次使用需扫码绑定' }, platform?.configured ? '重新连接' : '连接'),
         (platform.status === 'connected' || platform.status === 'starting') &&
-          React.createElement('button', { style: s.btnGhost, onClick: onStop, disabled: busy }, '断开'),
+          React.createElement('button', { style: s.btnGhost, onClick: onStop, disabled: busy, title: '停止接收消息；凭证保留，可随时"重新连接"恢复' }, '断开'),
         React.createElement('button', {
           style: { ...s.btnGhost, color: 'var(--dsw-alias-state-error-primary,#dc2626)', borderColor: 'var(--dsw-alias-state-error-primary,#dc2626)', opacity: busy ? 0.5 : 1 },
           disabled: busy,
@@ -2454,6 +2460,9 @@ function BridgePanel({ rpcCall }) {
     }
   }, [isLocalhost, adminUnlocked, fetchLoopbackToken]);
 
+  // 被管理员鉴权拦截的操作在此暂存：解锁成功后自动续办，用户无需再点一次
+  const pendingRetryRef = React.useRef(null);
+
   const authRpcCall = React.useCallback(async (endpoint, payload = {}, signal) => {
     let token = adminToken || getGlobalAdminToken();
     if (isLocalhost && !token) {
@@ -2468,6 +2477,7 @@ function BridgePanel({ rpcCall }) {
     if (res?.ok === false) {
       const msg = res?.error?.message || '';
       if (msg.includes('管理员权限') || msg.includes('管理密码解锁')) {
+        pendingRetryRef.current = { endpoint, payload: enriched };
         setUnlockErr(msg);
         setShowUnlockModal(true);
       }
@@ -2558,6 +2568,28 @@ function BridgePanel({ rpcCall }) {
     const t = setInterval(() => load(true), 3000);
     return () => clearInterval(t);
   }, [load]);
+
+  // 解锁成功后自动续办被拦截的操作：用户不再需要重新点击一次
+  React.useEffect(() => {
+    if (!adminUnlocked) return;
+    const pending = pendingRetryRef.current;
+    if (!pending) return;
+    pendingRetryRef.current = null;
+    const token = adminToken || getGlobalAdminToken();
+    (async () => {
+      try {
+        const r = await rpcCall(pending.endpoint, { ...pending.payload, adminToken: token });
+        if (r?.ok) {
+          if (r.value) setStatus(r.value);
+          setErr(null);
+        } else {
+          setErr(r?.error?.message || '刚才的操作重试失败，请手动重试');
+        }
+      } catch (e) {
+        setErr(e.message || '刚才的操作重试失败，请手动重试');
+      }
+    })();
+  }, [adminUnlocked, adminToken, rpcCall]);
 
   const act = React.useCallback(async (endpoint, payload) => {
     try {

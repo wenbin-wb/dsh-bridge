@@ -2137,6 +2137,10 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall }) {
   }, [rpcCall, load, platformId]);
   const onLogin = React.useCallback(() => act(BRIDGE_ENDPOINTS.platformLogin, {}), [act]);
   const onStop = React.useCallback(() => act(BRIDGE_ENDPOINTS.platformStop, {}), [act]);
+  const onReconnect = React.useCallback(() => {
+    if (platform?.configured) return act(BRIDGE_ENDPOINTS.platformStart, {});
+    return act(BRIDGE_ENDPOINTS.platformLogin, {});
+  }, [act, platform?.configured]);
   const [newId, setNewId] = React.useState("");
   const addAllow = React.useCallback(async () => {
     const id = newId.trim();
@@ -2411,8 +2415,8 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall }) {
       React.createElement(
         "div",
         { style: { display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", alignItems: "center" } },
-        platform.status !== "connected" && platform.status !== "starting" && React.createElement("button", { style: s.btnPri, onClick: onLogin, disabled: busy }, "\u91CD\u65B0\u8FDE\u63A5"),
-        (platform.status === "connected" || platform.status === "starting") && React.createElement("button", { style: s.btnGhost, onClick: onStop, disabled: busy }, "\u65AD\u5F00"),
+        platform.status !== "connected" && platform.status !== "starting" && React.createElement("button", { style: s.btnPri, onClick: onReconnect, disabled: busy, title: platform?.configured ? "\u4F7F\u7528\u5DF2\u4FDD\u5B58\u7684\u51ED\u8BC1\u76F4\u63A5\u6062\u590D\u8FDE\u63A5\uFF0C\u65E0\u9700\u91CD\u65B0\u626B\u7801" : "\u9996\u6B21\u4F7F\u7528\u9700\u626B\u7801\u7ED1\u5B9A" }, platform?.configured ? "\u91CD\u65B0\u8FDE\u63A5" : "\u8FDE\u63A5"),
+        (platform.status === "connected" || platform.status === "starting") && React.createElement("button", { style: s.btnGhost, onClick: onStop, disabled: busy, title: '\u505C\u6B62\u63A5\u6536\u6D88\u606F\uFF1B\u51ED\u8BC1\u4FDD\u7559\uFF0C\u53EF\u968F\u65F6"\u91CD\u65B0\u8FDE\u63A5"\u6062\u590D' }, "\u65AD\u5F00"),
         React.createElement("button", {
           style: { ...s.btnGhost, color: "var(--dsw-alias-state-error-primary,#dc2626)", borderColor: "var(--dsw-alias-state-error-primary,#dc2626)", opacity: busy ? 0.5 : 1 },
           disabled: busy,
@@ -3571,6 +3575,7 @@ function BridgePanel({ rpcCall }) {
       fetchLoopbackToken();
     }
   }, [isLocalhost, adminUnlocked, fetchLoopbackToken]);
+  const pendingRetryRef = React.useRef(null);
   const authRpcCall = React.useCallback(async (endpoint, payload = {}, signal) => {
     let token = adminToken || getGlobalAdminToken();
     if (isLocalhost && !token) {
@@ -3585,6 +3590,7 @@ function BridgePanel({ rpcCall }) {
     if (res?.ok === false) {
       const msg = res?.error?.message || "";
       if (msg.includes("\u7BA1\u7406\u5458\u6743\u9650") || msg.includes("\u7BA1\u7406\u5BC6\u7801\u89E3\u9501")) {
+        pendingRetryRef.current = { endpoint, payload: enriched };
         setUnlockErr(msg);
         setShowUnlockModal(true);
       }
@@ -3673,6 +3679,26 @@ function BridgePanel({ rpcCall }) {
     const t = setInterval(() => load(true), 3e3);
     return () => clearInterval(t);
   }, [load]);
+  React.useEffect(() => {
+    if (!adminUnlocked) return;
+    const pending = pendingRetryRef.current;
+    if (!pending) return;
+    pendingRetryRef.current = null;
+    const token = adminToken || getGlobalAdminToken();
+    (async () => {
+      try {
+        const r = await rpcCall(pending.endpoint, { ...pending.payload, adminToken: token });
+        if (r?.ok) {
+          if (r.value) setStatus(r.value);
+          setErr(null);
+        } else {
+          setErr(r?.error?.message || "\u521A\u624D\u7684\u64CD\u4F5C\u91CD\u8BD5\u5931\u8D25\uFF0C\u8BF7\u624B\u52A8\u91CD\u8BD5");
+        }
+      } catch (e) {
+        setErr(e.message || "\u521A\u624D\u7684\u64CD\u4F5C\u91CD\u8BD5\u5931\u8D25\uFF0C\u8BF7\u624B\u52A8\u91CD\u8BD5");
+      }
+    })();
+  }, [adminUnlocked, adminToken, rpcCall]);
   const act = React.useCallback(async (endpoint, payload) => {
     try {
       const r = await authRpcCall(endpoint, payload ?? {});
