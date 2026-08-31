@@ -832,3 +832,39 @@ test('DSML 协议标记整块剥离，不转发到 IM（协议泄漏回归）', 
   bridge.dispose()
   platform.dispose()
 })
+
+// ---------------------------------------------------------------------------
+// 回归：宿主 cordis 上下文对未 inject 属性的读取会抛错（/list 报错修复）
+// ---------------------------------------------------------------------------
+
+/** 模拟 DSH 宿主的插件上下文：读取未声明的属性直接抛 'cannot get property ... without inject' */
+function makeHostLikeCtx(plain) {
+  const declared = new Set(['connection', 'webServer', 'sessions', 'agents', 'approval', 'workspaceRegistry', 'sessionPersistence'])
+  const allowed = new Set(['logger', 'on', 'emit', 'effect', 'get'])
+  return new Proxy(plain, {
+    get(target, prop) {
+      if (typeof prop !== 'string' || prop in target || declared.has(prop) || allowed.has(prop)) return target[prop]
+      throw new Error(`cannot get property "${String(prop)}" without inject`)
+    },
+  })
+}
+
+test('宿主强制 inject 时 /list 正常回落磁盘存储（sessionProjCache 抛错回归）', async () => {
+  const raw = makeMockCtx()
+  // 关键：不提供 sessionProjCache —— 宿主上读取它会抛错，必须安全回落
+  delete raw.ctx.sessionProjCache
+  const ctx = makeHostLikeCtx(raw.ctx)
+  const platform = new MockPlatform({ ctx, logger: ctx.logger })
+  const bridge = new ConversationBridge({ ctx, logger: ctx.logger, config: { allowFrom: ['u1'] }, platform })
+  bridge.activeSessionId = 's1'
+  ctx.sessions.list = () => [
+    { id: 'live-1', header: { createdAt: Date.now(), cwd: '/app' }, events: [{ type: 'session/title', data: { title: '活跃会话' } }], seq: 1 },
+  ]
+
+  const out = await bridge.handleInbound({ senderId: 'u1', text: '/list', outboundPeer: { peerId: 'u1' } })
+  assert.equal(out, 'routed', '命令必须成功路由而不是执行出错')
+  assert.ok(platform.sent.some((m) => m.text.includes('会话列表')), '必须正常渲染会话列表而非报错')
+
+  bridge.dispose()
+  platform.dispose()
+})

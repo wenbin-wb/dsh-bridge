@@ -20,7 +20,8 @@
   - 修复微信入站媒体下载 100% 抛 ReferenceError（`downloadMedia` 缺失 `fetch()` 调用，旧测试未覆盖）；
   - 修复 QQ 流式输出失败后补发收尾必崩（`streamMsgId` 作用域错误）；
   - 修复前端「查看手动升级命令」渲染崩溃（`UpgradeCommandRow` 组件缺失）；
-  - 修复插件卸载时 `session/event` 监听器永不解绑（dispose 清理闭包引用错误，幽灵事件持续外发）；
+  - 修复插件卸载时 `session/event` 监听器永不解绑（dispose 清理闭包引用错误，幽灵事件持续外发）；  - 修复微信/QQ 等 IM 端 `/list`、`/sessions`、`/use` 命令报 `cannot get property "sessionProjCache" without inject` 的问题：宿主 cordis 上下文禁止插件读取未在 inject 中声明的属性，会话列表的内存注入点改为安全探测、失败自动回落磁盘存储；
+
   - 修复出站 digest 状态 Map 无限增长、自建隧道启动失败僵尸占用、cloudflared 意外退出后状态失真、`/use N` 编号与会话列表显示错位、`/status` 缺 reason 崩溃等问题。
 - **🚦 并发模型修复**：
   - 出站消息统一串行队列：心跳 / 正文 / 审批卡片 / 媒体不再交错乱序，消除 QQ 流式 replace 共享 `_msgSeq` 的并发冲突；
