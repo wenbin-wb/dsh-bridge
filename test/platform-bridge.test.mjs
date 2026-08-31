@@ -851,3 +851,83 @@ test('宿主强制 inject 时 /list 正常回落磁盘存储（sessionProjCache 
   bridge.dispose()
   platform.dispose()
 })
+
+// ---------------------------------------------------------------------------
+// 回归：飞书审批桥必须 prepend + 归属门槛（飞书收不到审批卡修复）
+//
+// FeishuConversationNode 曾有自己的遗留审批桥（非 prepend、无轮次门槛、
+// 还调用 next() 开 Web 通道）——宿主 GUI 认领先行否决后飞书永远收不到卡片。
+// ---------------------------------------------------------------------------
+
+const { FeishuConversationNode } = await import('../lib/feishu/node.js')
+
+async function makeFeishuHarness() {
+  const app = new CordisContext()
+  const cardSends = []
+  const markdownSends = []
+  const gateway = {
+    status: 'online',
+    configured: true,
+    accountId: 'feishu-bot',
+    capabilities: { supportsGroup: true, supportsMedia: true, supportsTyping: false, maxMessageChars: 2000 },
+    sendMarkdownCard: async (peerId, text) => { markdownSends.push({ peerId, text }); return { ok: true } },
+    sendCard: async (peerId, card) => { cardSends.push({ peerId, card }); return { ok: true, message_id: 'om_1' } },
+    sendText: async () => ({}),
+  }
+  app.feishu = gateway
+  const live = [{ id: 'session-f1', header: { createdAt: Date.now(), cwd: '/app' }, events: [], seq: 1 }]
+  app.sessions = { list: () => live, get: (id) => live.find((s) => s.id === id) }
+  app.agents = { get: () => ({ session: { id: 'session-f1' }, status: 'idle', followup() {}, cancel() {} }) }
+  app.workspaceRegistry = { archivedSessionIds: [], list: async () => [] }
+
+  const node = new FeishuConversationNode(app, { allowFrom: ['u1'] }, { info() {}, warn() {}, error() {}, debug() {} })
+  node.activeSessionId = 'session-f1'
+  return { app, node, cardSends, markdownSends }
+}
+
+test('飞书发起的审批：prepend 抢在宿主前、按钮卡片送达、按钮决议生效', async () => {
+  const harness = await makeFeishuHarness()
+  const { app, node, cardSends } = harness
+
+  app.emit('feishu/message', { peerId: 'oc_u1', senderId: 'u1', isGroup: false, text: '创建文件', messageId: 'm1' })
+  await new Promise((r) => setTimeout(r, 40))
+
+  // 宿主式 GUI 认领监听器：桥必须先于它执行（prepend），且不得调用 next()
+  let hostClaimed = false
+  app.on('approval/request', () => { hostClaimed = true; return new Promise(() => {}) })
+
+  const decide = app.waterfall('approval/request', { agent: { session: { id: 'session-f1' } }, toolName: 'write_file' }, () => Promise.resolve('unavailable'))
+  await new Promise((r) => setTimeout(r, 40))
+
+  assert.equal(hostClaimed, false, 'IM 轮次不得打开宿主 GUI 通道')
+  assert.equal(cardSends.length, 1, '飞书交互按钮卡片必须发出')
+  assert.equal(cardSends[0].peerId, 'oc_u1')
+
+  // 按钮决议：发起者点击批准
+  node._handleAction({ operatorId: 'u1', value: { action: 'approve', approvalId: 1 } })
+  assert.equal(await decide, 'allowed-once')
+
+  node.dispose()
+})
+
+test('飞书：非发起者点击按钮被拒绝', async () => {
+  const harness = await makeFeishuHarness()
+  const { app, node, cardSends } = harness
+
+  app.emit('feishu/message', { peerId: 'oc_u1', senderId: 'u1', isGroup: false, text: '创建文件', messageId: 'm1' })
+  await new Promise((r) => setTimeout(r, 40))
+  const decide = app.waterfall('approval/request', { agent: { session: { id: 'session-f1' } }, toolName: 'write_file' }, () => Promise.resolve('unavailable'))
+  await new Promise((r) => setTimeout(r, 40))
+  assert.equal(cardSends.length, 1)
+
+  node._handleAction({ operatorId: 'u-evil', value: { action: 'approve', approvalId: 1 } })
+  // 给出 50ms：若错误地决议了，decide 会立即落定；否则仍挂起
+  const winner = await Promise.race([decide.then(() => 'decided'), new Promise((r) => setTimeout(() => r('pending'), 50))])
+  assert.equal(winner, 'pending', '非发起者的按钮点击不得决议')
+
+  // 发起者仍可决议
+  node._handleAction({ operatorId: 'u1', value: { action: 'reject', approvalId: 1 } })
+  assert.equal(await decide, 'rejected')
+
+  node.dispose()
+})

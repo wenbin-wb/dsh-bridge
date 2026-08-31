@@ -222,6 +222,8 @@ test('FeishuConversationNode handles card action resolution', async () => {
   const node = new FeishuConversationNode(ctx, { allowFrom: ['ou_u1'] }, ctx.logger())
   node._lastPeer = { peerId: 'ou_u1', senderId: 'ou_u1', isGroup: false }
   node.activeSessionId = 'sess_1'
+  // 新归属模型：审批只拦截"飞书发起的轮次"——先种下轮次记录
+  node._turnPeers.set('sess_1', { outboundPeer: { peerId: 'ou_u1', isGroup: false }, senderId: 'ou_u1' })
 
   // 1. 触发 approval/request
   const approvalPromise = ctx.emit('approval/request', {
