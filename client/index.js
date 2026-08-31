@@ -646,6 +646,7 @@ const AccessAuthCard = React.memo(function AccessAuthCard({ auth, rpcCall, onUpd
   const [mode, setMode] = React.useState(auth?.mode ?? 'token_and_password');
   const [scope, setScope] = React.useState(auth?.scope ?? 'all');
   const [adminPolicy, setAdminPolicy] = React.useState(auth?.adminPolicy ?? 'password_unlock');
+  const [adminProtection, setAdminProtection] = React.useState(auth?.adminProtection ?? true);
 
   // 1. 访客访问密码状态
   const [accessPassword, setAccessPassword] = React.useState('');
@@ -669,6 +670,7 @@ const AccessAuthCard = React.memo(function AccessAuthCard({ auth, rpcCall, onUpd
       setMode(auth.mode ?? 'token_and_password');
       setScope(auth.scope ?? 'all');
       setAdminPolicy(auth.adminPolicy ?? 'password_unlock');
+      setAdminProtection(auth.adminProtection ?? true);
     }
   }, [auth]);
 
@@ -679,10 +681,25 @@ const AccessAuthCard = React.memo(function AccessAuthCard({ auth, rpcCall, onUpd
     try {
       const res = await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { enabled: next });
       if (!res?.ok) throw new Error(res?.error?.message || '更新失败');
-      setTopMsg({ ok: true, text: next ? '✓ 访问安全认证已开启（现有登录态已刷新）' : '✓ 访问安全认证已关闭' });
+      setTopMsg({ ok: true, text: next ? '✓ 访问安全认证已开启（现有登录态已刷新）' : '✓ 访问安全认证已关闭（访问免密，管理保护不受影响）' });
       onUpdate?.();
     } catch (e) {
       setEnabled(prev);
+      setTopMsg({ ok: false, text: e.message || '更新失败' });
+    }
+  };
+
+  const handleToggleAdminProtection = async () => {
+    const prev = adminProtection;
+    const next = !adminProtection;
+    setAdminProtection(next);
+    try {
+      const res = await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { adminProtection: next });
+      if (!res?.ok) throw new Error(res?.error?.message || '更新失败');
+      setTopMsg({ ok: true, text: next ? '✓ 管理保护已开启（修改配置需管理密码）' : '✓ 管理保护已关闭（修改配置免密，请谨慎）' });
+      onUpdate?.();
+    } catch (e) {
+      setAdminProtection(prev);
       setTopMsg({ ok: false, text: e.message || '更新失败' });
     }
   };
@@ -847,11 +864,11 @@ const AccessAuthCard = React.memo(function AccessAuthCard({ auth, rpcCall, onUpd
       }, topMsg.text),
     ),
 
-    enabled && React.createElement(React.Fragment, null,
+    React.createElement(React.Fragment, null,
       // =========================================================================
       // ---- 第一道防线：外部访问门禁（控制谁能进入 Web 界面使用 AI） ----
       // =========================================================================
-      React.createElement('div', { style: s.card },
+      enabled && React.createElement('div', { style: s.card },
         React.createElement('div', { style: { marginBottom: 14 } },
           React.createElement('div', { style: { ...s.label, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 } },
             '🛡️ 第一道防线：外部访问门禁（控制谁能使用 AI）',
@@ -990,6 +1007,18 @@ const AccessAuthCard = React.memo(function AccessAuthCard({ auth, rpcCall, onUpd
           ),
           React.createElement('div', { style: { ...s.muted, marginTop: 3 } },
             '锁定整个插件设置后台（包含局域网、公网隧道、IM 机器人密钥与安全设置），防止他人随意篡改配置',
+          ),
+          React.createElement('div', {
+            style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--dsw-alias-border-l2,#e5e7eb)' },
+          },
+            React.createElement('div', { style: { fontSize: 12, fontWeight: 600, color: 'var(--dsw-alias-label-primary,currentColor)' } },
+              adminProtection ? '🛡️ 管理保护已开启（修改配置需管理密码）' : '⚠️ 管理保护已关闭（修改配置免密）'
+            ),
+            React.createElement('button', {
+              type: 'button',
+              style: { ...(adminProtection ? s.btnGhost : s.btnPri), height: 28, fontSize: 12, padding: '0 12px' },
+              onClick: handleToggleAdminProtection,
+            }, adminProtection ? '关闭管理保护' : '开启管理保护'),
           ),
         ),
 

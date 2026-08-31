@@ -310,6 +310,50 @@ test('P0-8: Workspace RPC checkAdminAuth 权限校验与访客拦截', async () 
   assert.ok(res4.value.currentPath)
 })
 
+test('P0-8b: 管理保护独立开关（adminProtection）控制管理操作放行', async () => {
+  const auth = new AuthManager({
+    config: {
+      enabled: false, // 访问认证关闭，但管理保护默认开启
+      adminPolicy: 'password_unlock',
+      passwordHash: 'dummy_hash',
+      passwordSalt: 'dummy_salt',
+    },
+  })
+
+  const mockCtx = { workspaceRegistry: { list: async () => [], add: async () => {} } }
+  const service = new BridgeService({
+    dshPort: 3080,
+    proxyPort: 3082,
+    logger: { info: () => {}, warn: () => {}, error: () => {} },
+  })
+  service.ctx = mockCtx
+
+  let rpcHandler
+  const mockDshCtx = {
+    connection: {
+      rpc: {
+        handle: (channel, fn) => { rpcHandler = fn },
+      },
+    },
+  }
+  installBridgeRpc(mockDshCtx, {
+    service,
+    authManager: auth,
+    logger: { info: () => {}, warn: () => {}, error: () => {} },
+  })
+
+  // 1. 访问认证关闭（enabled=false）但管理保护开启：管理操作仍被拦截
+  const res1 = await rpcHandler(BRIDGE_ENDPOINTS.listRemoteDirectories, { path: process.cwd() })
+  assert.equal(res1.ok, false)
+  assert.match(res1.error.message, /需要管理员权限/)
+
+  // 2. 关闭管理保护（adminProtection=false）：管理操作放行
+  await auth.setAdminProtection(false)
+  const res2 = await rpcHandler(BRIDGE_ENDPOINTS.listRemoteDirectories, { path: process.cwd() })
+  assert.equal(res2.ok, true)
+  assert.ok(res2.value.currentPath)
+})
+
 test('P0-9: 路径穿越与敏感系统目录黑名单拦截 (Windows & POSIX)', async () => {
   const { isSafeWorkspacePath, isSensitiveFolderName } = await import('../lib/security/path-validator.js')
 

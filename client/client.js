@@ -1669,6 +1669,7 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
   const [mode, setMode] = React.useState(auth?.mode ?? "token_and_password");
   const [scope, setScope] = React.useState(auth?.scope ?? "all");
   const [adminPolicy, setAdminPolicy] = React.useState(auth?.adminPolicy ?? "password_unlock");
+  const [adminProtection, setAdminProtection] = React.useState(auth?.adminProtection ?? true);
   const [accessPassword, setAccessPassword] = React.useState("");
   const [showAccessPassword, setShowAccessPassword] = React.useState(false);
   const [savingAccess, setSavingAccess] = React.useState(false);
@@ -1686,6 +1687,7 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
       setMode(auth.mode ?? "token_and_password");
       setScope(auth.scope ?? "all");
       setAdminPolicy(auth.adminPolicy ?? "password_unlock");
+      setAdminProtection(auth.adminProtection ?? true);
     }
   }, [auth]);
   const handleToggleEnabled = async () => {
@@ -1695,10 +1697,24 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
     try {
       const res = await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { enabled: next });
       if (!res?.ok) throw new Error(res?.error?.message || "\u66F4\u65B0\u5931\u8D25");
-      setTopMsg({ ok: true, text: next ? "\u2713 \u8BBF\u95EE\u5B89\u5168\u8BA4\u8BC1\u5DF2\u5F00\u542F\uFF08\u73B0\u6709\u767B\u5F55\u6001\u5DF2\u5237\u65B0\uFF09" : "\u2713 \u8BBF\u95EE\u5B89\u5168\u8BA4\u8BC1\u5DF2\u5173\u95ED" });
+      setTopMsg({ ok: true, text: next ? "\u2713 \u8BBF\u95EE\u5B89\u5168\u8BA4\u8BC1\u5DF2\u5F00\u542F\uFF08\u73B0\u6709\u767B\u5F55\u6001\u5DF2\u5237\u65B0\uFF09" : "\u2713 \u8BBF\u95EE\u5B89\u5168\u8BA4\u8BC1\u5DF2\u5173\u95ED\uFF08\u8BBF\u95EE\u514D\u5BC6\uFF0C\u7BA1\u7406\u4FDD\u62A4\u4E0D\u53D7\u5F71\u54CD\uFF09" });
       onUpdate?.();
     } catch (e) {
       setEnabled(prev);
+      setTopMsg({ ok: false, text: e.message || "\u66F4\u65B0\u5931\u8D25" });
+    }
+  };
+  const handleToggleAdminProtection = async () => {
+    const prev = adminProtection;
+    const next = !adminProtection;
+    setAdminProtection(next);
+    try {
+      const res = await rpcCall(BRIDGE_ENDPOINTS.authUpdateConfig, { adminProtection: next });
+      if (!res?.ok) throw new Error(res?.error?.message || "\u66F4\u65B0\u5931\u8D25");
+      setTopMsg({ ok: true, text: next ? "\u2713 \u7BA1\u7406\u4FDD\u62A4\u5DF2\u5F00\u542F\uFF08\u4FEE\u6539\u914D\u7F6E\u9700\u7BA1\u7406\u5BC6\u7801\uFF09" : "\u2713 \u7BA1\u7406\u4FDD\u62A4\u5DF2\u5173\u95ED\uFF08\u4FEE\u6539\u914D\u7F6E\u514D\u5BC6\uFF0C\u8BF7\u8C28\u614E\uFF09" });
+      onUpdate?.();
+    } catch (e) {
+      setAdminProtection(prev);
       setTopMsg({ ok: false, text: e.message || "\u66F4\u65B0\u5931\u8D25" });
     }
   };
@@ -1886,13 +1902,13 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
         }
       }, topMsg.text)
     ),
-    enabled && React.createElement(
+    React.createElement(
       React.Fragment,
       null,
       // =========================================================================
       // ---- 第一道防线：外部访问门禁（控制谁能进入 Web 界面使用 AI） ----
       // =========================================================================
-      React.createElement(
+      enabled && React.createElement(
         "div",
         { style: s.card },
         React.createElement(
@@ -2077,6 +2093,22 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
             "div",
             { style: { ...s.muted, marginTop: 3 } },
             "\u9501\u5B9A\u6574\u4E2A\u63D2\u4EF6\u8BBE\u7F6E\u540E\u53F0\uFF08\u5305\u542B\u5C40\u57DF\u7F51\u3001\u516C\u7F51\u96A7\u9053\u3001IM \u673A\u5668\u4EBA\u5BC6\u94A5\u4E0E\u5B89\u5168\u8BBE\u7F6E\uFF09\uFF0C\u9632\u6B62\u4ED6\u4EBA\u968F\u610F\u7BE1\u6539\u914D\u7F6E"
+          ),
+          React.createElement(
+            "div",
+            {
+              style: { display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--dsw-alias-border-l2,#e5e7eb)" }
+            },
+            React.createElement(
+              "div",
+              { style: { fontSize: 12, fontWeight: 600, color: "var(--dsw-alias-label-primary,currentColor)" } },
+              adminProtection ? "\u{1F6E1}\uFE0F \u7BA1\u7406\u4FDD\u62A4\u5DF2\u5F00\u542F\uFF08\u4FEE\u6539\u914D\u7F6E\u9700\u7BA1\u7406\u5BC6\u7801\uFF09" : "\u26A0\uFE0F \u7BA1\u7406\u4FDD\u62A4\u5DF2\u5173\u95ED\uFF08\u4FEE\u6539\u914D\u7F6E\u514D\u5BC6\uFF09"
+            ),
+            React.createElement("button", {
+              type: "button",
+              style: { ...adminProtection ? s.btnGhost : s.btnPri, height: 28, fontSize: 12, padding: "0 12px" },
+              onClick: handleToggleAdminProtection
+            }, adminProtection ? "\u5173\u95ED\u7BA1\u7406\u4FDD\u62A4" : "\u5F00\u542F\u7BA1\u7406\u4FDD\u62A4")
           )
         ),
         // 管理员密码设置
