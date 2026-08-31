@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 使用文档
+    url: https://github.com/wenbin-wb/dsh-bridge#readme
+    about: 先阅读 README 与 docs/ 下的平台使用指南
+  - name: 安全漏洞
+    url: https://github.com/wenbin-wb/dsh-bridge/security/advisories/new
+    about: 请通过 Security Advisory 私密报告安全漏洞，不要在公开 Issue 中披露
