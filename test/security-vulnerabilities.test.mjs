@@ -135,13 +135,23 @@ test('P0-4: RPC 服务端管理员权限校验与主动重新锁定', async () =
     logger: { error: () => {}, warn: () => {} },
   })
 
-  // 1. 未提供 adminToken 时调用敏感配置接口 -> 返回 bad-request 拦截
+  // 1. 仅切换 enabled（访问认证开关）不需要 adminToken：用户应能自由决定开放/关闭访问，
+  //    否则"关闭访问认证"会被管理保护锁死（死锁）
   const unauthRes = await handlerFn(BRIDGE_ENDPOINTS.authUpdateConfig, { enabled: false })
-  assert.equal(unauthRes.ok, false)
-  assert.equal(unauthRes.error.code, 'bad-request')
+  assert.equal(unauthRes.ok, true)
+  assert.equal(unauthRes.value.enabled, false)
 
-  // 1.1 伪造 isLocalhost: true 同样被拦截（不再信任客户端自称的 isLocalhost）
-  const spoofedLocalRes = await handlerFn(BRIDGE_ENDPOINTS.authUpdateConfig, { isLocalhost: true, enabled: false })
+  // 1.0 改回开启（也放行）
+  const reEnable = await handlerFn(BRIDGE_ENDPOINTS.authUpdateConfig, { enabled: true })
+  assert.equal(reEnable.ok, true)
+
+  // 1.1 其他敏感字段（如改策略）未提供 adminToken 时仍被拦截
+  const unauthPolicy = await handlerFn(BRIDGE_ENDPOINTS.authUpdateConfig, { adminPolicy: 'open' })
+  assert.equal(unauthPolicy.ok, false)
+  assert.equal(unauthPolicy.error.code, 'bad-request')
+
+  // 1.2 伪造 isLocalhost: true 改敏感字段同样被拦截（不再信任客户端自称的 isLocalhost）
+  const spoofedLocalRes = await handlerFn(BRIDGE_ENDPOINTS.authUpdateConfig, { isLocalhost: true, adminPolicy: 'open' })
   assert.equal(spoofedLocalRes.ok, false)
   assert.equal(spoofedLocalRes.error.code, 'bad-request')
 

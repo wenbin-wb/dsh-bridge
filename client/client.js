@@ -1667,6 +1667,14 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
   const [msgAdmin, setMsgAdmin] = React.useState(null);
   const [topMsg, setTopMsg] = React.useState(null);
   React.useEffect(() => {
+    const off = onUnlocked(() => {
+      setTopMsg(null);
+      setMsgAccess(null);
+      setMsgAdmin(null);
+    });
+    return off;
+  }, []);
+  React.useEffect(() => {
     if (auth) {
       setEnabled(auth.enabled ?? false);
       setMode(auth.mode ?? "token_and_password");
@@ -3806,18 +3814,20 @@ function BridgePanel({ rpcCall }) {
         inFlight = false;
       }
     };
+    if (!adminUnlocked && !isLocalhost) return;
     poll();
     const t = setInterval(poll, 4e3);
     return () => {
       alive = false;
       clearInterval(t);
     };
-  }, [authRpcCall]);
+  }, [authRpcCall, adminUnlocked, isLocalhost]);
   React.useEffect(() => {
+    if (!adminUnlocked && !isLocalhost) return;
     load();
     const t = setInterval(() => load(true), 3e3);
     return () => clearInterval(t);
-  }, [load]);
+  }, [load, adminUnlocked, isLocalhost]);
   React.useEffect(() => {
     if (!adminUnlocked) return;
     const pending = pendingRetryRef.current;

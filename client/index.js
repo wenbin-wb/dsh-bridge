@@ -664,6 +664,16 @@ const AccessAuthCard = React.memo(function AccessAuthCard({ auth, rpcCall, onUpd
 
   const [topMsg, setTopMsg] = React.useState(null);
 
+  // 解锁成功后清除"操作已被拦截"等错误提示（解锁发生在 BridgePanel，这里需监听）
+  React.useEffect(() => {
+    const off = onUnlocked(() => {
+      setTopMsg(null);
+      setMsgAccess(null);
+      setMsgAdmin(null);
+    });
+    return off;
+  }, []);
+
   React.useEffect(() => {
     if (auth) {
       setEnabled(auth.enabled ?? false);
@@ -2609,16 +2619,20 @@ function BridgePanel({ rpcCall }) {
         inFlight = false;
       }
     };
+    // 上锁（adminUnlocked=false）且远程时：锁定屏不需要轮询，暂停发请求避免 401 风暴
+    if (!adminUnlocked && !isLocalhost) return;
     poll();
     const t = setInterval(poll, 4000);
     return () => { alive = false; clearInterval(t); };
-  }, [authRpcCall]);
+  }, [authRpcCall, adminUnlocked, isLocalhost]);
 
   React.useEffect(() => {
+    // 同上：远程上锁时暂停 getStatus 轮询
+    if (!adminUnlocked && !isLocalhost) return;
     load();
     const t = setInterval(() => load(true), 3000);
     return () => clearInterval(t);
-  }, [load]);
+  }, [load, adminUnlocked, isLocalhost]);
 
   // 解锁成功后自动续办被拦截的操作：用户不再需要重新点击一次
   React.useEffect(() => {
