@@ -148,6 +148,17 @@ export async function unlockAdmin(rpcCall, password) {
     }
     return { ok: false, error: res?.error?.message || '管理员密码错误' };
   } catch (err) {
+    // 访问会话失效（HTTP 401）：authAdminUnlock 即使豁免，主面板后续请求也会 401，
+    // 解锁成功也进不去。此时应整页重载回绿色登录页重新获取访问会话。
+    const msg = String(err?.message || err || '');
+    if (msg.includes('401') || msg.includes('transport failure') || msg.includes('unauthorized')) {
+      if (typeof window !== 'undefined' && typeof window.location?.reload === 'function') {
+        try {
+          window.sessionStorage.setItem('dsh_access_expired_reloaded', '1');
+        } catch {}
+        window.location.reload();
+      }
+    }
     return { ok: false, error: err?.message || '解锁请求失败' };
   }
 }

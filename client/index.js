@@ -70,6 +70,40 @@ function isLocalEnvironment() {
   );
 }
 
+// ---- 访问会话失效（HTTP 401）统一处理 ----
+// 背景：DSH 重启或 session 过期后，内存中的访问会话全部清空，旧 cookie 立即失效，
+// 所有 RPC 请求被代理以 HTTP 401 拦截。此时若停留在管理锁屏只会无限循环
+// （authAdminUnlock 已豁免可解锁成功，但解锁后 getStatus 依旧 401 → 面板又把锁重置回 true）。
+// 正确行为：整页重载回绿色图标登录页，重新输入访问密码获取新的访问会话 cookie。
+// 代理对未认证的 HTML 请求会渲染登录页，因此 reload 即等于回到登录页。
+const ACCESS_EXPIRED_FLAG = 'dsh_access_expired_reloaded';
+
+function isAccessSessionFailure(err) {
+  const msg = String(err?.message || err || '');
+  return msg.includes('401') || msg.includes('transport failure') || msg.includes('unauthorized');
+}
+
+/**
+ * 访问会话失效时整页重载回登录页。
+ * @returns {boolean} true = 已触发重载；false = 本页已重载过一次仍未恢复（放弃重载，避免死循环）
+ */
+function reloadToLoginPage() {
+  try {
+    if (sessionStorage.getItem(ACCESS_EXPIRED_FLAG)) {
+      sessionStorage.removeItem(ACCESS_EXPIRED_FLAG);
+      return false;
+    }
+    sessionStorage.setItem(ACCESS_EXPIRED_FLAG, '1');
+  } catch {}
+  window.location.reload();
+  return true;
+}
+
+/** 访问恢复（getStatus 成功）后清除重载标记，让后续会话失效仍可自动回登录页 */
+function clearAccessExpiredFlag() {
+  try { sessionStorage.removeItem(ACCESS_EXPIRED_FLAG); } catch {}
+}
+
 const GITHUB_URL = 'https://github.com/wenbin-wb/dsh-bridge';
 const RELEASES_URL = 'https://github.com/wenbin-wb/dsh-bridge/releases';
 const ISSUES_URL = 'https://github.com/wenbin-wb/dsh-bridge/issues/new';
@@ -2524,6 +2558,21 @@ function BridgePanel({ rpcCall }) {
   // 被管理员鉴权拦截的操作在此暂存：解锁成功后自动续办，用户无需再点一次
   const pendingRetryRef = React.useRef(null);
 
+  // 访问会话失效统一处理：清解锁状态 + 整页重载回绿色登录页。
+  // 背景：DSH 重启 / session 过期后旧 cookie 失效，所有 RPC 被代理以 HTTP 401 拦截。
+  // 若停留在管理锁屏只会无限循环（authAdminUnlock 豁免可解锁成功，但解锁后 getStatus 依旧
+  // 401 → 面板又把锁重置回 true）。reload 后代理无有效 cookie 会直接渲染绿色登录页，
+  // 用户重新输入访问密码即可拿到新会话。
+  const handleAccessSessionExpired = React.useCallback(() => {
+    setAdminUnlocked(false);
+    clearAdminToken();
+    const reloaded = reloadToLoginPage();
+    if (!reloaded) {
+      // 已重载过一次仍未恢复：放弃自动重载（防死循环），提示用户手动刷新
+      setErr('访问会话已失效，请刷新页面重新登录');
+    }
+  }, []);
+
   const authRpcCall = React.useCallback(async (endpoint, payload = {}, signal) => {
     let token = adminToken || getGlobalAdminToken();
     if (isLocalhost && !token) {
@@ -2534,7 +2583,16 @@ function BridgePanel({ rpcCall }) {
       ...(token ? { adminToken: token } : {}),
       ...(isLocalhost ? { isLocalhost: true } : {}),
     };
-    const res = await rpcCall(endpoint, enriched, signal);
+    let res;
+    try {
+      res = await rpcCall(endpoint, enriched, signal);
+    } catch (e) {
+      // 访问会话失效（HTTP 401）：不再困在管理锁屏，整页重载回绿色登录页重新获取访问 token
+      if (isAccessSessionFailure(e)) {
+        handleAccessSessionExpired();
+      }
+      throw e;
+    }
     if (res?.ok === false) {
       const msg = res?.error?.message || '';
       if (msg.includes('管理员权限') || msg.includes('管理密码解锁')) {
@@ -2552,7 +2610,7 @@ function BridgePanel({ rpcCall }) {
       }
     }
     return res;
-  }, [rpcCall, adminToken, isLocalhost, fetchLoopbackToken]);
+  }, [rpcCall, adminToken, isLocalhost, fetchLoopbackToken, handleAccessSessionExpired]);
 
   const handleUnlockAdmin = React.useCallback(async (e) => {
     e?.preventDefault?.();
@@ -2581,6 +2639,8 @@ function BridgePanel({ rpcCall }) {
     setAdminUnlocked(false);
   }, [rpcCall]);
 
+  // 访问会话失效统一处理：清解锁状态 + 整页重载回绿色登录页。
+  // 不轮询重试：reload 后代理无有效 cookie 会直接渲染登录页，用户重新登录即可。
   const loadInFlightRef = React.useRef(false);
   const loadSeqRef = React.useRef(0);
   const load = React.useCallback(async (quiet = false) => {
@@ -2593,19 +2653,21 @@ function BridgePanel({ rpcCall }) {
       if (!r?.ok) throw new Error(r?.error?.message ?? 'RPC failed');
       setStatus(r.value);
       if (!quiet) setErr(null);
+      // 访问会话有效：清除重载标记，允许后续会话失效时再次自动回登录页
+      clearAccessExpiredFlag();
     } catch (e) {
       if (currentSeq === loadSeqRef.current) {
-        // transport failure（HTTP 401）＝ 访问会话失效：重置解锁状态，回到锁屏/登录
-        if (String(e?.message || '').includes('401') || String(e?.message || '').includes('transport failure')) {
-          setAdminUnlocked(false);
-          clearAdminToken();
+        // 访问会话失效（HTTP 401）：整页重载回绿色登录页重新登录，不再困在管理锁屏
+        if (isAccessSessionFailure(e)) {
+          handleAccessSessionExpired();
+        } else {
+          setErr(e.message);
         }
-        setErr(e.message);
       }
     } finally {
       loadInFlightRef.current = false;
     }
-  }, [authRpcCall]);
+  }, [authRpcCall, handleAccessSessionExpired]);
 
   // 独立轮询所有平台状态（Tab 未选中时也能更新），带 in-flight 锁与序列号防乱序
   const pollPlatformsSeqRef = React.useRef(0);
@@ -3859,7 +3921,14 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
       ...(token ? { adminToken: token } : {}),
       ...(isLocalEnvironment() ? { isLocalhost: true } : {}),
     };
-    const res = await rpcCall(endpoint, enriched);
+    const res = await rpcCall(endpoint, enriched).catch((e) => {
+      // 访问会话失效（HTTP 401）：目录选择器同样需要回到登录页重新获取访问 token
+      if (isAccessSessionFailure(e)) {
+        clearAdminToken();
+        reloadToLoginPage();
+      }
+      throw e;
+    });
     if (res?.ok === false) {
       const msg = res?.error?.message || '';
       // 本机场景：token 可能已失效（如 DSH 重启），重取 loopback token 后重试一次

@@ -921,6 +921,16 @@ async function unlockAdmin(rpcCall, password) {
     }
     return { ok: false, error: res?.error?.message || "\u7BA1\u7406\u5458\u5BC6\u7801\u9519\u8BEF" };
   } catch (err) {
+    const msg = String(err?.message || err || "");
+    if (msg.includes("401") || msg.includes("transport failure") || msg.includes("unauthorized")) {
+      if (typeof window !== "undefined" && typeof window.location?.reload === "function") {
+        try {
+          window.sessionStorage.setItem("dsh_access_expired_reloaded", "1");
+        } catch {
+        }
+        window.location.reload();
+      }
+    }
     return { ok: false, error: err?.message || "\u89E3\u9501\u8BF7\u6C42\u5931\u8D25" };
   }
 }
@@ -1023,6 +1033,29 @@ function isLocalEnvironment() {
   const host = window.location.hostname || "";
   const proto = window.location.protocol || "";
   return host === "127.0.0.1" || host === "localhost" || host === "::1" || host === "" || proto === "file:" || proto === "vscode-webview:" || proto === "app:" || typeof window.__DSH_ELECTRON__ !== "undefined" || typeof navigator !== "undefined" && navigator.userAgent && navigator.userAgent.includes("Electron");
+}
+var ACCESS_EXPIRED_FLAG = "dsh_access_expired_reloaded";
+function isAccessSessionFailure(err) {
+  const msg = String(err?.message || err || "");
+  return msg.includes("401") || msg.includes("transport failure") || msg.includes("unauthorized");
+}
+function reloadToLoginPage() {
+  try {
+    if (sessionStorage.getItem(ACCESS_EXPIRED_FLAG)) {
+      sessionStorage.removeItem(ACCESS_EXPIRED_FLAG);
+      return false;
+    }
+    sessionStorage.setItem(ACCESS_EXPIRED_FLAG, "1");
+  } catch {
+  }
+  window.location.reload();
+  return true;
+}
+function clearAccessExpiredFlag() {
+  try {
+    sessionStorage.removeItem(ACCESS_EXPIRED_FLAG);
+  } catch {
+  }
 }
 var GITHUB_URL = "https://github.com/wenbin-wb/dsh-bridge";
 var RELEASES_URL = "https://github.com/wenbin-wb/dsh-bridge/releases";
@@ -3729,6 +3762,14 @@ function BridgePanel({ rpcCall }) {
     }
   }, [isLocalhost, adminUnlocked, fetchLoopbackToken]);
   const pendingRetryRef = React.useRef(null);
+  const handleAccessSessionExpired = React.useCallback(() => {
+    setAdminUnlocked(false);
+    clearAdminToken();
+    const reloaded = reloadToLoginPage();
+    if (!reloaded) {
+      setErr("\u8BBF\u95EE\u4F1A\u8BDD\u5DF2\u5931\u6548\uFF0C\u8BF7\u5237\u65B0\u9875\u9762\u91CD\u65B0\u767B\u5F55");
+    }
+  }, []);
   const authRpcCall = React.useCallback(async (endpoint, payload = {}, signal) => {
     let token = adminToken || getGlobalAdminToken();
     if (isLocalhost && !token) {
@@ -3739,7 +3780,15 @@ function BridgePanel({ rpcCall }) {
       ...token ? { adminToken: token } : {},
       ...isLocalhost ? { isLocalhost: true } : {}
     };
-    const res = await rpcCall(endpoint, enriched, signal);
+    let res;
+    try {
+      res = await rpcCall(endpoint, enriched, signal);
+    } catch (e) {
+      if (isAccessSessionFailure(e)) {
+        handleAccessSessionExpired();
+      }
+      throw e;
+    }
     if (res?.ok === false) {
       const msg = res?.error?.message || "";
       if (msg.includes("\u7BA1\u7406\u5458\u6743\u9650") || msg.includes("\u7BA1\u7406\u5BC6\u7801\u89E3\u9501")) {
@@ -3758,7 +3807,7 @@ function BridgePanel({ rpcCall }) {
       }
     }
     return res;
-  }, [rpcCall, adminToken, isLocalhost, fetchLoopbackToken]);
+  }, [rpcCall, adminToken, isLocalhost, fetchLoopbackToken, handleAccessSessionExpired]);
   const handleUnlockAdmin = React.useCallback(async (e) => {
     e?.preventDefault?.();
     setUnlocking(true);
@@ -3797,18 +3846,19 @@ function BridgePanel({ rpcCall }) {
       if (!r?.ok) throw new Error(r?.error?.message ?? "RPC failed");
       setStatus(r.value);
       if (!quiet) setErr(null);
+      clearAccessExpiredFlag();
     } catch (e) {
       if (currentSeq === loadSeqRef.current) {
-        if (String(e?.message || "").includes("401") || String(e?.message || "").includes("transport failure")) {
-          setAdminUnlocked(false);
-          clearAdminToken();
+        if (isAccessSessionFailure(e)) {
+          handleAccessSessionExpired();
+        } else {
+          setErr(e.message);
         }
-        setErr(e.message);
       }
     } finally {
       loadInFlightRef.current = false;
     }
-  }, [authRpcCall]);
+  }, [authRpcCall, handleAccessSessionExpired]);
   const pollPlatformsSeqRef = React.useRef(0);
   React.useEffect(() => {
     let alive = true;
@@ -4997,7 +5047,13 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
       ...token ? { adminToken: token } : {},
       ...isLocalEnvironment() ? { isLocalhost: true } : {}
     };
-    const res = await rpcCall(endpoint, enriched);
+    const res = await rpcCall(endpoint, enriched).catch((e) => {
+      if (isAccessSessionFailure(e)) {
+        clearAdminToken();
+        reloadToLoginPage();
+      }
+      throw e;
+    });
     if (res?.ok === false) {
       const msg = res?.error?.message || "";
       if (isLocalEnvironment() && (msg.includes("\u7BA1\u7406\u5458\u6743\u9650") || msg.includes("\u7BA1\u7406\u5BC6\u7801\u89E3\u9501"))) {
