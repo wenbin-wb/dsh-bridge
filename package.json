@@ -1,8 +1,8 @@
 {
   "name": "@wenbin_wb/dsh-bridge",
-  "version": "2.9.0",
+  "version": "2.10.0",
   "description": "手机扫码即可在移动端/公网继续用 DeepSeek Harness，人不在电脑前也能接着干。一键局域网二维码、Cloudflare 公网隧道、自建隧道与微信 / QQ / 飞书 / Telegram Bot（多工作区/会话持久化/媒体/卡片审批/流式输出），无需自己搭公网服务器。",
-  "releaseNotes": "⚠️ 本次更新量较大，可能存在未知问题，建议升级前备份配置并阅读完整说明：https://github.com/wenbin-wb/dsh-bridge/blob/main/CHANGELOG.md\n\n【v2.9.0 全面安全加固与代码质量大修】\n• 🔐 密码哈希 PBKDF2 升级至 600,000 次迭代（存量旧哈希登录时透明升级，无需重设密码）；管理密码解锁防爆破；未设密码时高危操作强制先设密码；loopback-token CORS 收敛；隧道令牌掩码不再覆盖真实值\n• 🐞 修复十余个稳定性问题：低版本 Node / iOS 16 浏览器发送消息报 AbortSignal 错误（自动兼容垫片）、微信收图必崩、QQ 流式兜底崩溃、面板升级命令渲染崩溃、IM 端收不到审批卡片（approval 瀑布归属模型重建，飞书按钮卡片同步修复）、/list 报 without inject 错误、卸载监听器泄漏、工具调用协议标记泄漏到聊天等\n• 🚦 出站消息串行队列消除乱序与 QQ msgSeq 竞态；审批发起者校验（群成员不可代批）；群聊授权改显式配置（默认关闭）；配置持久化事务化防丢失更新；解锁后自动续办被拦截操作；断开后重连不再强制扫码\n• 🧹 引入 eslint + CI 全矩阵测试（Node 22/24 × Linux/Windows）；conversation-bridge 按职责拆分四模块；平台装配工厂化；清理废弃端点与死代码；提交 package-lock.json",
+  "releaseNotes": "【v2.10.0 远程锁屏/解锁流程修复】\n• 🔐 修复解锁后无限锁屏循环：访问会话失效（DSH 重启/过期）时自动跳回绿色登录页重新登录；修复锁屏状态下无法解锁（401）；修复关闭访问认证后锁屏失效 / 仍要求密码；远程首次进入设置页即显示全屏锁屏；目录选择器解锁不再卡死\n• 🆕 新增「管理保护」独立开关（与访问认证解耦）；面板显示 DSH 宿主版本\n• 🧹 统一 adminToken 缓存，清理死代码与重复实现",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
