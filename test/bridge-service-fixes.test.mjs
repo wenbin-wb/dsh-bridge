@@ -36,3 +36,33 @@ test('ProxyServer.activeConnections 是基于已跟踪 socket 的 getter（不�
   proxy.clientSockets.delete(sock)
   assert.equal(proxy.activeConnections, 0)
 })
+
+test('saveExternalTunnel 登记外部已部署隧道：校验 URL、持久化、清除', async () => {
+  const persisted = []
+  const svc = new BridgeService({ dshPort: 1, proxyPort: 2, onPersist: (patch) => { persisted.push(patch); return Promise.resolve() } })
+
+  // 非法协议拒绝
+  await assert.rejects(() => svc.saveExternalTunnel({ url: 'ftp://x.com' }), /http/)
+  await assert.rejects(() => svc.saveExternalTunnel({ url: 'not-a-url' }), /http/)
+  assert.equal(svc.externalTunnelConfig, null)
+
+  // 合法 https 地址登记，末尾斜杠被规范化，持久化写入
+  await svc.saveExternalTunnel({ url: 'https://tunnel.example.com/' })
+  assert.equal(svc.externalTunnelConfig.url, 'https://tunnel.example.com')
+  assert.equal(persisted.at(-1).externalTunnel.url, 'https://tunnel.example.com')
+
+  // 空串清除
+  await svc.saveExternalTunnel({ url: '' })
+  assert.equal(svc.externalTunnelConfig, null)
+  assert.equal(persisted.at(-1).externalTunnel, null)
+})
+
+test('getStatus 暴露 externalTunnel（含二维码）', async () => {
+  const svc = new BridgeService({ dshPort: 1, proxyPort: 2, onPersist: async () => {} })
+  await svc.saveExternalTunnel({ url: 'https://ext.example.com' })
+
+  const status = await svc.getStatus()
+  assert.equal(status.externalTunnel.configured, true)
+  assert.equal(status.externalTunnel.url, 'https://ext.example.com')
+  assert.ok(status.externalTunnel.qr, '登记后应生成二维码')
+})

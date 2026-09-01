@@ -963,6 +963,7 @@ var BRIDGE_ENDPOINTS = {
   saveCloudflaredConfig: "saveCloudflaredConfig",
   setTunnelAutoStart: "setTunnelAutoStart",
   saveCustomTunnelConfig: "saveCustomTunnelConfig",
+  saveExternalTunnel: "saveExternalTunnel",
   setLanIp: "setLanIp",
   checkVersion: "checkVersion",
   upgradePlugin: "upgradePlugin",
@@ -1677,6 +1678,74 @@ var CloudflareConfigForm = React.memo(function CloudflareConfigForm2({ token, ho
           style: { fontSize: 12, color: msg.ok ? "var(--dsw-alias-state-success-primary, #059669)" : "var(--dsw-alias-state-error-primary, #dc2626)" }
         }, msg.text)
       )
+    )
+  );
+});
+var ExternalTunnelCard = React.memo(function ExternalTunnelCard2({ ext, onSave }) {
+  const [urlVal, setUrlVal] = React.useState(ext?.url ?? "");
+  const [saving, setSaving] = React.useState(false);
+  const [msg, setMsg] = React.useState(null);
+  React.useEffect(() => {
+    setUrlVal(ext?.url ?? "");
+  }, [ext?.url]);
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setMsg(null);
+    try {
+      await onSave(urlVal.trim());
+      setMsg({ ok: true, text: urlVal.trim() ? "\u2713 \u5916\u90E8\u96A7\u9053\u5730\u5740\u5DF2\u767B\u8BB0" : "\u2713 \u5DF2\u6E05\u9664\u767B\u8BB0" });
+    } catch (err) {
+      setMsg({ ok: false, text: err.message || "\u4FDD\u5B58\u5931\u8D25" });
+    } finally {
+      setSaving(false);
+    }
+  };
+  return React.createElement(
+    "div",
+    { style: s.card },
+    React.createElement(
+      "div",
+      { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 } },
+      React.createElement(
+        "div",
+        { style: { flex: "1 1 auto", minWidth: 0 } },
+        React.createElement("div", { style: s.label }, "\u5916\u90E8\u5DF2\u90E8\u7F72\u96A7\u9053"),
+        React.createElement(
+          "div",
+          { style: { ...s.muted, marginTop: 2 } },
+          "\u5DF2\u5728 Docker / \u670D\u52A1\u5668\u4E0A\u81EA\u884C\u90E8\u7F72\u96A7\u9053\uFF08\u5982 cloudflared\uFF09\u65F6\uFF0C\u767B\u8BB0\u516C\u7F51\u5730\u5740\u5373\u53EF\u5728\u9762\u677F\u5C55\u793A\u5165\u53E3\u4E0E\u4E8C\u7EF4\u7801\uFF1B\u63D2\u4EF6\u4E0D\u4F1A\u91CD\u590D\u4E0B\u8F7D\u6216\u7BA1\u7406\u8BE5\u96A7\u9053\u3002"
+        )
+      ),
+      React.createElement(StatusTag, { running: Boolean(ext?.configured) })
+    ),
+    ext?.configured && React.createElement(QrBlock, { url: ext?.url, qr: ext?.qr }),
+    React.createElement(
+      "form",
+      { onSubmit: handleSave, style: { marginTop: 10, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" } },
+      React.createElement("input", {
+        style: { ...s.input, flex: "1 1 220px", minWidth: 0 },
+        type: "text",
+        placeholder: "https://tunnel.yourdomain.com \u6216 trycloudflare \u5730\u5740",
+        value: urlVal,
+        onChange: (e) => setUrlVal(e.target.value)
+      }),
+      React.createElement("button", {
+        type: "submit",
+        style: { ...s.btnPri, height: 28, fontSize: 12, padding: "0 12px" },
+        disabled: saving
+      }, saving ? "\u4FDD\u5B58\u4E2D\u2026" : "\u4FDD\u5B58"),
+      ext?.configured && React.createElement("button", {
+        type: "button",
+        style: { ...s.btnGhost, height: 28, fontSize: 12, padding: "0 10px" },
+        onClick: () => {
+          setUrlVal("");
+          onSave("");
+        }
+      }, "\u6E05\u9664"),
+      msg && React.createElement("span", {
+        style: { fontSize: 12, color: msg.ok ? "var(--dsw-alias-state-success-primary, #059669)" : "var(--dsw-alias-state-error-primary, #dc2626)" }
+      }, msg.text)
     )
   );
 });
@@ -3915,6 +3984,10 @@ function BridgePanel({ rpcCall }) {
     (serverUrl, accessToken) => act(BRIDGE_ENDPOINTS.saveCustomTunnelConfig, { serverUrl, accessToken }),
     [act]
   );
+  const saveExternalTunnel = React.useCallback(
+    (url) => act(BRIDGE_ENDPOINTS.saveExternalTunnel, { url }),
+    [act]
+  );
   const navSecurity = React.useCallback(() => setActiveTab("security"), []);
   if (!status && !err) {
     return React.createElement("div", {
@@ -3948,6 +4021,7 @@ function BridgePanel({ rpcCall }) {
       })
     );
   } else if (activeTab === "tunnel") {
+    const ext = status?.externalTunnel;
     tabContent = React.createElement(
       React.Fragment,
       null,
@@ -3976,6 +4050,10 @@ function BridgePanel({ rpcCall }) {
           onSave: saveCloudflaredConfig
         })
       ),
+      React.createElement(ExternalTunnelCard, {
+        ext,
+        onSave: saveExternalTunnel
+      }),
       React.createElement(
         TunnelCard,
         {
