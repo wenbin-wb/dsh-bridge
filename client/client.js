@@ -3441,6 +3441,25 @@ function VersionBanner({ rpcCall }) {
           hasUpdate && React.createElement("span", { style: { fontWeight: 600, fontSize: 11 } }, `\u2794 v${info.latest}`),
           info?.error && React.createElement("span", { style: { color: "var(--dsw-alias-state-warn-primary,#d97706)", fontSize: 11 } }, "(\u7F51\u7EDC\u8D85\u65F6)")
         ),
+        // DSH 宿主版本标签
+        info?.dshVersion && React.createElement(
+          "span",
+          {
+            style: {
+              ...s.tag,
+              background: "var(--dsw-alias-bg-layer-2,#f3f4f6)",
+              color: "var(--dsw-alias-label-tertiary,#6b7280)",
+              padding: "3px 10px",
+              fontSize: 12,
+              fontWeight: 500,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5
+            }
+          },
+          React.createElement("span", { style: { opacity: 0.75, fontSize: 11, fontWeight: 400 } }, "DSH"),
+          `v${info.dshVersion}`
+        ),
         // 刷新检查按钮
         React.createElement(
           "button",
