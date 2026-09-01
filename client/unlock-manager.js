@@ -2,25 +2,20 @@
 //
 // 背景：多个 RPC 封装（BridgePanel 的 authRpcCall、目录选择器的 authRpc）都会遇到
 // "需要管理员权限" 的拦截，此前各自处理、目录选择器甚至没有解锁入口导致流程卡死。
-// 本模块把"token 管理 + 权限拦截检测 + 解锁动作 + 被拦截操作自动重放"统一收敛，
-// UI 层（React 弹窗 / DOM 内嵌 / 未来新增组件）通过 registerUnlockHandler 接入，
-// 业务方通过 ensureAdminToken() 统一获取有效 token。
+// 本模块把"token 管理 + 权限拦截检测 + 解锁动作 + 被拦截操作自动重放"统一收敛。
 //
 // 设计要点：
-//   - token 与 sessionStorage 同步（兼容现有 getGlobalAdminToken/setGlobalAdminToken）
-//   - 权限失败 -> 通知解锁 UI；解锁成功 -> 自动重放被拦截的 RPC（pending 队列）
-//   - 可同时注册多个 UI（如主面板弹窗 + 目录选择器内嵌），manager 只通知当前活跃的
+//   - token 与 sessionStorage 同步，是本插件唯一的 adminToken 缓存来源
+//   - 权限失败 -> 解锁成功 -> 自动重放被拦截的 RPC（pending 队列）
 //   - 与具体 UI 框架解耦，纯 JS 单例
 
 const SESSION_KEY = 'dsh_admin_token';
 
 let _token = '';
-let _unlockHandlers = [];       // [{ id, show, hide }]
 let _pendingOps = [];           // 被拦截待重放的操作队列（解锁后按序重放）
 let _onUnlocked = null;         // 解锁成功后的全局回调（可多个）
-let _onPermissionDenied = null; // 权限失败通知（可多个）
 
-// 与旧 API 兼容：读写 sessionStorage
+// 读写 sessionStorage
 function _readStorage() {
   try { return typeof window !== 'undefined' ? window.sessionStorage.getItem(SESSION_KEY) : ''; } catch { return ''; }
 }
@@ -48,48 +43,37 @@ export function clearAdminToken() {
   setAdminToken('');
 }
 
-/** 是否有可用 token（未校验有效性，仅看是否已保存） */
-export function hasAdminToken() {
-  return Boolean(getAdminToken());
-}
-
 /**
- * 注册一个解锁 UI handler。
- * @param {object} handler { id, show, hide }
- *   show(context): context = { message, onUnlock(password)=>Promise<boolean>, onCancel }
- *   hide(): 关闭该 UI
- * @returns 注销函数
+ * 本机（回环）场景：从多候选 URL 获取 loopback adminToken（免输密码直通管理）。
+ * 支持 3080 原生端口与 3082 代理端口；不信任 sessionStorage 里的旧 token
+ * ——DSH 重启后 adminSessions 清空，旧 token 失效，因此强制每次获取新的。
+ * 返回 null 表示获取失败（非本机 / 端点不可达）。
+ * @param {boolean} [force] true 时忽略已缓存 token 强制重取（默认 true）
  */
-export function registerUnlockHandler(handler) {
-  if (!handler || typeof handler.show !== 'function') return () => {};
-  const id = handler.id || Math.random().toString(36).slice(2);
-  _unlockHandlers.push({ id, show: handler.show, hide: handler.hide });
-  return () => {
-    _unlockHandlers = _unlockHandlers.filter((h) => h.id !== id);
-  };
-}
-
-/** 通知解锁 UI：需要解锁（用于权限被拒时）。只通知第一个活跃 handler，避免重复弹窗 */
-export function notifyPermissionDenied(context = {}) {
-  // 优先通知"当前可见"的 UI（后注册的通常更贴近当前上下文）
-  for (let i = _unlockHandlers.length - 1; i >= 0; i--) {
-    const h = _unlockHandlers[i];
+export async function fetchLoopbackTokenOnce(force = true) {
+  if (typeof window === 'undefined') return null;
+  if (!force) {
+    const existing = getAdminToken();
+    if (existing) return existing;
+  }
+  const candidates = [
+    '/__dsh_bridge__/loopback-token',
+    'http://127.0.0.1:3082/__dsh_bridge__/loopback-token',
+    'http://localhost:3082/__dsh_bridge__/loopback-token',
+  ];
+  for (const url of [...new Set(candidates)]) {
     try {
-      const handled = h.show(context);
-      if (handled !== false) return; // handler 明确返回 false 表示不处理，继续找下一个
+      const res = await fetch(url, { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.ok && data.adminToken) {
+          setAdminToken(data.adminToken);
+          return data.adminToken;
+        }
+      }
     } catch {}
   }
-  // 业务方可监听
-  if (_onPermissionDenied) {
-    for (const cb of _onPermissionDenied) { try { cb(context); } catch {} }
-  }
-}
-
-/** 关闭所有解锁 UI（解锁成功后清理） */
-export function hideAllUnlock() {
-  for (const h of _unlockHandlers) {
-    try { if (h.hide) h.hide(); } catch {}
-  }
+  return null;
 }
 
 /**
@@ -108,11 +92,6 @@ export async function replayPending() {
   for (const retry of ops) {
     try { await retry(); } catch {}
   }
-}
-
-/** 是否有待重放的操作 */
-export function hasPendingOperation() {
-  return _pendingOps.length > 0;
 }
 
 /** 监听解锁成功（可多个）；返回注销函数 */
@@ -141,7 +120,6 @@ export async function unlockAdmin(rpcCall, password) {
     if (res?.ok) {
       const token = res.value?.adminToken || '';
       setAdminToken(token);
-      hideAllUnlock();
       _emitUnlocked();
       await replayPending();
       return { ok: true };
@@ -161,13 +139,4 @@ export async function unlockAdmin(rpcCall, password) {
     }
     return { ok: false, error: err?.message || '解锁请求失败' };
   }
-}
-
-/** 重置（测试/调试用） */
-export function _resetForTest() {
-  _token = '';
-  _unlockHandlers = [];
-  _pendingOps = [];
-  _onUnlocked = null;
-  _onPermissionDenied = null;
 }

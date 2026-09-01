@@ -835,7 +835,6 @@ var MOBILE_STYLES_CSS = `
 // client/unlock-manager.js
 var SESSION_KEY = "dsh_admin_token";
 var _token = "";
-var _unlockHandlers = [];
 var _pendingOps = [];
 var _onUnlocked = null;
 function _readStorage() {
@@ -869,13 +868,31 @@ function setAdminToken(t) {
 function clearAdminToken() {
   setAdminToken("");
 }
-function hideAllUnlock() {
-  for (const h of _unlockHandlers) {
+async function fetchLoopbackTokenOnce(force = true) {
+  if (typeof window === "undefined") return null;
+  if (!force) {
+    const existing = getAdminToken();
+    if (existing) return existing;
+  }
+  const candidates = [
+    "/__dsh_bridge__/loopback-token",
+    "http://127.0.0.1:3082/__dsh_bridge__/loopback-token",
+    "http://localhost:3082/__dsh_bridge__/loopback-token"
+  ];
+  for (const url of [...new Set(candidates)]) {
     try {
-      if (h.hide) h.hide();
+      const res = await fetch(url, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.ok && data.adminToken) {
+          setAdminToken(data.adminToken);
+          return data.adminToken;
+        }
+      }
     } catch {
     }
   }
+  return null;
 }
 function queuePendingOperation(retry) {
   _pendingOps.push(retry);
@@ -914,7 +931,6 @@ async function unlockAdmin(rpcCall, password) {
     if (res?.ok) {
       const token = res.value?.adminToken || "";
       setAdminToken(token);
-      hideAllUnlock();
       _emitUnlocked();
       await replayPending();
       return { ok: true };
@@ -1002,31 +1018,6 @@ if (typeof window !== "undefined") {
       });
     };
   }
-}
-var _globalAdminToken = "";
-function setGlobalAdminToken(t) {
-  _globalAdminToken = t || "";
-  if (typeof window !== "undefined") {
-    try {
-      if (t) sessionStorage.setItem("dsh_admin_token", t);
-      else sessionStorage.removeItem("dsh_admin_token");
-    } catch {
-    }
-  }
-}
-function getGlobalAdminToken() {
-  if (_globalAdminToken) return _globalAdminToken;
-  if (typeof window !== "undefined") {
-    try {
-      const saved = sessionStorage.getItem("dsh_admin_token");
-      if (saved) {
-        _globalAdminToken = saved;
-        return saved;
-      }
-    } catch {
-    }
-  }
-  return "";
 }
 function isLocalEnvironment() {
   if (typeof window === "undefined") return true;
@@ -3722,7 +3713,6 @@ function BridgePanel({ rpcCall }) {
   const [platforms, setPlatforms] = React.useState(null);
   const [selectedPlatform, setSelectedPlatform] = React.useState("wechat");
   const isLocalhost = typeof window === "undefined" || (!window.location.hostname || window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost" || window.location.hostname === "::1" || window.location.hostname === "" || window.location.protocol === "file:" || window.location.protocol === "vscode-webview:" || window.location.protocol === "app:" || window.location.hostname.endsWith(".local"));
-  const [adminToken, setAdminToken2] = React.useState("");
   const [adminUnlocked, setAdminUnlocked] = React.useState(false);
   const [unlockPassword, setUnlockPassword] = React.useState("");
   const [unlockErr, setUnlockErr] = React.useState(null);
@@ -3731,37 +3721,17 @@ function BridgePanel({ rpcCall }) {
   const [showUnlockModal, setShowUnlockModal] = React.useState(false);
   const fetchLoopbackToken = React.useCallback(async () => {
     if (!isLocalhost) return null;
-    const proxyPort = status?.proxy?.port || 3082;
-    const candidateUrls = [
-      "/__dsh_bridge__/loopback-token",
-      `http://127.0.0.1:${proxyPort}/__dsh_bridge__/loopback-token`,
-      `http://localhost:${proxyPort}/__dsh_bridge__/loopback-token`,
-      "http://127.0.0.1:3082/__dsh_bridge__/loopback-token"
-    ];
-    const uniqueUrls = [...new Set(candidateUrls)];
-    for (const url of uniqueUrls) {
-      try {
-        const res = await fetch(url, { method: "POST" });
-        if (res.ok) {
-          const data = await res.json();
-          if (data?.ok && data.adminToken) {
-            setAdminToken2(data.adminToken);
-            setGlobalAdminToken(data.adminToken);
-            setAdminUnlocked(true);
-            return data.adminToken;
-          }
-        }
-      } catch {
-      }
+    const token = await fetchLoopbackTokenOnce();
+    if (token) {
+      setAdminUnlocked(true);
     }
-    return null;
-  }, [isLocalhost, status?.proxy?.port]);
+    return token;
+  }, [isLocalhost]);
   React.useEffect(() => {
     if (isLocalhost && !adminUnlocked) {
       fetchLoopbackToken();
     }
   }, [isLocalhost, adminUnlocked, fetchLoopbackToken]);
-  const pendingRetryRef = React.useRef(null);
   const handleAccessSessionExpired = React.useCallback(() => {
     setAdminUnlocked(false);
     clearAdminToken();
@@ -3771,7 +3741,7 @@ function BridgePanel({ rpcCall }) {
     }
   }, []);
   const authRpcCall = React.useCallback(async (endpoint, payload = {}, signal) => {
-    let token = adminToken || getGlobalAdminToken();
+    let token = getAdminToken();
     if (isLocalhost && !token) {
       token = await fetchLoopbackToken();
     }
@@ -3807,7 +3777,7 @@ function BridgePanel({ rpcCall }) {
       }
     }
     return res;
-  }, [rpcCall, adminToken, isLocalhost, fetchLoopbackToken, handleAccessSessionExpired]);
+  }, [rpcCall, isLocalhost, fetchLoopbackToken, handleAccessSessionExpired]);
   const handleUnlockAdmin = React.useCallback(async (e) => {
     e?.preventDefault?.();
     setUnlocking(true);
@@ -3891,26 +3861,6 @@ function BridgePanel({ rpcCall }) {
     const t = setInterval(() => load(true), 3e3);
     return () => clearInterval(t);
   }, [load, adminUnlocked, isLocalhost]);
-  React.useEffect(() => {
-    if (!adminUnlocked) return;
-    const pending = pendingRetryRef.current;
-    if (!pending) return;
-    pendingRetryRef.current = null;
-    const token = adminToken || getGlobalAdminToken();
-    (async () => {
-      try {
-        const r = await rpcCall(pending.endpoint, { ...pending.payload, adminToken: token });
-        if (r?.ok) {
-          if (r.value) setStatus(r.value);
-          setErr(null);
-        } else {
-          setErr(r?.error?.message || "\u521A\u624D\u7684\u64CD\u4F5C\u91CD\u8BD5\u5931\u8D25\uFF0C\u8BF7\u624B\u52A8\u91CD\u8BD5");
-        }
-      } catch (e) {
-        setErr(e.message || "\u521A\u624D\u7684\u64CD\u4F5C\u91CD\u8BD5\u5931\u8D25\uFF0C\u8BF7\u624B\u52A8\u91CD\u8BD5");
-      }
-    })();
-  }, [adminUnlocked, adminToken, rpcCall]);
   const act = React.useCallback(async (endpoint, payload) => {
     try {
       const r = await authRpcCall(endpoint, payload ?? {});
@@ -5038,7 +4988,7 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
     }
   }
   async function authRpc(endpoint, payload = {}) {
-    let token = getGlobalAdminToken();
+    let token = getAdminToken();
     if (isLocalEnvironment()) {
       token = await fetchLoopbackTokenOnce();
     }
@@ -5072,29 +5022,6 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
       }
     }
     return res;
-  }
-  async function fetchLoopbackTokenOnce(force = false) {
-    const existing2 = getAdminToken();
-    if (!force && existing2) return existing2;
-    const candidates = [
-      "/__dsh_bridge__/loopback-token",
-      "http://127.0.0.1:3082/__dsh_bridge__/loopback-token",
-      "http://localhost:3082/__dsh_bridge__/loopback-token"
-    ];
-    for (const url of [...new Set(candidates)]) {
-      try {
-        const res = await fetch(url, { method: "POST" });
-        if (res.ok) {
-          const data = await res.json();
-          if (data?.ok && data.adminToken) {
-            setAdminToken(data.adminToken);
-            return data.adminToken;
-          }
-        }
-      } catch {
-      }
-    }
-    return null;
   }
   async function switchToWorkspace(wsId, wsPath) {
     if (isSubmitting) return;

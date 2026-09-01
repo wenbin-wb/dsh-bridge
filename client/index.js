@@ -1,7 +1,8 @@
 import { MOBILE_STYLES_CSS } from './mobile-styles.js'
 import {
-  getAdminToken, setAdminToken, clearAdminToken,
+  getAdminToken, clearAdminToken,
   queuePendingOperation, unlockAdmin, onUnlocked,
+  fetchLoopbackTokenOnce,
 } from './unlock-manager.js'
 // dsh-bridge 客户端插件：设置页「远程访问」面板
 
@@ -27,31 +28,6 @@ if (typeof window !== 'undefined') {
 }
 
 import { BRIDGE_RPC_CHANNEL, BRIDGE_ENDPOINTS } from '../lib/bridge-rpc-constants.js';
-
-let _globalAdminToken = '';
-function setGlobalAdminToken(t) {
-  _globalAdminToken = t || '';
-  if (typeof window !== 'undefined') {
-    try {
-      if (t) sessionStorage.setItem('dsh_admin_token', t);
-      else sessionStorage.removeItem('dsh_admin_token');
-    } catch {}
-  }
-}
-
-function getGlobalAdminToken() {
-  if (_globalAdminToken) return _globalAdminToken;
-  if (typeof window !== 'undefined') {
-    try {
-      const saved = sessionStorage.getItem('dsh_admin_token');
-      if (saved) {
-        _globalAdminToken = saved;
-        return saved;
-      }
-    } catch {}
-  }
-  return '';
-}
 
 function isLocalEnvironment() {
   if (typeof window === 'undefined') return true;
@@ -2512,7 +2488,6 @@ function BridgePanel({ rpcCall }) {
     window.location.protocol === 'app:' ||
     window.location.hostname.endsWith('.local')
   );
-  const [adminToken, setAdminToken]       = React.useState('');
   const [adminUnlocked, setAdminUnlocked] = React.useState(false);
   const [unlockPassword, setUnlockPassword] = React.useState('');
   const [unlockErr, setUnlockErr]         = React.useState(null);
@@ -2520,43 +2495,21 @@ function BridgePanel({ rpcCall }) {
   const [showForgotGuide, setShowForgotGuide] = React.useState(false);
   const [showUnlockModal, setShowUnlockModal] = React.useState(false);
 
-  // 本机物理访问自动静默获取 adminToken，免输密码直通管理（支持 3080 原生端口与 3082 代理端口）
+  // 本机物理访问自动静默获取 adminToken，免输密码直通管理（复用 unlock-manager 的共享获取逻辑）
   const fetchLoopbackToken = React.useCallback(async () => {
     if (!isLocalhost) return null;
-    const proxyPort = status?.proxy?.port || 3082;
-    const candidateUrls = [
-      '/__dsh_bridge__/loopback-token',
-      `http://127.0.0.1:${proxyPort}/__dsh_bridge__/loopback-token`,
-      `http://localhost:${proxyPort}/__dsh_bridge__/loopback-token`,
-      'http://127.0.0.1:3082/__dsh_bridge__/loopback-token',
-    ];
-    const uniqueUrls = [...new Set(candidateUrls)];
-
-    for (const url of uniqueUrls) {
-      try {
-        const res = await fetch(url, { method: 'POST' });
-        if (res.ok) {
-          const data = await res.json();
-          if (data?.ok && data.adminToken) {
-            setAdminToken(data.adminToken);
-            setGlobalAdminToken(data.adminToken);
-            setAdminUnlocked(true);
-            return data.adminToken;
-          }
-        }
-      } catch {}
+    const token = await fetchLoopbackTokenOnce();
+    if (token) {
+      setAdminUnlocked(true);
     }
-    return null;
-  }, [isLocalhost, status?.proxy?.port]);
+    return token;
+  }, [isLocalhost]);
 
   React.useEffect(() => {
     if (isLocalhost && !adminUnlocked) {
       fetchLoopbackToken();
     }
   }, [isLocalhost, adminUnlocked, fetchLoopbackToken]);
-
-  // 被管理员鉴权拦截的操作在此暂存：解锁成功后自动续办，用户无需再点一次
-  const pendingRetryRef = React.useRef(null);
 
   // 访问会话失效统一处理：清解锁状态 + 整页重载回绿色登录页。
   // 背景：DSH 重启 / session 过期后旧 cookie 失效，所有 RPC 被代理以 HTTP 401 拦截。
@@ -2574,7 +2527,7 @@ function BridgePanel({ rpcCall }) {
   }, []);
 
   const authRpcCall = React.useCallback(async (endpoint, payload = {}, signal) => {
-    let token = adminToken || getGlobalAdminToken();
+    let token = getAdminToken();
     if (isLocalhost && !token) {
       token = await fetchLoopbackToken();
     }
@@ -2610,7 +2563,7 @@ function BridgePanel({ rpcCall }) {
       }
     }
     return res;
-  }, [rpcCall, adminToken, isLocalhost, fetchLoopbackToken, handleAccessSessionExpired]);
+  }, [rpcCall, isLocalhost, fetchLoopbackToken, handleAccessSessionExpired]);
 
   const handleUnlockAdmin = React.useCallback(async (e) => {
     e?.preventDefault?.();
@@ -2702,28 +2655,6 @@ function BridgePanel({ rpcCall }) {
     const t = setInterval(() => load(true), 3000);
     return () => clearInterval(t);
   }, [load, adminUnlocked, isLocalhost]);
-
-  // 解锁成功后自动续办被拦截的操作：用户不再需要重新点击一次
-  React.useEffect(() => {
-    if (!adminUnlocked) return;
-    const pending = pendingRetryRef.current;
-    if (!pending) return;
-    pendingRetryRef.current = null;
-    const token = adminToken || getGlobalAdminToken();
-    (async () => {
-      try {
-        const r = await rpcCall(pending.endpoint, { ...pending.payload, adminToken: token });
-        if (r?.ok) {
-          if (r.value) setStatus(r.value);
-          setErr(null);
-        } else {
-          setErr(r?.error?.message || '刚才的操作重试失败，请手动重试');
-        }
-      } catch (e) {
-        setErr(e.message || '刚才的操作重试失败，请手动重试');
-      }
-    })();
-  }, [adminUnlocked, adminToken, rpcCall]);
 
   const act = React.useCallback(async (endpoint, payload) => {
     try {
@@ -3910,7 +3841,7 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
   }
 
   async function authRpc(endpoint, payload = {}) {
-    let token = getGlobalAdminToken();
+    let token = getAdminToken();
     // 本机（回环）场景：优先用 loopback-token 端点拿一个新鲜的 adminToken。
     // 不信任 sessionStorage 里的旧 token——DSH 重启后 adminSessions 清空，旧 token 失效。
     if (isLocalEnvironment()) {
@@ -3951,30 +3882,6 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
       }
     }
     return res;
-  }
-
-  // 从多候选 URL 获取 loopback adminToken（本机专用）
-  async function fetchLoopbackTokenOnce(force = false) {
-    const existing = getAdminToken();
-    if (!force && existing) return existing;
-    const candidates = [
-      '/__dsh_bridge__/loopback-token',
-      'http://127.0.0.1:3082/__dsh_bridge__/loopback-token',
-      'http://localhost:3082/__dsh_bridge__/loopback-token',
-    ];
-    for (const url of [...new Set(candidates)]) {
-      try {
-        const res = await fetch(url, { method: 'POST' });
-        if (res.ok) {
-          const data = await res.json();
-          if (data?.ok && data.adminToken) {
-            setAdminToken(data.adminToken);
-            return data.adminToken;
-          }
-        }
-      } catch {}
-    }
-    return null;
   }
 
   async function switchToWorkspace(wsId, wsPath) {
