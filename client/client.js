@@ -1413,9 +1413,10 @@ var CustomTunnelGuide = React.memo(function CustomTunnelGuide2() {
     }, "\u67E5\u770B\u81EA\u5EFA\u96A7\u9053\u670D\u52A1\u5668\u642D\u5EFA\u6559\u7A0B")
   );
 });
-var CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm2({ serverUrl: initUrl, accessToken: initToken, onSave }) {
+var CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm2({ serverUrl: initUrl, accessToken: initToken, sseStreaming: initSse, onSave }) {
   const [serverUrl, setServerUrl] = React.useState(initUrl ?? "");
   const [accessToken, setAccessToken] = React.useState(initToken ?? "");
+  const [sseStreaming, setSseStreaming] = React.useState(Boolean(initSse));
   const [saving, setSaving] = React.useState(false);
   const [saveSuccess, setSaveSuccess] = React.useState(false);
   const syncedRef = React.useRef(false);
@@ -1426,14 +1427,15 @@ var CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm2({ serve
       syncedRef.current = true;
     }
   }, [initUrl, initToken]);
-  const dirty = serverUrl !== (initUrl ?? "") || accessToken !== (initToken ?? "");
+  React.useEffect(() => { setSseStreaming(Boolean(initSse)); }, [initSse]);
+  const dirty = serverUrl !== (initUrl ?? "") || accessToken !== (initToken ?? "") || sseStreaming !== Boolean(initSse);
   const [saveErr, setSaveErr] = React.useState(null);
   const handleSave = React.useCallback(async () => {
     setSaving(true);
     setSaveSuccess(false);
     setSaveErr(null);
     try {
-      await onSave(serverUrl, accessToken);
+      await onSave(serverUrl, accessToken, sseStreaming);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2500);
     } catch (e) {
@@ -1441,7 +1443,7 @@ var CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm2({ serve
     } finally {
       setSaving(false);
     }
-  }, [onSave, serverUrl, accessToken]);
+  }, [onSave, serverUrl, accessToken, sseStreaming]);
   const handleUrlChange = React.useCallback((e) => {
     setServerUrl(e.target.value);
     setSaveSuccess(false);
@@ -1485,6 +1487,29 @@ var CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm2({ serve
         "div",
         { style: { ...s.muted, fontSize: 11 } },
         "\u{1F4A1} \u7528\u4E8E\u4E0E\u60A8\u7684 VPS \u96A7\u9053\u670D\u52A1\u7AEF\u5EFA\u7ACB\u53CD\u5411\u901A\u9053\uFF08\u4E0E Web \u7F51\u9875\u8BBF\u5BA2\u8BBF\u95EE\u5BC6\u7801\u4E92\u76F8\u72EC\u7ACB\uFF09\u3002"
+      ),
+      React.createElement(
+        "label",
+        {
+          style: {
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            cursor: "pointer",
+            fontSize: 12,
+            color: "var(--dsw-alias-label-secondary,#6b7280)",
+            userSelect: "none",
+            marginTop: 4
+          }
+        },
+        React.createElement("input", {
+          type: "checkbox",
+          checked: sseStreaming,
+          onChange: (e) => { setSseStreaming(e.target.checked); setSaveSuccess(false); setSaveErr(null); },
+          disabled: saving,
+          style: { cursor: "pointer" }
+        }),
+        "SSE \u6D41\u5F0F\u8F6C\u53D1\uFF08\u9700\u670D\u52A1\u7AEF\u652F\u6301\u6D41\u5F0F\u534F\u8BAE\uFF0C\u5173\u95ED\u5219\u4F7F\u7528\u622A\u65AD\u6A21\u5F0F\uFF09"
       ),
       React.createElement("button", {
         style: {
@@ -4005,7 +4030,7 @@ function BridgePanel({ rpcCall }) {
     [act]
   );
   const saveConfig = React.useCallback(
-    (serverUrl, accessToken) => act(BRIDGE_ENDPOINTS.saveCustomTunnelConfig, { serverUrl, accessToken }),
+    (serverUrl, accessToken, sseStreaming) => act(BRIDGE_ENDPOINTS.saveCustomTunnelConfig, { serverUrl, accessToken, sseStreaming }),
     [act]
   );
   const saveExternalTunnel = React.useCallback(
@@ -4101,6 +4126,7 @@ function BridgePanel({ rpcCall }) {
         React.createElement(CustomTunnelConfigForm, {
           serverUrl: ct?.serverUrl ?? "",
           accessToken: ct?.accessToken ?? "",
+          sseStreaming: ct?.sseStreaming,
           onSave: saveConfig
         })
       )
