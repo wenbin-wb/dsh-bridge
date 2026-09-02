@@ -366,29 +366,37 @@ wss.on('connection', (ws, req) => {
 
       // WebSocket 握手成功，完成升级并接管 socket
       if (msg.type === 'ws-accept') {
-        const { wsId, replyHeaders } = msg;
+        const { wsId, replyHeaders, statusCode, statusMessage } = msg;
         const upgrade = pendingWsUpgrades.get(wsId);
         if (!upgrade) return;
         pendingWsUpgrades.delete(wsId);
 
         const { socket } = upgrade;
-        // 回写 101 Switching Protocols
-        const lines = ['HTTP/1.1 101 Switching Protocols'];
+        // 使用隧道客户端传来的实际状态码（非 101 时浏览器能看到真实错误）
+        const code = statusCode || 101;
+        const reason = statusMessage || (code === 101 ? 'Switching Protocols' : '');
+        const lines = [`HTTP/1.1 ${code} ${reason}`.trim()];
         for (const [k, v] of Object.entries(replyHeaders ?? {})) lines.push(`${k}: ${v}`);
         lines.push('', '');
         socket.write(lines.join('\r\n'));
-        browserWsSockets.set(wsId, socket);
 
-        socket.on('data', chunk => {
-          if (ws.readyState === ws.OPEN) {
-            ws.send(JSON.stringify({ type: 'ws-frame', wsId, data: chunk.toString('base64') }));
-          }
-        });
-        socket.on('close', () => {
-          if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ type: 'ws-close', wsId }));
-          browserWsSockets.delete(wsId);
-        });
-        socket.on('error', () => socket.destroy());
+        // 仅 101 时才接管为 WebSocket 隧道
+        if (code === 101) {
+          browserWsSockets.set(wsId, socket);
+          socket.on('data', chunk => {
+            if (ws.readyState === ws.OPEN) {
+              ws.send(JSON.stringify({ type: 'ws-frame', wsId, data: chunk.toString('base64') }));
+            }
+          });
+          socket.on('close', () => {
+            if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ type: 'ws-close', wsId }));
+            browserWsSockets.delete(wsId);
+          });
+          socket.on('error', () => socket.destroy());
+        } else {
+          // 非 101：结束连接，不接管为 WebSocket
+          socket.end();
+        }
         return;
       }
 
