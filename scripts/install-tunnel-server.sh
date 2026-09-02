@@ -314,7 +314,7 @@ wss.on('connection', (ws, req) => {
     try {
       const msg = JSON.parse(raw.toString());
 
-      // HTTP 响应
+      // HTTP 响应（非流式：一次性返回完整 body）
       if (msg.type === 'response') {
         const p = pending.get(msg.requestId);
         if (!p) return;
@@ -326,6 +326,41 @@ wss.on('connection', (ws, req) => {
         );
         p.res.writeHead(msg.statusCode ?? 502, headers);
         p.res.end(Buffer.from(msg.body || '', 'base64'));
+        return;
+      }
+
+      // ── SSE 流式响应（response-start / response-chunk / response-end）──
+      // 向后兼容：老客户端不发这三类消息，走上面的 response 路径不受影响.
+
+      // 流式响应开始：写头，清除超时（SSE 长连接不设超时）
+      if (msg.type === 'response-start') {
+        const p = pending.get(msg.requestId);
+        if (!p) return;
+        clearTimeout(p.timer);
+        p.timer = null;
+        const HOP_BY_HOP = new Set(['transfer-encoding', 'connection', 'keep-alive', 'te', 'trailer', 'upgrade']);
+        const headers = Object.fromEntries(
+          Object.entries(msg.headers ?? {}).filter(([k]) => !HOP_BY_HOP.has(k.toLowerCase()))
+        );
+        p.res.writeHead(msg.statusCode ?? 200, headers);
+        return;
+      }
+
+      // 流式响应 chunk：逐块写入
+      if (msg.type === 'response-chunk') {
+        const p = pending.get(msg.requestId);
+        if (!p) return;
+        p.res.write(Buffer.from(msg.body || '', 'base64'));
+        return;
+      }
+
+      // 流式响应结束：end 并清理
+      if (msg.type === 'response-end') {
+        const p = pending.get(msg.requestId);
+        if (!p) return;
+        if (p.timer) clearTimeout(p.timer);
+        pending.delete(msg.requestId);
+        try { p.res.end(); } catch {}
         return;
       }
 
@@ -379,6 +414,12 @@ wss.on('connection', (ws, req) => {
     tunnelClients.delete(id);
     // 清理所有挂在这个 client 上的 browser socket
     for (const [wsId, sock] of browserWsSockets) { sock.destroy(); browserWsSockets.delete(wsId); }
+    // 清理所有流式/待响应的 HTTP 响应
+    for (const [requestId, p] of pending) {
+      if (p.timer) clearTimeout(p.timer);
+      try { p.res.end(); } catch {}
+    }
+    pending.clear();
     console.log(`[dsh-tunnel] client disconnected  id=${id}  code=${code}  remaining=${tunnelClients.size}`);
   });
   ws.on('error', err => console.error(`[dsh-tunnel] client error id=${id}: ${err.message}`));
