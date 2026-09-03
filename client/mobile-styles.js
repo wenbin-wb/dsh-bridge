@@ -792,6 +792,38 @@ export const MOBILE_STYLES_CSS = `
       to { transform: translateY(0); }
     }
 
+    /* 深色模式适配：dsh-bridge 目录浏览器弹窗使用了 DSH 主题系统未定义的
+       state-*-bg / state-*-border / state-*-primary 变量，补上深色模式值，避免浅色 fallback 永远生效 */
+    body[data-ds-dark-theme] {
+      --dsw-alias-state-info-bg: rgba(65, 118, 230, 0.12);
+      --dsw-alias-state-info-border: rgba(65, 118, 230, 0.25);
+      --dsw-alias-state-info-primary: #60a5fa;
+      --dsw-alias-state-success-bg: rgba(34, 197, 94, 0.12);
+      --dsw-alias-state-success-border: rgba(34, 197, 94, 0.25);
+      --dsw-alias-state-success-primary: #4ade80;
+      --dsw-alias-state-warn-bg: rgba(245, 158, 11, 0.12);
+      --dsw-alias-state-warn-border: rgba(245, 158, 11, 0.25);
+      --dsw-alias-state-warn-primary: #fbbf24;
+      --dsw-alias-state-error-bg: rgba(239, 68, 68, 0.12);
+      --dsw-alias-state-error-border: rgba(239, 68, 68, 0.25);
+      --dsw-alias-state-error-primary: #f87171;
+    }
+
+    /* 深色模式：直接覆盖弹窗内所有使用 #fff/#ffffff fallback 的内联背景，
+       确保即使 CSS 变量未正确继承，弹窗也不会显示白色背景 */
+    body[data-ds-dark-theme] #dsh-remote-workspace-modal .dsh-ws-dialog-card,
+    body[data-ds-dark-theme] #dsh-remote-workspace-modal .dsh-ws-dialog-card * {
+      --dsw-alias-bg-layer-1: #1b1b1c;
+      --dsw-alias-bg-layer-2: #2c2c2e;
+      --dsw-alias-bg-layer-3: #353638;
+      --dsw-alias-border-l2: #3c3c3d;
+      --dsw-alias-label-primary: #f9fafb;
+      --dsw-alias-label-secondary: #adb2b8;
+      --dsw-alias-label-tertiary: #81858c;
+      --dsw-alias-brand-primary: #f9fafb;
+      --dsw-alias-label-primary-foreground: #0f1115;
+    }
+
     @media (min-width: 769px) {
       .dsh-mobile-app-header,
       .dsh-mobile-backdrop,
