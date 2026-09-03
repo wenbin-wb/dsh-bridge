@@ -823,6 +823,37 @@ var MOBILE_STYLES_CSS = `
       to { transform: translateY(0); }
     }
 
+    /* 深色模式适配：目录浏览器弹窗使用了 DSH 主题系统未定义的 state-*-bg / state-*-border / state-*-primary 变量 */
+    body[data-ds-dark-theme] {
+      --dsw-alias-state-info-bg: rgba(65, 118, 230, 0.12);
+      --dsw-alias-state-info-border: rgba(65, 118, 230, 0.25);
+      --dsw-alias-state-info-primary: #60a5fa;
+      --dsw-alias-state-success-bg: rgba(34, 197, 94, 0.12);
+      --dsw-alias-state-success-border: rgba(34, 197, 94, 0.25);
+      --dsw-alias-state-success-primary: #4ade80;
+      --dsw-alias-state-warn-bg: rgba(245, 158, 11, 0.12);
+      --dsw-alias-state-warn-border: rgba(245, 158, 11, 0.25);
+      --dsw-alias-state-warn-primary: #fbbf24;
+      --dsw-alias-state-error-bg: rgba(239, 68, 68, 0.12);
+      --dsw-alias-state-error-border: rgba(239, 68, 68, 0.25);
+      --dsw-alias-state-error-primary: #f87171;
+    }
+
+    /* 深色模式：直接覆盖弹窗内所有使用 #fff/#ffffff fallback 的内联背景，
+       确保即使 CSS 变量未正确继承，弹窗也不会显示白色背景 */
+    body[data-ds-dark-theme] #dsh-remote-workspace-modal .dsh-ws-dialog-card,
+    body[data-ds-dark-theme] #dsh-remote-workspace-modal .dsh-ws-dialog-card * {
+      --dsw-alias-bg-layer-1: #1b1b1c;
+      --dsw-alias-bg-layer-2: #2c2c2e;
+      --dsw-alias-bg-layer-3: #353638;
+      --dsw-alias-border-l2: #3c3c3d;
+      --dsw-alias-label-primary: #f9fafb;
+      --dsw-alias-label-secondary: #adb2b8;
+      --dsw-alias-label-tertiary: #81858c;
+      --dsw-alias-brand-primary: #f9fafb;
+      --dsw-alias-label-primary-foreground: #0f1115;
+    }
+
     @media (min-width: 769px) {
       .dsh-mobile-app-header,
       .dsh-mobile-backdrop,
@@ -1413,9 +1444,10 @@ var CustomTunnelGuide = React.memo(function CustomTunnelGuide2() {
     }, "\u67E5\u770B\u81EA\u5EFA\u96A7\u9053\u670D\u52A1\u5668\u642D\u5EFA\u6559\u7A0B")
   );
 });
-var CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm2({ serverUrl: initUrl, accessToken: initToken, onSave }) {
+var CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm2({ serverUrl: initUrl, accessToken: initToken, sseStreaming: initSse, onSave }) {
   const [serverUrl, setServerUrl] = React.useState(initUrl ?? "");
   const [accessToken, setAccessToken] = React.useState(initToken ?? "");
+  const [sseStreaming, setSseStreaming] = React.useState(Boolean(initSse));
   const [saving, setSaving] = React.useState(false);
   const [saveSuccess, setSaveSuccess] = React.useState(false);
   const syncedRef = React.useRef(false);
@@ -1426,14 +1458,15 @@ var CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm2({ serve
       syncedRef.current = true;
     }
   }, [initUrl, initToken]);
-  const dirty = serverUrl !== (initUrl ?? "") || accessToken !== (initToken ?? "");
+  React.useEffect(() => { setSseStreaming(Boolean(initSse)); }, [initSse]);
+  const dirty = serverUrl !== (initUrl ?? "") || accessToken !== (initToken ?? "") || sseStreaming !== Boolean(initSse);
   const [saveErr, setSaveErr] = React.useState(null);
   const handleSave = React.useCallback(async () => {
     setSaving(true);
     setSaveSuccess(false);
     setSaveErr(null);
     try {
-      await onSave(serverUrl, accessToken);
+      await onSave(serverUrl, accessToken, sseStreaming);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2500);
     } catch (e) {
@@ -1441,7 +1474,7 @@ var CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm2({ serve
     } finally {
       setSaving(false);
     }
-  }, [onSave, serverUrl, accessToken]);
+  }, [onSave, serverUrl, accessToken, sseStreaming]);
   const handleUrlChange = React.useCallback((e) => {
     setServerUrl(e.target.value);
     setSaveSuccess(false);
@@ -1485,6 +1518,29 @@ var CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm2({ serve
         "div",
         { style: { ...s.muted, fontSize: 11 } },
         "\u{1F4A1} \u7528\u4E8E\u4E0E\u60A8\u7684 VPS \u96A7\u9053\u670D\u52A1\u7AEF\u5EFA\u7ACB\u53CD\u5411\u901A\u9053\uFF08\u4E0E Web \u7F51\u9875\u8BBF\u5BA2\u8BBF\u95EE\u5BC6\u7801\u4E92\u76F8\u72EC\u7ACB\uFF09\u3002"
+      ),
+      React.createElement(
+        "label",
+        {
+          style: {
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            cursor: "pointer",
+            fontSize: 12,
+            color: "var(--dsw-alias-label-secondary,#6b7280)",
+            userSelect: "none",
+            marginTop: 4
+          }
+        },
+        React.createElement("input", {
+          type: "checkbox",
+          checked: sseStreaming,
+          onChange: (e) => { setSseStreaming(e.target.checked); setSaveSuccess(false); setSaveErr(null); },
+          disabled: saving,
+          style: { cursor: "pointer" }
+        }),
+        "SSE \u6D41\u5F0F\u8F6C\u53D1\uFF08\u9700\u670D\u52A1\u7AEF\u652F\u6301\u6D41\u5F0F\u534F\u8BAE\uFF0C\u5173\u95ED\u5219\u4F7F\u7528\u622A\u65AD\u6A21\u5F0F\uFF09"
       ),
       React.createElement("button", {
         style: {
@@ -4005,7 +4061,7 @@ function BridgePanel({ rpcCall }) {
     [act]
   );
   const saveConfig = React.useCallback(
-    (serverUrl, accessToken) => act(BRIDGE_ENDPOINTS.saveCustomTunnelConfig, { serverUrl, accessToken }),
+    (serverUrl, accessToken, sseStreaming) => act(BRIDGE_ENDPOINTS.saveCustomTunnelConfig, { serverUrl, accessToken, sseStreaming }),
     [act]
   );
   const saveExternalTunnel = React.useCallback(
@@ -4101,6 +4157,7 @@ function BridgePanel({ rpcCall }) {
         React.createElement(CustomTunnelConfigForm, {
           serverUrl: ct?.serverUrl ?? "",
           accessToken: ct?.accessToken ?? "",
+          sseStreaming: ct?.sseStreaming,
           onSave: saveConfig
         })
       )
@@ -4829,7 +4886,7 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
           <form id="dsh-ws-unlock-form" style="display: flex; gap: 8px;">
             <input id="dsh-ws-unlock-input" type="password" placeholder="\u8BF7\u8F93\u5165\u540E\u53F0\u7BA1\u7406\u5BC6\u7801" value="${escapeHtml(unlockInput)}"
               style="flex: 1; font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--dsw-alias-border-l2, #d1d5db); background: var(--dsw-alias-bg-layer-1, #fff); color: var(--dsw-alias-label-primary, currentColor); outline: none; box-sizing: border-box;" />
-            <button type="submit" style="border: none; background: var(--dsw-alias-brand-primary, #4f6ef7); color: #fff; border-radius: 8px; padding: 0 14px; font-size: 12px; font-weight: 600; cursor: pointer; flex-shrink: 0;" ${unlocking ? "disabled" : ""}>${unlocking ? "\u89E3\u9501\u4E2D\u2026" : "\u89E3\u9501"}</button>
+            <button type="submit" style="border: none; background: var(--dsw-static-blue-600, #4f6ef7); color: #fff; border-radius: 8px; padding: 0 14px; font-size: 12px; font-weight: 600; cursor: pointer; flex-shrink: 0;" ${unlocking ? "disabled" : ""}>${unlocking ? "\u89E3\u9501\u4E2D\u2026" : "\u89E3\u9501"}</button>
           </form>
           ${unlockErr ? `<div style="font-size: 11px; color: var(--dsw-alias-state-error-primary, #dc2626); margin-top: 6px;">${escapeHtml(unlockErr)}</div>` : ""}
         </div>
@@ -4849,7 +4906,7 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
           ${(drives || []).map((d) => {
       const isActive = currentPath.startsWith(d.path) || currentPath === d.path;
       return `
-              <button class="dsh-ws-quick-btn" data-path="${escapeHtml(d.path)}" style="border: 1px solid ${isActive ? "var(--dsw-alias-brand-primary, #4f6ef7)" : "var(--dsw-alias-border-l2, #d1d5db)"}; background: ${isActive ? "var(--dsw-alias-brand-primary, #4f6ef7)" : "var(--dsw-alias-bg-layer-2, #f9fafb)"}; color: ${isActive ? "#fff" : "var(--dsw-alias-label-primary, #111827)"}; border-radius: 14px; padding: 4px 10px; font-size: 11px; cursor: pointer; font-weight: 500; flex-shrink: 0; transition: all 0.1s;">
+              <button class="dsh-ws-quick-btn" data-path="${escapeHtml(d.path)}" style="border: 1px solid ${isActive ? "var(--dsw-static-blue-600, #4f6ef7)" : "var(--dsw-alias-border-l2, #d1d5db)"}; background: ${isActive ? "var(--dsw-static-blue-600, #4f6ef7)" : "var(--dsw-alias-bg-layer-2, #f9fafb)"}; color: ${isActive ? "#fff" : "var(--dsw-alias-label-primary, #111827)"}; border-radius: 14px; padding: 4px 10px; font-size: 11px; cursor: pointer; font-weight: 500; flex-shrink: 0; transition: all 0.1s;">
                 \u{1F4BE} ${escapeHtml(d.name)}
               </button>
             `;
@@ -4896,9 +4953,9 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
         <div style="background: var(--dsw-alias-state-info-bg, #eff6ff); border: 1px solid var(--dsw-alias-state-info-border, #bfdbfe); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px;">
           <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
             <span style="font-size: 11px; font-weight: 600; color: var(--dsw-alias-brand-primary, #2563eb); flex-shrink: 0;">\u5F53\u524D\u76EE\u5F55:</span>
-            <span style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--dsw-alias-label-primary, #1e3a8a); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; text-align: right; font-weight: 600;">${escapeHtml(currentPath)}</span>
+            <span style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--dsw-alias-label-primary, var(--dsw-alias-brand-primary, #1e3a8a)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; text-align: right; font-weight: 600;">${escapeHtml(currentPath)}</span>
           </div>
-          <button id="dsh-ws-add-current-btn" style="border: none; background: var(--dsw-alias-brand-primary, #2563eb); color: #fff; height: 36px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; box-shadow: 0 2px 4px rgba(37,99,235,0.25); transition: opacity 0.1s;" ${isSubmitting ? "disabled" : ""}>
+          <button id="dsh-ws-add-current-btn" style="border: none; background: var(--dsw-static-blue-600, #2563eb); color: #fff; height: 36px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; box-shadow: 0 2px 4px rgba(37,99,235,0.25); transition: opacity 0.1s;" ${isSubmitting ? "disabled" : ""}>
             ${isSubmitting ? "\u6B63\u5728\u6DFB\u52A0\u5E76\u5207\u6362\u2026" : "\u{1F449} \u8BBE\u4E3A\u5F53\u524D\u5DE5\u4F5C\u533A\u5E76\u8FDB\u5165"}
           </button>
         </div>
@@ -4957,7 +5014,7 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
               <button id="dsh-ws-manual-jump-btn" style="border: 1px solid var(--dsw-alias-border-l2, #d1d5db); background: var(--dsw-alias-bg-layer-2, #f9fafb); color: var(--dsw-alias-label-primary, #111827); padding: 0 10px; border-radius: 8px; font-size: 11px; cursor: pointer; white-space: nowrap;">
                 \u524D\u5F80
               </button>
-              <button id="dsh-ws-manual-add-btn" style="border: none; background: var(--dsw-alias-brand-primary, #4f6ef7); color: #fff; padding: 0 12px; border-radius: 8px; font-size: 11px; font-weight: 500; cursor: pointer; white-space: nowrap;">
+              <button id="dsh-ws-manual-add-btn" style="border: none; background: var(--dsw-static-blue-600, #4f6ef7); color: #fff; padding: 0 12px; border-radius: 8px; font-size: 11px; font-weight: 500; cursor: pointer; white-space: nowrap;">
                 \u6DFB\u52A0\u5E76\u8FDB\u5165
               </button>
             </div>
