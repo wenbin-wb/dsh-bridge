@@ -943,6 +943,19 @@ const AccessAuthCard = React.memo(function AccessAuthCard({ auth, rpcCall, onUpd
           color: topMsg.ok ? 'var(--dsw-alias-state-success-primary,#059669)' : 'var(--dsw-alias-state-error-primary,#dc2626)',
         },
       }, topMsg.text),
+
+      // 访问认证已开启但尚未设置任何密码/Token 保护：局域网/公网访客可免密进入，高危提示
+      enabled && !auth?.hasPassword && !auth?.hasAdminPassword && React.createElement('div', {
+        style: {
+          marginTop: 12, padding: '10px 14px', borderRadius: 6, fontSize: 12,
+          background: 'var(--dsw-alias-state-error-bg,#fef2f2)',
+          border: '1px solid var(--dsw-alias-state-error-border,#fecaca)',
+          color: 'var(--dsw-alias-state-error-primary,#dc2626)',
+          lineHeight: 1.6,
+        },
+      }, '⚠️ ', React.createElement('strong', null, '尚未设置任何访问密码或管理密码'),
+        ' —— 此时“访问认证已开启”但任何知道局域网 IP / 隧道地址的人都能直接进入（隧道入口自身不设防，详见下方安全须知）。',
+        '建议立即在下方设置', React.createElement('strong', null, '访客访问密码'), '或', React.createElement('strong', null, '管理密码'), '后再对外开放。'),
     ),
 
     React.createElement(React.Fragment, null,

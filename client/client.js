@@ -1993,7 +1993,31 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
           background: topMsg.ok ? "var(--dsw-alias-state-success-bg,#ecfdf5)" : "var(--dsw-alias-state-error-bg,#fef2f2)",
           color: topMsg.ok ? "var(--dsw-alias-state-success-primary,#059669)" : "var(--dsw-alias-state-error-primary,#dc2626)"
         }
-      }, topMsg.text)
+      }, topMsg.text),
+      // 访问认证已开启但尚未设置任何密码/Token 保护：局域网/公网访客可免密进入，高危提示
+      enabled && !auth?.hasPassword && !auth?.hasAdminPassword && React.createElement(
+        "div",
+        {
+          style: {
+            marginTop: 12,
+            padding: "10px 14px",
+            borderRadius: 6,
+            fontSize: 12,
+            background: "var(--dsw-alias-state-error-bg,#fef2f2)",
+            border: "1px solid var(--dsw-alias-state-error-border,#fecaca)",
+            color: "var(--dsw-alias-state-error-primary,#dc2626)",
+            lineHeight: 1.6
+          }
+        },
+        "\u26A0\uFE0F ",
+        React.createElement("strong", null, "\u5C1A\u672A\u8BBE\u7F6E\u4EFB\u4F55\u8BBF\u95EE\u5BC6\u7801\u6216\u7BA1\u7406\u5BC6\u7801"),
+        " \u2014\u2014 \u6B64\u65F6\u201C\u8BBF\u95EE\u8BA4\u8BC1\u5DF2\u5F00\u542F\u201D\u4F46\u4EFB\u4F55\u77E5\u9053\u5C40\u57DF\u7F51 IP / \u96A7\u9053\u5730\u5740\u7684\u4EBA\u90FD\u80FD\u76F4\u63A5\u8FDB\u5165\uFF08\u96A7\u9053\u5165\u53E3\u81EA\u8EAB\u4E0D\u8BBE\u9632\uFF0C\u8BE6\u89C1\u4E0B\u65B9\u5B89\u5168\u987B\u77E5\uFF09\u3002",
+        "\u5EFA\u8BAE\u7ACB\u5373\u5728\u4E0B\u65B9\u8BBE\u7F6E",
+        React.createElement("strong", null, "\u8BBF\u5BA2\u8BBF\u95EE\u5BC6\u7801"),
+        "\u6216",
+        React.createElement("strong", null, "\u7BA1\u7406\u5BC6\u7801"),
+        "\u540E\u518D\u5BF9\u5916\u5F00\u653E\u3002"
+      )
     ),
     React.createElement(
       React.Fragment,

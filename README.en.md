@@ -138,6 +138,8 @@ Access DeepSeek Harness from anywhere outside your home network without public I
 - **Mode 3: Custom WebSocket Tunnel**:
   - Connect to your personal VPS reverse proxy server ([View Setup Guide](docs/custom-tunnel.md)), equipped with per-message gzip and SSE optimization.
 
+> **Custom tunnel security note**: The tunnel server (`scripts/install-tunnel-server.sh`) only authenticates the *tunnel client control channel* with `TOKEN`; public HTTP/WebSocket requests forwarded through the tunnel domain are **not independently authenticated** — security relies entirely on the plugin's local Access Auth (the `x-dsh-internal-tunnel` marker prevents tunnel traffic from using the loopback exemption). Always enable **Access Auth** with a password/QR Token in the plugin settings (especially with `scope=all` or when exposed publicly); with no password set, anyone who knows the tunnel URL can reach your DSH.
+
 ---
 
 ### 3. 📱 Mobile Experience & Standalone PWA

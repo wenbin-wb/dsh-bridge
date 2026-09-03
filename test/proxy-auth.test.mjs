@@ -189,3 +189,53 @@ test('ProxyServer end-to-end authentication: login, token redirect, and cookie p
     authManager.dispose()
   }
 })
+
+test('issue #28 regression: DSH native origin (dshPort) can read loopback-token cross-origin', async () => {
+  const authManager = new AuthManager({
+    config: { enabled: true, mode: 'token_and_password', allowLoopback: true },
+    logger: { info: () => {}, warn: () => {}, error: () => {} },
+  })
+  const proxy = new ProxyServer({
+    localPort: 0,
+    targetPort: 1, // 不实际转发：loopback-token 端点不触碰后端
+    authManager,
+    logger: { info: () => {}, warn: () => {}, error: () => {} },
+    allowedOrigins: () => [
+      'http://127.0.0.1:3082', 'http://localhost:3082',
+      'http://127.0.0.1:3080', 'http://localhost:3080', // issue #28: DSH 原生端口
+    ],
+  })
+  await proxy.start()
+  const proxyPort = proxy.server.address().port
+  try {
+    // 1. 白名单内的 DSH 原生端口 origin：应拿到 adminToken 且 ACAO 回显该 origin
+    const okRes = await doRequest({
+      host: '127.0.0.1',
+      port: proxyPort,
+      path: '/__dsh_bridge__/loopback-token',
+      method: 'POST',
+      headers: { Origin: 'http://127.0.0.1:3080' },
+    })
+    assert.equal(okRes.statusCode, 200)
+    assert.equal(okRes.headers['access-control-allow-origin'], 'http://127.0.0.1:3080')
+    const okData = JSON.parse(okRes.body)
+    assert.equal(okData.ok, true)
+    assert.ok(okData.adminToken)
+    assert.equal(authManager.validateAdminSession(okData.adminToken), true)
+
+    // 2. 非白名单 origin：服务端仍按回环签发（TCP 层无法拒绝本机来源），
+    //    但不回显 ACAO 头 —— 浏览器跨域读不到响应（CORS 拦截），这是本端点的安全语义
+    const evilRes = await doRequest({
+      host: '127.0.0.1',
+      port: proxyPort,
+      path: '/__dsh_bridge__/loopback-token',
+      method: 'POST',
+      headers: { Origin: 'http://evil.example' },
+    })
+    assert.equal(evilRes.statusCode, 200)
+    assert.equal(evilRes.headers['access-control-allow-origin'], undefined)
+  } finally {
+    await proxy.stop()
+    authManager.dispose()
+  }
+})

@@ -146,6 +146,8 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 - **模式 3：自建 WebSocket 隧道**
   * 支持连接个人 VPS 隧道中转服务器（[查看自建隧道部署教程](docs/custom-tunnel.md)），具备数据端到端 gzip 压缩与 SSE 响应优化。
 
+> **自建隧道安全须知**：隧道服务端（`scripts/install-tunnel-server.sh`）只对「隧道客户端控制通道」校验 `TOKEN`；公网访客对隧道域名的 HTTP/WebSocket 转发**不再做独立认证**，安全完全依赖插件本地的「访问认证」（`x-dsh-internal-tunnel` 标识使隧道流量无法享受本机回环保留）。请务必在插件设置中开启「安全认证」并设置访问密码/二维码 Token（尤其 `scope=all` 或公网使用时）；未设置任何密码时，任何知道隧道地址的访客都能直接访问您的 DSH。
+
 ---
 
 ### 3. 📱 移动端交互与 PWA 独立全屏 App
