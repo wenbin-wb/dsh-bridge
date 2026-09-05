@@ -1,10 +1,10 @@
 [
+  "docs/screenshots/feishu-chat.jpg",
   "docs/screenshots/lan-access.jpg",
   "docs/screenshots/remote-web-mobile.jpg",
+  "docs/screenshots/security-auth-config.jpg",
   "docs/screenshots/mobile-chat.jpg",
   "docs/screenshots/tunnel-access.jpg",
   "docs/screenshots/wechat-bot-config.jpg",
-  "docs/screenshots/feishu-chat.jpg",
-  "docs/screenshots/qq-chat.jpg",
-  "docs/screenshots/security-auth-config.jpg"
+  "docs/screenshots/qq-chat.jpg"
 ]
