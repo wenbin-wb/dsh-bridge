@@ -4758,6 +4758,136 @@ function setupIosKeyboardAdapter() {
   });
 }
 
+// 移动端输入框折叠/展开（body.dsh-composer-collapsed）。
+// 底部输入区（composer）占用 ~116px，顶部菜单 + header 又占 ~120px，屏幕有限时
+// 中间消息可视区很小。折叠后 composer 隐藏、消息 viewArea 自动伸展全高，阅读区显著增大。
+// 折叠态记忆到 localStorage（dsh-composer-fold），跨会话保持用户偏好。
+function setupComposerCollapse() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  if (window.innerWidth > 768) return; // 仅移动端
+  const LS_KEY = 'dsh-composer-fold';
+
+  let bar = null;          // 折叠态底部"点击输入"细条
+  let busy = false;        // 防重入锁（observer 由我们自己改动触发时跳过）
+  let lastHadSeat = null;  // 上次检测是否有输入区（避免重复处理）
+
+  // 折叠按钮：注入到聊天头部工具栏（headerUtilities）的 Session 下载按钮旁，
+  // 与 DSH 原生按钮同规格（28px 圆形），视觉与原生一致。返回 null 表示工具栏未就绪。
+  const getFoldBtn = () => {
+    const existing = document.querySelector('.dsh-header-fold-btn');
+    if (existing) return existing;
+    const utils = document.querySelector('div[class*="wSkVaW_headerUtilities"], div[class*="headerUtilities"]');
+    const logBtn = document.querySelector('button[class*="sessionLogButton"], button[class*="nL4_yW_sessionLogButton"]');
+    if (!utils) return null;
+    const btn = document.createElement('button');
+    btn.className = 'dsh-header-fold-btn';
+    btn.setAttribute('aria-label', '收起/展开输入框');
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="18" x2="21" y2="18"></line><polyline points="6 9 12 15 18 9"></polyline></svg>';
+    // 插到 session 下载按钮左侧（紧邻原生工具钮）
+    if (logBtn && logBtn.parentElement === utils) utils.insertBefore(btn, logBtn);
+    else utils.appendChild(btn);
+    return btn;
+  };
+  const isCollapsed = () => document.body.classList.contains('dsh-composer-collapsed');
+  const readPref = () => { try { return localStorage.getItem(LS_KEY) === '1'; } catch { return false; } };
+
+  const ensureBar = () => {
+    if (bar && document.body.contains(bar)) return bar;
+    const seat = document.querySelector('div[class*="composerSeat"]');
+    const scrollBody = seat ? seat.parentElement : null;
+    if (!scrollBody) return null;
+    bar = document.createElement('div');
+    bar.className = 'dsh-composer-collapsed-bar';
+    bar.textContent = '\u270f\ufe0f 点击输入消息…';
+    scrollBody.insertBefore(bar, seat);
+    bar.addEventListener('click', () => setCollapsed(false));
+    return bar;
+  };
+  const removeBar = () => { if (bar) { try { bar.remove(); } catch {} bar = null; } };
+
+  // 折叠态切换：改 class + 记忆 + 图标 + 细条显隐
+  const setCollapsed = (collapsed) => {
+    if (busy) return;
+    busy = true;
+    try {
+      if (isCollapsed() !== collapsed) {
+        document.body.classList.toggle('dsh-composer-collapsed', collapsed);
+        try { localStorage.setItem(LS_KEY, collapsed ? '1' : '0'); } catch {}
+        updateButton(collapsed);
+      }
+      if (collapsed) ensureBar(); else removeBar();
+    } finally { busy = false; }
+  };
+
+  // 更新顶部折叠钮图标（仅内容变化时写入，避免无谓 DOM 抖动）
+  const updateButton = (collapsed) => {
+    const btn = getFoldBtn();
+    if (!btn) return;
+    btn.title = collapsed ? '展开输入框' : '收起输入框，最大化对话阅读区';
+    const icon = collapsed
+      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"></rect><line x1="6" y1="10" x2="6.01" y2="10"></line><line x1="10" y1="10" x2="10.01" y2="10"></line><line x1="14" y1="10" x2="14.01" y2="10"></line><line x1="6" y1="14" x2="10" y2="14"></line><line x1="14" y1="14" x2="18" y2="14"></line></svg>'
+      : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="18" x2="21" y2="18"></line><polyline points="6 9 12 15 18 9"></polyline></svg>';
+    const existing = btn.querySelector('svg');
+    if (!existing || existing.outerHTML !== icon) btn.innerHTML = icon;
+  };
+
+  // 有输入区（对话页）：确保按钮可用 + 按记忆恢复折叠态
+  const handleSeatPresent = () => {
+    const btn = getFoldBtn();
+    if (!btn) return false;
+    btn.style.display = 'inline-flex';
+    if (!btn._dshFoldWired) {
+      btn._dshFoldWired = true;
+      btn.onclick = (e) => { e.stopPropagation(); setCollapsed(!isCollapsed()); };
+    }
+    document.body.classList.add('dsh-composer-active');
+    const want = readPref();
+    if (want !== isCollapsed()) {
+      setCollapsed(want);
+    } else {
+      updateButton(isCollapsed());
+    }
+    return true;
+  };
+
+  // 无输入区：隐藏折叠钮与细条（保留记忆）
+  const handleSeatAbsent = () => {
+    const btn = getFoldBtn();
+    if (btn) { btn.style.display = 'none'; }
+    document.body.classList.remove('dsh-composer-active');
+    removeBar();
+  };
+
+  // 单次检测（observer 回调 / 初始）。
+  // 仅当"是否有输入区"或"折叠钮是否已注入"发生变化时才全量处理，
+  // 避免消息流式输出等高频 DOM 变化下 observer 反复执行注入/状态恢复。
+  // busy 锁 + 注入幂等共同防止自触发循环。
+  const onComposerChange = () => {
+    const hasSeat = !!document.querySelector('div[class*="composerSeat"]');
+    const hasBtn = !!document.querySelector('.dsh-header-fold-btn');
+    if (busy) return;
+    if (hasSeat === lastHadSeat && hasSeat === hasBtn) return; // 状态与注入都没变：忽略
+    busy = true;
+    try {
+      if (hasSeat) {
+        lastHadSeat = handleSeatPresent(); // 内部幂等；工具栏未就绪返回 false，等下次再试
+      } else {
+        handleSeatAbsent();
+        lastHadSeat = false;
+      }
+    } finally { busy = false; }
+  };
+
+  // observer：断开→处理→重连，杜绝"处理里改 DOM 再触发自己"的死循环
+  const observer = new MutationObserver(() => {
+    observer.disconnect();
+    try { onComposerChange(); } finally { observer.observe(document.body, { childList: true, subtree: true }); }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+  onComposerChange(); // 初始检查
+}
+
+
 function apply(ctx) {
   window.__dshClientCtx = ctx;
   const rpcCall = (endpoint, payload, signal) =>
@@ -4767,6 +4897,7 @@ function apply(ctx) {
     showRemoteWorkspaceDialog(rpcCall, onAdded, ctx, onPickDirect, onCancel);
 
   setupIosKeyboardAdapter();
+  setupComposerCollapse();
 
   setupMobileExperience(rpcCall, ctx);
 

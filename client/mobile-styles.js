@@ -394,6 +394,74 @@ export const MOBILE_STYLES_CSS = `
         padding-bottom: max(16px, env(safe-area-inset-bottom)) !important;
       }
 
+      /* ── 移动端输入框折叠模式（body.dsh-composer-collapsed）──────────────
+         折叠后隐藏吸底输入区，让消息 viewArea 自动伸展到全高，最大化阅读区。
+         入口：聊天头部工具栏（Session 下载钮旁）的折叠按钮，或折叠态底部细输入条点它唤回。
+         状态持久化到 localStorage。 */
+      body.dsh-composer-collapsed div[class*="wSkVaW_composerSeat"] {
+        display: none !important;
+      }
+      body.dsh-composer-collapsed div[class*="wSkVaW_viewArea"] {
+        flex: 1 1 auto !important;
+        height: auto !important;
+        min-height: 0 !important;
+      }
+      /* 折叠时滚动区底部对齐 safe-area，避免内容被 iPhone 底部横条遮挡 */
+      body.dsh-composer-collapsed div[class*="wSkVaW_scrollBody"] {
+        padding-bottom: max(16px, env(safe-area-inset-bottom)) !important;
+      }
+
+      /* 折叠输入框按钮：注入在聊天头部工具栏（Session 下载钮旁），
+         与 DSH sessionLogButton 同规格（28px 圆形图标钮），视觉与原生一致 */
+      .dsh-header-fold-btn {
+        min-width: 28px !important;
+        width: 28px !important;
+        height: 28px !important;
+        padding: 0 !important;
+        border-radius: 50% !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-shrink: 0 !important;
+        border: 1px solid var(--dsw-alias-border-l2, rgba(0, 0, 0, 0.1)) !important;
+        background: var(--dsw-alias-bg-layer-2, rgba(0, 0, 0, 0.03)) !important;
+        color: var(--dsw-alias-label-secondary, #6b7280) !important;
+        cursor: pointer !important;
+        transition: opacity 0.15s !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+        -webkit-tap-highlight-color: transparent !important;
+      }
+      .dsh-header-fold-btn:active {
+        opacity: 0.6 !important;
+      }
+      .dsh-header-fold-btn svg {
+        width: 15px !important;
+        height: 15px !important;
+      }
+
+      /* 折叠态底部细输入条：点击唤起输入框（位于原输入区位置，sticky 底部） */
+      .dsh-composer-collapsed-bar {
+        display: none !important;
+        position: sticky !important;
+        bottom: 0 !important;
+        margin: 8px 12px max(8px, env(safe-area-inset-bottom, 0px)) 12px !important;
+        padding: 11px 16px !important;
+        border-radius: 22px !important;
+        background: var(--dsw-alias-bg-layer-2, #f4f4f7) !important;
+        border: 1px solid rgba(0, 0, 0, 0.07) !important;
+        color: var(--dsw-alias-label-tertiary, #8b93a1) !important;
+        font-size: 13.5px !important;
+        line-height: 1.4 !important;
+        cursor: pointer !important;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04) !important;
+        -webkit-tap-highlight-color: transparent !important;
+        z-index: 40 !important;
+        box-sizing: border-box !important;
+      }
+      body.dsh-composer-collapsed .dsh-composer-collapsed-bar {
+        display: block !important;
+      }
+
       /* 输入卡片：DeepSeek App 圆角大胶囊造型 */
       div[class*="uV2eYG_card"] {
         border-radius: 26px !important;

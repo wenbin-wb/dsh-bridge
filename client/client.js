@@ -425,6 +425,74 @@ var MOBILE_STYLES_CSS = `
         padding-bottom: max(16px, env(safe-area-inset-bottom)) !important;
       }
 
+      /* \u2500\u2500 \u79FB\u52A8\u7AEF\u8F93\u5165\u6846\u6298\u53E0\u6A21\u5F0F\uFF08body.dsh-composer-collapsed\uFF09\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+         \u6298\u53E0\u540E\u9690\u85CF\u5438\u5E95\u8F93\u5165\u533A\uFF0C\u8BA9\u6D88\u606F viewArea \u81EA\u52A8\u4F38\u5C55\u5230\u5168\u9AD8\uFF0C\u6700\u5927\u5316\u9605\u8BFB\u533A\u3002
+         \u5165\u53E3\uFF1A\u804A\u5929\u5934\u90E8\u5DE5\u5177\u680F\uFF08Session \u4E0B\u8F7D\u94AE\u65C1\uFF09\u7684\u6298\u53E0\u6309\u94AE\uFF0C\u6216\u6298\u53E0\u6001\u5E95\u90E8\u7EC6\u8F93\u5165\u6761\u70B9\u5B83\u5524\u56DE\u3002
+         \u72B6\u6001\u6301\u4E45\u5316\u5230 localStorage\u3002 */
+      body.dsh-composer-collapsed div[class*="wSkVaW_composerSeat"] {
+        display: none !important;
+      }
+      body.dsh-composer-collapsed div[class*="wSkVaW_viewArea"] {
+        flex: 1 1 auto !important;
+        height: auto !important;
+        min-height: 0 !important;
+      }
+      /* \u6298\u53E0\u65F6\u6EDA\u52A8\u533A\u5E95\u90E8\u5BF9\u9F50 safe-area\uFF0C\u907F\u514D\u5185\u5BB9\u88AB iPhone \u5E95\u90E8\u6A2A\u6761\u906E\u6321 */
+      body.dsh-composer-collapsed div[class*="wSkVaW_scrollBody"] {
+        padding-bottom: max(16px, env(safe-area-inset-bottom)) !important;
+      }
+
+      /* \u6298\u53E0\u8F93\u5165\u6846\u6309\u94AE\uFF1A\u6CE8\u5165\u5728\u804A\u5929\u5934\u90E8\u5DE5\u5177\u680F\uFF08Session \u4E0B\u8F7D\u94AE\u65C1\uFF09\uFF0C
+         \u4E0E DSH sessionLogButton \u540C\u89C4\u683C\uFF0828px \u5706\u5F62\u56FE\u6807\u94AE\uFF09\uFF0C\u89C6\u89C9\u4E0E\u539F\u751F\u4E00\u81F4 */
+      .dsh-header-fold-btn {
+        min-width: 28px !important;
+        width: 28px !important;
+        height: 28px !important;
+        padding: 0 !important;
+        border-radius: 50% !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-shrink: 0 !important;
+        border: 1px solid var(--dsw-alias-border-l2, rgba(0, 0, 0, 0.1)) !important;
+        background: var(--dsw-alias-bg-layer-2, rgba(0, 0, 0, 0.03)) !important;
+        color: var(--dsw-alias-label-secondary, #6b7280) !important;
+        cursor: pointer !important;
+        transition: opacity 0.15s !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+        -webkit-tap-highlight-color: transparent !important;
+      }
+      .dsh-header-fold-btn:active {
+        opacity: 0.6 !important;
+      }
+      .dsh-header-fold-btn svg {
+        width: 15px !important;
+        height: 15px !important;
+      }
+
+      /* \u6298\u53E0\u6001\u5E95\u90E8\u7EC6\u8F93\u5165\u6761\uFF1A\u70B9\u51FB\u5524\u8D77\u8F93\u5165\u6846\uFF08\u4F4D\u4E8E\u539F\u8F93\u5165\u533A\u4F4D\u7F6E\uFF0Csticky \u5E95\u90E8\uFF09 */
+      .dsh-composer-collapsed-bar {
+        display: none !important;
+        position: sticky !important;
+        bottom: 0 !important;
+        margin: 8px 12px max(8px, env(safe-area-inset-bottom, 0px)) 12px !important;
+        padding: 11px 16px !important;
+        border-radius: 22px !important;
+        background: var(--dsw-alias-bg-layer-2, #f4f4f7) !important;
+        border: 1px solid rgba(0, 0, 0, 0.07) !important;
+        color: var(--dsw-alias-label-tertiary, #8b93a1) !important;
+        font-size: 13.5px !important;
+        line-height: 1.4 !important;
+        cursor: pointer !important;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04) !important;
+        -webkit-tap-highlight-color: transparent !important;
+        z-index: 40 !important;
+        box-sizing: border-box !important;
+      }
+      body.dsh-composer-collapsed .dsh-composer-collapsed-bar {
+        display: block !important;
+      }
+
       /* \u8F93\u5165\u5361\u7247\uFF1ADeepSeek App \u5706\u89D2\u5927\u80F6\u56CA\u9020\u578B */
       div[class*="uV2eYG_card"] {
         border-radius: 26px !important;
@@ -5937,11 +6005,144 @@ function setupIosKeyboardAdapter() {
     }
   });
 }
+function setupComposerCollapse() {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+  if (window.innerWidth > 768) return;
+  const LS_KEY = "dsh-composer-fold";
+  let bar = null;
+  let busy = false;
+  let lastHadSeat = null;
+  const getFoldBtn = () => {
+    const existing = document.querySelector(".dsh-header-fold-btn");
+    if (existing) return existing;
+    const utils = document.querySelector('div[class*="wSkVaW_headerUtilities"], div[class*="headerUtilities"]');
+    const logBtn = document.querySelector('button[class*="sessionLogButton"], button[class*="nL4_yW_sessionLogButton"]');
+    if (!utils) return null;
+    const btn = document.createElement("button");
+    btn.className = "dsh-header-fold-btn";
+    btn.setAttribute("aria-label", "\u6536\u8D77/\u5C55\u5F00\u8F93\u5165\u6846");
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="18" x2="21" y2="18"></line><polyline points="6 9 12 15 18 9"></polyline></svg>';
+    if (logBtn && logBtn.parentElement === utils) utils.insertBefore(btn, logBtn);
+    else utils.appendChild(btn);
+    return btn;
+  };
+  const isCollapsed = () => document.body.classList.contains("dsh-composer-collapsed");
+  const readPref = () => {
+    try {
+      return localStorage.getItem(LS_KEY) === "1";
+    } catch {
+      return false;
+    }
+  };
+  const ensureBar = () => {
+    if (bar && document.body.contains(bar)) return bar;
+    const seat = document.querySelector('div[class*="composerSeat"]');
+    const scrollBody = seat ? seat.parentElement : null;
+    if (!scrollBody) return null;
+    bar = document.createElement("div");
+    bar.className = "dsh-composer-collapsed-bar";
+    bar.textContent = "\u270F\uFE0F \u70B9\u51FB\u8F93\u5165\u6D88\u606F\u2026";
+    scrollBody.insertBefore(bar, seat);
+    bar.addEventListener("click", () => setCollapsed(false));
+    return bar;
+  };
+  const removeBar = () => {
+    if (bar) {
+      try {
+        bar.remove();
+      } catch {
+      }
+      bar = null;
+    }
+  };
+  const setCollapsed = (collapsed) => {
+    if (busy) return;
+    busy = true;
+    try {
+      if (isCollapsed() !== collapsed) {
+        document.body.classList.toggle("dsh-composer-collapsed", collapsed);
+        try {
+          localStorage.setItem(LS_KEY, collapsed ? "1" : "0");
+        } catch {
+        }
+        updateButton(collapsed);
+      }
+      if (collapsed) ensureBar();
+      else removeBar();
+    } finally {
+      busy = false;
+    }
+  };
+  const updateButton = (collapsed) => {
+    const btn = getFoldBtn();
+    if (!btn) return;
+    btn.title = collapsed ? "\u5C55\u5F00\u8F93\u5165\u6846" : "\u6536\u8D77\u8F93\u5165\u6846\uFF0C\u6700\u5927\u5316\u5BF9\u8BDD\u9605\u8BFB\u533A";
+    const icon = collapsed ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"></rect><line x1="6" y1="10" x2="6.01" y2="10"></line><line x1="10" y1="10" x2="10.01" y2="10"></line><line x1="14" y1="10" x2="14.01" y2="10"></line><line x1="6" y1="14" x2="10" y2="14"></line><line x1="14" y1="14" x2="18" y2="14"></line></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="18" x2="21" y2="18"></line><polyline points="6 9 12 15 18 9"></polyline></svg>';
+    const existing = btn.querySelector("svg");
+    if (!existing || existing.outerHTML !== icon) btn.innerHTML = icon;
+  };
+  const handleSeatPresent = () => {
+    const btn = getFoldBtn();
+    if (!btn) return false;
+    btn.style.display = "inline-flex";
+    if (!btn._dshFoldWired) {
+      btn._dshFoldWired = true;
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        setCollapsed(!isCollapsed());
+      };
+    }
+    document.body.classList.add("dsh-composer-active");
+    const want = readPref();
+    if (want !== isCollapsed()) {
+      setCollapsed(want);
+    } else {
+      updateButton(isCollapsed());
+    }
+    return true;
+  };
+  const handleSeatAbsent = () => {
+    const btn = getFoldBtn();
+    if (btn) {
+      btn.style.display = "none";
+    }
+    document.body.classList.remove("dsh-composer-active");
+    removeBar();
+  };
+  const onComposerChange = () => {
+    const hasSeat = !!document.querySelector('div[class*="composerSeat"]');
+    const hasBtn = !!document.querySelector(".dsh-header-fold-btn");
+    if (busy) return;
+    if (hasSeat === lastHadSeat && hasSeat === hasBtn) return;
+    busy = true;
+    try {
+      if (hasSeat) {
+        lastHadSeat = handleSeatPresent();
+      } else {
+        handleSeatAbsent();
+        lastHadSeat = false;
+      }
+    } finally {
+      busy = false;
+    }
+  };
+  const observer = new MutationObserver(() => {
+    observer.disconnect();
+    try {
+      onComposerChange();
+    } finally {
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+  onComposerChange();
+}
 function apply(ctx) {
   window.__dshClientCtx = ctx;
   const rpcCall = (endpoint, payload, signal) => ctx.connection.rpc.call(BRIDGE_RPC_CHANNEL, endpoint, payload, signal);
   window.__dshOpenRemoteWorkspaceModal = (onAdded, onPickDirect, onCancel) => showRemoteWorkspaceDialog(rpcCall, onAdded, ctx, onPickDirect, onCancel);
   setupIosKeyboardAdapter();
+  setupComposerCollapse();
   setupMobileExperience(rpcCall, ctx);
   const injected = () => ({ pick: () => ctx.workspaces?.pickDirectory?.() });
   ctx.slots.inject(
