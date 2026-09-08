@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import { createServer, request as httpRequest } from 'node:http'
 import { ProxyServer } from '../lib/index.js'
 import { AuthManager } from '../lib/auth/manager.js'
+import { makeSessionsFile } from './helpers.mjs'
 
 function doRequest(options, postBody) {
   return new Promise((resolve, reject) => {
@@ -41,7 +42,7 @@ test('ProxyServer end-to-end authentication: login, token redirect, and cookie p
   const backendPort = backend.address().port
 
   // 2. AuthManager with custom password & token
-  const authManager = new AuthManager({
+  const authManager = new AuthManager({ sessionsFile: makeSessionsFile(),
     config: {
       enabled: true,
       mode: 'token_and_password',
@@ -191,7 +192,7 @@ test('ProxyServer end-to-end authentication: login, token redirect, and cookie p
 })
 
 test('issue #28 regression: DSH native origin (dshPort) can read loopback-token cross-origin', async () => {
-  const authManager = new AuthManager({
+  const authManager = new AuthManager({ sessionsFile: makeSessionsFile(),
     config: { enabled: true, mode: 'token_and_password', allowLoopback: true },
     logger: { info: () => {}, warn: () => {}, error: () => {} },
   })
@@ -266,7 +267,7 @@ test('ProxyServer gzip session.list 经局域网/CF 入口也剥离（PR #29 补
   await new Promise((resolve) => backend.listen(0, '127.0.0.1', resolve))
   const backendPort = backend.address().port
 
-  const authManager = new AuthManager({ config: { enabled: false } })
+  const authManager = new AuthManager({ sessionsFile: makeSessionsFile(), config: { enabled: false } })
   const proxy = new ProxyServer({
     localPort: 0,
     targetPort: backendPort,

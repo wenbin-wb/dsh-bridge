@@ -1,11 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { AuthManager } from '../lib/auth/manager.js'
+import { makeSessionsFile } from './helpers.mjs'
 import { installBridgeRpc, BRIDGE_ENDPOINTS } from '../lib/bridge-rpc.js'
 import { BridgeService } from '../lib/index.js'
 
 test('P0-1: Custom Tunnel Authentication - prevents loopback bypass when forwarding', () => {
-  const auth = new AuthManager({
+  const auth = new AuthManager({ sessionsFile: makeSessionsFile(),
     config: {
       enabled: true,
       mode: 'token_and_password',
@@ -53,7 +54,7 @@ test('P0-1: Custom Tunnel Authentication - prevents loopback bypass when forward
 })
 
 test('P0-2: Secret Token 严格脱敏与公开状态隔离', () => {
-  const auth = new AuthManager({
+  const auth = new AuthManager({ sessionsFile: makeSessionsFile(),
     config: {
       enabled: true,
       mode: 'token_and_password',
@@ -77,7 +78,7 @@ test('P0-2: Secret Token 严格脱敏与公开状态隔离', () => {
 })
 
 test('P0-3: token_only 模式严格禁止密码登录', async () => {
-  const auth = new AuthManager({
+  const auth = new AuthManager({ sessionsFile: makeSessionsFile(),
     config: {
       enabled: true,
       mode: 'token_only',
@@ -106,7 +107,7 @@ test('P0-3: token_only 模式严格禁止密码登录', async () => {
 })
 
 test('P0-4: RPC 服务端管理员权限校验与主动重新锁定', async () => {
-  const auth = new AuthManager({
+  const auth = new AuthManager({ sessionsFile: makeSessionsFile(),
     config: {
       enabled: true,
       adminPolicy: 'password_unlock',
@@ -208,7 +209,7 @@ test('P0-5: 升级插件命令注入防范与版本正则白名单', async () =>
 })
 
 test('P0-6: Scope 防护范围 Header 伪造防范', () => {
-  const auth = new AuthManager({
+  const auth = new AuthManager({ sessionsFile: makeSessionsFile(),
     config: {
       enabled: true,
       scope: 'lan_only', // 仅对局域网访客开启防护
@@ -232,7 +233,7 @@ test('P0-6: Scope 防护范围 Header 伪造防范', () => {
 })
 
 test('P0-7: Loopback 物理特权 Token 签发与远程/伪造拦截', async () => {
-  const auth = new AuthManager({
+  const auth = new AuthManager({ sessionsFile: makeSessionsFile(),
     config: {
       enabled: true,
       adminPolicy: 'password_unlock',
@@ -255,7 +256,7 @@ test('P0-7: Loopback 物理特权 Token 签发与远程/伪造拦截', async () 
 })
 
 test('P0-8: Workspace RPC checkAdminAuth 权限校验与访客拦截', async () => {
-  const auth = new AuthManager({
+  const auth = new AuthManager({ sessionsFile: makeSessionsFile(),
     config: {
       enabled: true,
       adminPolicy: 'password_unlock',
@@ -321,7 +322,7 @@ test('P0-8: Workspace RPC checkAdminAuth 权限校验与访客拦截', async () 
 })
 
 test('P0-8b: 管理保护独立开关（adminProtection）控制管理操作放行', async () => {
-  const auth = new AuthManager({
+  const auth = new AuthManager({ sessionsFile: makeSessionsFile(),
     config: {
       enabled: false, // 访问认证关闭，但管理保护默认开启
       adminPolicy: 'password_unlock',
@@ -426,7 +427,7 @@ test('P0-10: Rate Limiter 滑动窗口频率限制防护', async () => {
 
 
 test('v2.10.5: authUpdateConfig 守卫 —— 无密码时禁止开启 password_only 防护（防自我锁死）', async () => {
-  const auth = new AuthManager({ config: { mode: 'token_and_password' } }) // 无任何密码
+  const auth = new AuthManager({ sessionsFile: makeSessionsFile(), config: { mode: 'token_and_password' } }) // 无任何密码
   let handlerFn = null
   const mockCtx = {
     connection: {

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { BridgeService, selectLanIPv4 } from '../lib/index.js';
 import { ConversationBridge } from '../lib/platform/conversation-bridge.js';
 import { AuthManager } from '../lib/auth/manager.js';
+import { makeSessionsFile } from './helpers.mjs'
 
 test('ConversationBridge /rename command renames active session', async () => {
   const sentTexts = [];
@@ -111,7 +112,7 @@ test('BridgeService diagnoseNetwork runs diagnostics', async () => {
 });
 
 test('AuthManager and backup integration', async () => {
-  const auth = new AuthManager({
+  const auth = new AuthManager({ sessionsFile: makeSessionsFile(),
     logger: { info: () => {}, warn: () => {}, error: () => {} },
   });
 

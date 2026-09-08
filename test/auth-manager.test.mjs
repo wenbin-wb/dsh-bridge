@@ -1,11 +1,15 @@
 // test/auth-manager.test.mjs
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync, writeFileSync, mkdirSync, mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, dirname } from 'node:path'
 import { AuthManager } from '../lib/auth/manager.js'
 import { renderLoginPage } from '../lib/auth/login-template.js'
+import { makeSessionsFile } from './helpers.mjs'
 
 test('AuthManager initializes and generates default secretToken', () => {
-  const auth = new AuthManager()
+  const auth = new AuthManager({ sessionsFile: makeSessionsFile() })
   assert.equal(auth.enabled, false)
   assert.equal(auth.mode, 'token_and_password')
   assert.ok(auth.secretToken.startsWith('dsh_'))
@@ -15,7 +19,7 @@ test('AuthManager initializes and generates default secretToken', () => {
 
 test('AuthManager setPassword hashes with salt and verifies correctly', async () => {
   const persisted = []
-  const auth = new AuthManager({
+  const auth = new AuthManager({ sessionsFile: makeSessionsFile(),
     onPersist: (p) => persisted.push(p),
   })
 
@@ -42,7 +46,7 @@ test('AuthManager setPassword hashes with salt and verifies correctly', async ()
 
 test('AuthManager transparently upgrades legacy (10k) password hashes on login', async () => {
   const persisted = []
-  const auth = new AuthManager({
+  const auth = new AuthManager({ sessionsFile: makeSessionsFile(),
     onPersist: (p) => persisted.push(p),
   })
 
@@ -69,7 +73,7 @@ test('AuthManager transparently upgrades legacy (10k) password hashes on login',
 })
 
 test('AuthManager rate limits and locks out IP after 5 consecutive failures', async () => {
-  const auth = new AuthManager()
+  const auth = new AuthManager({ sessionsFile: makeSessionsFile() })
   await auth.setPassword('correct-pwd')
 
   const testIp = '10.0.0.99'
@@ -95,7 +99,7 @@ test('AuthManager rate limits and locks out IP after 5 consecutive failures', as
 })
 
 test('AuthManager session lifecycle: create, validate, and revoke', () => {
-  const auth = new AuthManager()
+  const auth = new AuthManager({ sessionsFile: makeSessionsFile() })
   const token = auth.createSession(5000)
   assert.ok(token)
   assert.equal(auth.validateSession(token), true)
@@ -107,7 +111,7 @@ test('AuthManager session lifecycle: create, validate, and revoke', () => {
 })
 
 test('AuthManager verifyRequest handles bypass, loopback, token, and cookie', () => {
-  const auth = new AuthManager({
+  const auth = new AuthManager({ sessionsFile: makeSessionsFile(),
     config: {
       enabled: true,
       mode: 'token_and_password',
@@ -173,7 +177,7 @@ test('renderLoginPage returns valid standalone HTML with DSH styling', () => {
 })
 
 test('AuthManager handles adminPolicy and remote admin unlocking', async () => {
-  const auth = new AuthManager({
+  const auth = new AuthManager({ sessionsFile: makeSessionsFile(),
     config: {
       enabled: true,
       adminPolicy: 'password_unlock',
@@ -210,7 +214,7 @@ test('AuthManager handles adminPolicy and remote admin unlocking', async () => {
 
 
 test('v2.10.5: password_only 模式 + 未设密码时 verifyPassword 放行（防自我锁死）', async () => {
-  const auth = new AuthManager({
+  const auth = new AuthManager({ sessionsFile: makeSessionsFile(),
     config: { enabled: true, mode: 'password_only' }, // 无密码
   })
   try {
@@ -224,7 +228,7 @@ test('v2.10.5: password_only 模式 + 未设密码时 verifyPassword 放行（�
 })
 
 test('v2.10.5: password_only 模式 + 已设密码时错误密码被拒绝（真实门禁生效）', async () => {
-  const auth = new AuthManager({ config: { enabled: true, mode: 'password_only' } })
+  const auth = new AuthManager({ sessionsFile: makeSessionsFile(), config: { enabled: true, mode: 'password_only' } })
   try {
     await auth.setPassword('real-pass-1')
     const wrong = await auth.verifyPassword('wrong-pass', '192.168.1.51')
@@ -234,4 +238,92 @@ test('v2.10.5: password_only 模式 + 已设密码时错误密码被拒绝（真
   } finally {
     auth.dispose()
   }
+})
+
+// ---- 登录 Session 持久化（宿主重启后已登录设备免重输访问密码）----
+
+test('session persistence: createSession 落盘，新实例（模拟宿主重启）恢复后仍有效', () => {
+  const sessionsFile = makeSessionsFile()
+  const auth = new AuthManager({ sessionsFile })
+  const token = auth.createSession()
+  auth.dispose()
+
+  // 落盘文件包含该会话
+  const raw = readFileSync(sessionsFile, 'utf8')
+  assert.ok(raw.includes(token), '会话必须写入落盘文件')
+
+  // 新实例同路径恢复——等价于 dsh web 宿主进程重启后 AuthManager 重新构造
+  const reborn = new AuthManager({ sessionsFile })
+  assert.equal(reborn.validateSession(token), true, '重启后已登录会话必须仍然有效')
+  assert.equal(reborn.validateSession('not-a-real-token'), false)
+  reborn.dispose()
+})
+
+test('session persistence: 改密码吊销全部会话并清空落盘文件，重启后仍拒绝', async () => {
+  const sessionsFile = makeSessionsFile()
+  const auth = new AuthManager({ sessionsFile })
+  const token = auth.createSession()
+  await auth.setPassword('brand-new-pass')
+  assert.equal(auth.validateSession(token), false, '改密码后本实例会话全部吊销')
+
+  const entries = JSON.parse(readFileSync(sessionsFile, 'utf8'))
+  assert.equal(entries.length, 0, '吊销必须同步清空落盘文件')
+
+  const reborn = new AuthManager({ sessionsFile })
+  assert.equal(reborn.validateSession(token), false, '重启后旧会话仍被拒绝')
+  reborn.dispose()
+})
+
+test('session persistence: 已过期的会话在恢复时被过滤', () => {
+  const sessionsFile = makeSessionsFile()
+  mkdirSync(dirname(sessionsFile), { recursive: true })
+  // 手写一条已过期会话 + 一条有效会话
+  const now = Date.now()
+  writeFileSync(sessionsFile, JSON.stringify([
+    ['expiredtoken', { createdAt: 1, expiresAt: now - 1000 }],
+    ['livetoken000', { createdAt: now, expiresAt: now + 60_000 }],
+  ]))
+
+  const auth = new AuthManager({ sessionsFile })
+  assert.equal(auth.validateSession('expiredtoken'), false, '过期会话不得恢复')
+  assert.equal(auth.validateSession('livetoken000'), true, '未过期会话正常恢复')
+  auth.dispose()
+})
+
+test('session persistence: 落盘文件损坏时安全降级为空（不抛异常）', () => {
+  const sessionsFile = makeSessionsFile()
+  mkdirSync(dirname(sessionsFile), { recursive: true })
+  writeFileSync(sessionsFile, '{not valid json!!!')
+
+  const auth = new AuthManager({ sessionsFile }) // 不应抛异常
+  const token = auth.createSession()
+  assert.equal(auth.validateSession(token), true, '降级后新登录正常（纯内存语义）')
+  auth.dispose()
+})
+
+test('session persistence: dispose 不清空落盘文件（宿主重启保活的关键）', () => {
+  const sessionsFile = makeSessionsFile()
+  const auth = new AuthManager({ sessionsFile })
+  const token = auth.createSession()
+  auth.dispose() // 宿主退出时 cleanup 调 dispose——此处不得清空持久化文件
+
+  const entries = JSON.parse(readFileSync(sessionsFile, 'utf8'))
+  assert.equal(entries.length, 1, 'dispose 后落盘文件必须保留（否则重启保活失效）')
+
+  const reborn = new AuthManager({ sessionsFile })
+  assert.equal(reborn.validateSession(token), true)
+  reborn.dispose()
+})
+
+test('session persistence: 落盘失败降级为纯内存语义（不阻断认证流程）', () => {
+  // 路径中段是一个普通文件：mkdirSync 必然失败（ENOTDIR），模拟不可写环境
+  const dir = mkdtempSync(join(tmpdir(), 'dsh-bridge-ro-'))
+  const blocker = join(dir, 'blocker')
+  writeFileSync(blocker, 'x')
+  const sessionsFile = join(blocker, 'sub', 'sessions.json')
+
+  const auth = new AuthManager({ sessionsFile }) // 不应抛异常
+  const token = auth.createSession()
+  assert.equal(auth.validateSession(token), true, '写盘失败不影响内存会话生命周期')
+  auth.dispose()
 })
