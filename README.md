@@ -48,6 +48,7 @@
   - [7. 📊 运维监控看板与一键平滑重启](#7-📊-运维监控看板与一键平滑重启)
 - [💬 常见问题 (FAQ)](#-常见问题-faq)
 - [🛠️ 开发与贡献](#️-开发与贡献)
+- [⭐ Star History](#-star-history)
 - [📄 开源协议](#-开源协议)
 
 ---
@@ -424,6 +425,18 @@ npm test
 # 4. 安装到本地 DSH Web Profile 进行联调
 dsh plugin --profile web add .
 ```
+
+---
+
+## ⭐ Star History
+
+<a href="https://www.star-history.com/?repos=wenbin-wb%2Fdsh-bridge&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=wenbin-wb/dsh-bridge&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=wenbin-wb/dsh-bridge&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=wenbin-wb/dsh-bridge&type=date&legend=top-left" />
+ </picture>
+</a>
 
 ---
 
