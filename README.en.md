@@ -78,6 +78,20 @@ node -v   # v22.19+ or v24+
 dsh --version
 ```
 
+### DSH version compatibility
+
+This plugin supports **both old and new DSH releases** — there is no need to pick a plugin version to match your harness.
+
+| DSH version | Status |
+| --- | --- |
+| `0.1.0` ~ `0.1.1` | ✅ Supported (loopback-only RPC channel hardening) |
+| `0.1.2` ~ `0.1.4` | ✅ Supported |
+| `0.1.5-alpha.1` ~ `0.1.5-rc.2` | ✅ Supported (since v2.10.9) |
+
+> **About the built-in DSH authentication**: since `0.1.2`, `dsh web` ships browser authentication — it prints a URL carrying a one-time token (`http://127.0.0.1:3080/?token=…`), which is exchanged for a session cookie bound to the loopback address. Afterwards `/`, `/api` and every plugin RPC channel require that cookie.
+>
+> This is **complementary to, not a duplicate of**, this plugin's access-password gate: the built-in auth protects "the DSH process on local loopback", while this plugin's gate protects "remote access arriving over LAN or a public tunnel". The plugin's reverse proxy injects a valid loopback session cookie while forwarding, so phone / tunnel access needs **no** manual handling of DSH's `?token=` — just use it as documented on this page.
+
 ### Installation
 
 ```bash
