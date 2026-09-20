@@ -4545,60 +4545,68 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
   async function switchToWorkspace(wsId, wsPath) {
     if (isSubmitting) return;
     isSubmitting = true;
-    statusMessage = `正在切换工作区…`;
-    isErrorMessage = false;
-    render();
+    try {
+      statusMessage = `正在切换工作区…`;
+      isErrorMessage = false;
+      render();
 
-    if (typeof onPicked === 'function' && wsPath) {
-      try {
-        onPicked(wsPath);
-      } catch (e) {}
-    }
-
-    let switched = false;
-    if (clientCtx?.workspaces?.startSession && wsId) {
-      try {
-        clientCtx.workspaces.startSession(wsId);
-        switched = true;
-      } catch (e) {
-        console.warn('[dsh-bridge] startSession failed:', e);
+      if (typeof onPicked === 'function' && wsPath) {
+        try {
+          onPicked(wsPath);
+        } catch (e) {}
       }
-    }
 
-    if (!switched && wsPath) {
-      try {
-        if (clientCtx?.workspaces?.create) {
-          const ws = await clientCtx.workspaces.create({ path: wsPath });
-          if (ws?.workspaceId && clientCtx?.workspaces?.startSession) {
-            clientCtx.workspaces.startSession(ws.workspaceId);
-            switched = true;
-          }
+      let switched = false;
+      if (clientCtx?.workspaces?.startSession && wsId) {
+        try {
+          clientCtx.workspaces.startSession(wsId);
+          switched = true;
+        } catch (e) {
+          console.warn('[dsh-bridge] startSession failed:', e);
         }
-        if (!switched) {
-          const raw = await authRpc(BRIDGE_ENDPOINTS.addRemoteWorkspace, { path: wsPath });
-          const res = raw?.value || raw;
-          if (res?.workspaceId && clientCtx?.workspaces?.startSession) {
-            try {
-              clientCtx.workspaces.startSession(res.workspaceId);
-              switched = true;
-            } catch (e) {}
-          }
-          if (!switched && res?.sessionId && clientCtx?.sessions?.open) {
-            try {
-              clientCtx.sessions.open(res.sessionId);
-              switched = true;
-            } catch (e) {}
-          }
-        }
-      } catch (e) {}
-    }
+      }
 
-    statusMessage = `✓ 已切换至工作区！`;
-    render();
-    setTimeout(() => {
-      closeModal();
-      document.body.classList.remove('dsh-drawer-open');
-    }, 400);
+      if (!switched && wsPath) {
+        try {
+          if (clientCtx?.workspaces?.create) {
+            const ws = await clientCtx.workspaces.create({ path: wsPath });
+            if (ws?.workspaceId && clientCtx?.workspaces?.startSession) {
+              clientCtx.workspaces.startSession(ws.workspaceId);
+              switched = true;
+            }
+          }
+          if (!switched) {
+            const raw = await authRpc(BRIDGE_ENDPOINTS.addRemoteWorkspace, { path: wsPath });
+            const res = raw?.value || raw;
+            if (res?.workspaceId && clientCtx?.workspaces?.startSession) {
+              try {
+                clientCtx.workspaces.startSession(res.workspaceId);
+                switched = true;
+              } catch (e) {}
+            }
+            if (!switched && res?.sessionId && clientCtx?.sessions?.open) {
+              try {
+                clientCtx.sessions.open(res.sessionId);
+                switched = true;
+              } catch (e) {}
+            }
+          }
+        } catch (e) {}
+      }
+
+      statusMessage = `✓ 已切换至工作区！`;
+      render();
+      setTimeout(() => {
+        closeModal();
+        document.body.classList.remove('dsh-drawer-open');
+      }, 400);
+    } finally {
+      // 与 doSubmit 对称：本函数此前只置位、从不复位，导致点过一次「已注册工作区」后，
+      // 同一弹窗实例的 isSubmitting 永久为 true，loadDirectory/doSubmit 的守卫
+      // 让整个弹窗彻底无响应（点目录、点添加都没反应）。用 finally 兜住所有路径，
+      // 包括 render() 抛错以及将来新增的提前 return。
+      isSubmitting = false;
+    }
   }
 
   async function loadDirectory(targetPath) {
