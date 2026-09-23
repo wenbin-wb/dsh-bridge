@@ -29,7 +29,7 @@ jobs:
         language: [ javascript-typescript ]
     steps:
       - name: 检出代码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: 初始化 CodeQL
         uses: github/codeql-action/init@v4
