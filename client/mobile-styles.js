@@ -24,8 +24,17 @@ export const MOBILE_STYLES_CSS = `
        （dsh-client-ui-sidebar-right/lib/client.js），故移动端样式取 <=767px，
        768px 起彻底交还桌面布局，避免"桥渲染顶栏、宿主却未全屏"的错位。 */
     @media (max-width: 767px) {
-      /* 1. 主框架为 Header 腾出顶部空间 */
-      div[class*="_frame"] {
+      /* 1. 主框架为 Header 腾出顶部空间。
+
+         选择器必须限定在布局外壳（dsh-client-ui-layout 的 AppFrame，即
+         [data-slot="root"] 的直接子元素）。宿主的 CSS-module 哈希只保证同文件
+         内唯一，*="_frame" 是跨包通配：聊天记录容器（dsh-client-ui-chat 的
+         .EvIC1a_frame，同样以 _frame 结尾）也会被命中。一旦命中，它被强加
+         height:100dvh + overflow:hidden，在手机上被钳到视口高度并裁掉溢出内容：
+         外层 [data-conversation-scroll] 已滚到底、内部却还有数千 px 读不到，
+         表现为「看不到最新消息」。官方给该容器的规则是 flex:none;height:auto
+         （让记录随内容自然增高、由外层统一滚动），与这里冲突，故必须排除。 */
+      [data-slot="root"] > div[class*="_frame"] {
         display: flex !important;
         flex-direction: column !important;
         width: 100vw !important;
