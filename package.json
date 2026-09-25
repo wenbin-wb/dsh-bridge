@@ -1,8 +1,8 @@
 {
   "name": "@wenbin_wb/dsh-bridge",
-  "version": "2.10.13",
+  "version": "2.10.14",
   "description": "手机扫码即可在移动端/公网继续用 DeepSeek Harness，人不在电脑前也能接着干。一键局域网二维码、Cloudflare 公网隧道、自建隧道与微信 / QQ / 飞书 / Telegram Bot（多工作区/会话持久化/媒体/卡片审批/流式输出），无需自己搭公网服务器。",
-  "releaseNotes": "【v2.10.13】可靠性加固 + 跟随 DSH 0.1.5 目录选择器\n• 新增：cloudflared 运行时健康探针——每 30s 探活官方 /ready，连续 3 次失败（约 90s）面板可见降级，连续 10 次（约 5min）判定假死自动强制重建，重建永不进终态（网络恢复后自愈）\n• 新增：cloudflared 输出落盘 ~/.dsh/dsh-bridge/cloudflared.log（5MB 轮转 .1），Token 跨 chunk 强制脱敏\n• 修复：连接器假死时公网入口静默失效数天无人发现（HTTP 530 / error code 1033），旧逻辑只监听进程退出故永不触发\n• 修复：本机点「添加工作区」误弹插件的远程抽屉（issue #28）——DSH 0.1.5 自带官方目录选择器且 slots 为 shadow 语义，插件同名 Slot 覆盖了官方实现；现本机 + 官方 picker 可用时不再注册该 Slot（macOS/Windows 走系统原生对话框、无桌面 Linux 走官方网页选择器），旧版 DSH 与远程/移动仍由插件兜底\n• 修复：添加工作区弹窗点过「已注册工作区」后永久卡死（PR #42）——switchToWorkspace 只置位 isSubmitting 从不复位，改为与 doSubmit 对称的 try/finally\n• 修复：探针路径任何异常（畸形地址、日志通道抛错）都不会拖垮 DSH 主进程\n• 测试：新增 18 条探针 + 12 条目录选择器让位 + 3 条弹窗状态复位回归测试\n• 说明：本版需重启一次 dsh（systemctl --user restart dsh-web.service）才生效",
+  "releaseNotes": "【v2.10.14】移动端设置页体验修复\n• 修复：手机设置页内容被裁掉、部分页签点不到（含第三方设置页），竖屏改为「分类列表 → 内容页」两级导航，字号与触控行恢复到可读可点，横屏分类不再被切\n• 修复：设置页「✕」回到标题行右上角，页面操作按钮统一收到底部动作栏\n• 修复：插件市场点「安装」没反应（确认框被设置弹窗盖住），横屏下确认框还会超出屏幕、按钮点不到；现均可正常显示与点击\n• 说明：纯前端样式与交互调整，刷新页面即生效（无需重启 dsh）",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

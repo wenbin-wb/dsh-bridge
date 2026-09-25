@@ -41,6 +41,21 @@ if (typeof window !== 'undefined') window.__dshResourceUrlCompat = RESOURCE_URL_
 // 避免 768px 单点上"桥渲染顶栏、宿主却按桌面（push）布局"的错位。
 const MOBILE_MAX_WIDTH = 767;
 
+// 设置中心「两级钻取」的窄屏断点：必须与 mobile-styles.js 的
+// `@media (max-width: 480px)` 6.2 块保持一致（改一处必须改另一处）。
+// 481–767px 仍有 ~350px 以上内容宽度，保留左侧图标轨道即可；
+// <=480px 时轨道要吃掉 21% 宽度、第三方设置节必然溢出，才切换为列表/详情两页。
+const SETTINGS_DRILLDOWN_MAX_WIDTH = 480;
+// 交互层的就绪开关，打在 <html> 上（监听器要在弹窗出现前装好，那时 panel 还不存在）。
+// CSS 6.2 整块以它为前置选择器：开关没打开就整块惰性，<=480px 退回 88px 图标轨道，
+// 不会出现「把内容藏了、却没人负责把用户带进去」的死列表。
+const DRILLDOWN_GATE_ATTR = 'data-dshbr-drilldown';
+const DRILLDOWN_GATE_READY = 'ready';
+const DRILLDOWN_GATE_FLAG = 'dshBrDrilldownGate';
+// 视图状态标记：打在宿主设置弹窗的 panel 上，CSS 6.2 块按此切换列表页/详情页。
+const SETTINGS_VIEW_ATTR = 'data-dshbr-settings-view';
+const SETTINGS_VIEW_DETAIL = 'detail';
+
 function isLocalEnvironment() {
   if (typeof window === 'undefined') return true;
   const host = window.location.hostname || '';
@@ -2608,7 +2623,11 @@ function VersionBanner({ rpcCall }) {
         gap: 8,
       },
     },
-      React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
+      // 左组：版本徽标 + DSH 版本 + 检查更新。
+      // flexWrap + minWidth:0 是必需的：此前只写 display:flex，左组既不能收缩也不能换行，
+      // 会把整行顶到 305px；手机设置页内容列只有 277px，溢出部分被
+      // overflow-x:hidden 静默裁掉（「检查更新」按钮被切一半）。
+      React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minWidth: 0 } },
         // 版本状态徽标
         React.createElement('span', {
           style: {
@@ -2675,6 +2694,10 @@ function VersionBanner({ rpcCall }) {
             fontSize: 11,
             opacity: loading ? 0.5 : 1,
             gap: 4,
+            // 按钮是 inline-flex，文字会成为匿名 flex 项；被挤窄时会把「检查更新」
+            // 折成两行。nowrap + flexShrink:0 保证它整体换行（由父级 flexWrap 负责）。
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
           },
           onClick: check,
           disabled: loading || upgrading || restarting,
@@ -2952,8 +2975,57 @@ const TABS = [
   { id: 'ops',      label: '运维监控',  icon: Icons.ops },
 ];
 
+// Tab 条在窄屏是横向可滑动的（5 个分类在手机内容列里放不下），但滚动条被
+// mobile-styles.js 整段隐藏（.dsh-tabbar-container），末尾分类又恰好被切断，
+// 用户既看不到"还有更多"、也不知道能横滑 —— 主观上就是"页面看不到"。
+// 这里补两件事：按可滚动方向做边缘渐隐提示；切换时把当前项滚进可视区。
 function TabBar({ active, onChange, dots }) {
+  const scrollRef = React.useRef(null);
+  const [edges, setEdges] = React.useState({ left: false, right: false });
+
+  React.useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return undefined;
+    const update = () => {
+      const max = el.scrollWidth - el.clientWidth;
+      const left = el.scrollLeft > 1;
+      const right = max > 1 && el.scrollLeft < max - 1;
+      setEdges((prev) => (prev.left === left && prev.right === right ? prev : { left, right }));
+    };
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    let observer = null;
+    if (typeof ResizeObserver === 'function') {
+      observer = new ResizeObserver(update);
+      observer.observe(el);
+    }
+    return () => {
+      el.removeEventListener('scroll', update);
+      if (observer) observer.disconnect();
+    };
+  }, []);
+
+  // 当前分类可能在可视区之外（例如从状态点跳进某个 Tab），切换后主动滚入
+  React.useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const target = el.querySelector('[data-dsh-tab-active="true"]');
+    if (!target) return;
+    const elRect = el.getBoundingClientRect();
+    const tabRect = target.getBoundingClientRect();
+    if (tabRect.left < elRect.left) el.scrollLeft -= (elRect.left - tabRect.left) + 8;
+    else if (tabRect.right > elRect.right) el.scrollLeft += (tabRect.right - elRect.right) + 8;
+  }, [active]);
+
+  const maskStops = [];
+  if (edges.left) maskStops.push('transparent 0px', '#000 20px');
+  else maskStops.push('#000 0px');
+  if (edges.right) maskStops.push('#000 calc(100% - 20px)', 'transparent 100%');
+  else maskStops.push('#000 100%');
+  const maskImage = `linear-gradient(to right, ${maskStops.join(', ')})`;
+
   return React.createElement('div', {
+    ref: scrollRef,
     className: 'dsh-tabbar-container',
     style: {
       display: 'flex', gap: 4, marginBottom: 20,
@@ -2962,6 +3034,8 @@ function TabBar({ active, onChange, dots }) {
       maxWidth: '100%', flexWrap: 'nowrap',
       scrollbarWidth: 'none',
       msOverflowStyle: 'none',
+      WebkitMaskImage: maskImage,
+      maskImage,
     },
   },
     TABS.map(({ id, label, icon: TabIcon }) => {
@@ -2969,6 +3043,7 @@ function TabBar({ active, onChange, dots }) {
       const hasDot   = dots?.[id];
       return React.createElement('button', {
         key: id,
+        'data-dsh-tab-active': isActive ? 'true' : undefined,
         onClick: () => onChange(id),
         style: {
           font: 'inherit', cursor: 'pointer', border: 'none', background: 'none',
@@ -3755,6 +3830,86 @@ function injectMobileStyles() {
   style.dataset.pluginCss = '@wenbin_wb/dsh-bridge/mobile-styles';
   style.textContent = MOBILE_STYLES_CSS;
   document.head.appendChild(style);
+}
+
+// 设置中心两级钻取的交互层（配合 mobile-styles.js 6.2 的 <=480px 规则）。
+//
+// 为什么需要 JS：宿主的设置弹窗（@deepseek-ai/dsh-client-ui-settings-general）只有
+// 桌面布局，nav 与 content 是 panel 下的兄弟节点、由 React 按 activeId 渲染，
+// 没有任何"列表页/详情页"状态，也没有暴露给插件的 slot。
+//
+// 为什么用「委托点击 + 打 data 属性」而不是注入返回按钮：
+// panel 内部整棵树由 React 管理，往里插 DOM 会在 React 卸载/重渲染时触发
+// removeChild 失配。故不插入任何节点，只给 panel 打一个属性；详情页的返回入口
+// 复用宿主已有的标题行（CSS 把 navList 收起、给 navTitle 加 ‹ 箭头并显示 pointer），
+// 因此本函数对宿主 DOM 只做「读 + 打属性」，不改变结构。
+function setupSettingsDrilldown() {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return;
+  const root = document.documentElement;
+  // 幂等位刻意放在最前：它先于 matchMedia 守卫，故首次 apply() 时若 matchMedia 不可用，
+  // 本会话内就不再尝试启用钻取。方向是 fail-safe —— 退回 88px 图标轨道、内容完整可达
+  // （CSS 6.2 整段惰性），不会变成死列表。独立验收已确认该方向无风险。
+  if (root.dataset[DRILLDOWN_GATE_FLAG] === '1') return;
+  root.dataset[DRILLDOWN_GATE_FLAG] = '1';
+
+  // 断点谓词与 CSS 开关必须同源：两者都用这一个 MediaQueryList 实例。
+  // 若让 CSS 走 `@media (max-width:480px)`、而 JS 各自去问 matchMedia，一旦
+  // matchMedia 缺失或对该查询返回 false（polyfill/环境差异），就会出现
+  // 「监听器装上了但恒不匹配 → 回调永远空转，而开关照常打开」的死列表。
+  // 因此 matchMedia 不可用时不启用钻取，直接退回 88px 轨道。
+  if (typeof window.matchMedia !== 'function') return;
+  let narrowQuery;
+  try {
+    narrowQuery = window.matchMedia(`(max-width: ${SETTINGS_DRILLDOWN_MAX_WIDTH}px)`);
+  } catch {
+    return;
+  }
+  if (!narrowQuery) return;
+  const isNarrow = () => narrowQuery.matches === true;
+
+  const onDocumentClick = (event) => {
+    if (!isNarrow()) return;
+    const target = event.target;
+    if (!target || typeof target.closest !== 'function') return;
+
+    const panel = target.closest('div[class*="VOzbGW_panel"]');
+    if (!panel) return;
+    const nav = panel.querySelector('nav[class*="VOzbGW_nav"]');
+    if (!nav || !nav.contains(target)) return;
+
+    // 点分类行 → 进入详情页（宿主自身的 onClick 负责切换 activeId，这里不拦截）
+    if (target.closest('button[class*="VOzbGW_navCell"]')) {
+      panel.setAttribute(SETTINGS_VIEW_ATTR, SETTINGS_VIEW_DETAIL);
+      if (nav.scrollTop) nav.scrollTop = 0;
+      return;
+    }
+
+    // 详情页里点折叠后的标题行 → 返回分类列表
+    if (panel.getAttribute(SETTINGS_VIEW_ATTR) === SETTINGS_VIEW_DETAIL) {
+      panel.removeAttribute(SETTINGS_VIEW_ATTR);
+    }
+  };
+
+  const syncGate = () => {
+    if (narrowQuery.matches === true) root.setAttribute(DRILLDOWN_GATE_ATTR, DRILLDOWN_GATE_READY);
+    else root.removeAttribute(DRILLDOWN_GATE_ATTR);
+  };
+
+  try {
+    document.addEventListener('click', onDocumentClick, false);
+  } catch {
+    // 装不上监听器就不要打开开关：CSS 6.2 保持惰性，<=480px 退回 767 块的 88px 图标轨道
+    return;
+  }
+
+  // 断点变化（转屏/窗口缩放）时让开关跟随，避免开关与实际匹配状态漂移
+  try {
+    if (typeof narrowQuery.addEventListener === 'function') narrowQuery.addEventListener('change', syncGate);
+    else if (typeof narrowQuery.addListener === 'function') narrowQuery.addListener(syncGate);
+  } catch { /* 订阅失败不影响正确性：下面的 syncGate() 仍会按当前 matches 设一次 */ }
+
+  // 监听器装好之后才同步 CSS 开关（见 mobile-styles.js 6.2 块的安全说明）
+  syncGate();
 }
 
 function setupMobileExperience(rpcCall, ctx) {
@@ -5039,6 +5194,9 @@ function setupComposerCollapse() {
 
 function apply(ctx) {
   window.__dshClientCtx = ctx;
+  // 放在最前：交互层先就绪，后续任何初始化抛异常都不会留下「CSS 生效但监听器缺失」
+  // 的状态（CSS 6.2 块另有 <html> 就绪开关双重兜底）。
+  setupSettingsDrilldown();
   const rpcCall = (endpoint, payload, signal) =>
     ctx.connection.rpc.call(BRIDGE_RPC_CHANNEL, endpoint, payload, signal);
 
