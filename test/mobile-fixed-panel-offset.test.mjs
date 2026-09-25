@@ -119,7 +119,7 @@ test('让位量与实际顶栏盒高同源（52px 变量未被改成 0 或脱离
     '顶栏高度必须与被让位的 52px 用同一个变量，二者才不会各自漂移',
   );
 
-  const frame = ruleBody(mediaBlock(structureCss, '(max-width: 767px)'), 'div[class*="_frame"]');
+  const frame = ruleBody(mediaBlock(structureCss, '(max-width: 767px)'), '[data-slot="root"] > div[class*="_frame"]');
   assert.match(
     frame,
     /[;{\s]padding-top:\s*var\(--dsh-mobile-header-h\)\s*!important/,
@@ -128,6 +128,29 @@ test('让位量与实际顶栏盒高同源（52px 变量未被改成 0 或脱离
 
   const panel = ruleBody(mediaBlock(structureCss, '(max-width: 767px)'), '[data-sidebar-right-panel="fullscreen"]');
   assert.match(panel, /var\(--dsh-mobile-header-h,\s*52px\)/, '面板让位量必须来自同一个变量');
+});
+
+test('frame 规则限定在布局外壳，不命中聊天记录容器（否则手机看不到最新消息）', () => {
+  const mobile = mediaBlock(structureCss, '(max-width: 767px)');
+  assert.ok(mobile, '移动端媒体查询块缺失');
+
+  // 外壳规则必须限定 [data-slot="root"] 的直接子元素：宿主的 CSS-module 哈希只保证
+  // 同文件内唯一，`*="_frame"` 是跨包通配，会一并命中聊天记录容器 .EvIC1a_frame。
+  assert.ok(
+    ruleBody(mobile, '[data-slot="root"] > div[class*="_frame"]'),
+    '移动端 frame 规则应限定为 [data-slot="root"] > div[class*="_frame"]',
+  );
+  // 回归守卫：不能让无前缀的宽选择器回来（注释里提到聊天容器不受影响，故只看「选择器 {」）
+  assert.doesNotMatch(
+    mobile,
+    /(^|[};])\s*div\[class\*="_frame"\]\s*\{/,
+    '不应再出现无前缀的 div[class*="_frame"] 规则：它会连同聊天记录容器一起命中，'
+      + '把记录钳在视口高度并裁掉溢出内容（手机上表现为「看不到最新消息」）',
+  );
+
+  // 该块内不得给聊天记录容器设高度/溢出（官方规则是 flex:none;height:auto，由外层滚动）
+  const chatFrame = ruleBody(mobile, 'div[class*="EvIC1a_frame"]');
+  assert.equal(chatFrame, null, '移动端规则不得命中聊天记录容器 .EvIC1a_frame');
 });
 
 test('运行时断点常量与 CSS 一致，且不再散落魔法值', () => {
