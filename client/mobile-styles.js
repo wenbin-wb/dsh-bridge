@@ -927,10 +927,12 @@ export const MOBILE_STYLES_CSS = `
          把两者拉回同一行的办法。 */
       html[data-dshbr-drilldown="ready"] button[class*="VOzbGW_close"] {
         position: absolute !important;
-        top: 9px !important;
-        right: 9px !important;
-        width: 32px !important;
-        height: 32px !important;
+        /* 40×40 触控区（宿主原为 28px）：配 top/right 4px 后中心落在 y=24，
+           与标题文字中心（约 23）基本重合；右侧 4+40=44px 的占位仍在标题 52px 留白之内。 */
+        top: 4px !important;
+        right: 4px !important;
+        width: 40px !important;
+        height: 40px !important;
         z-index: 5 !important;
       }
 

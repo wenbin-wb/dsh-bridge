@@ -29,7 +29,8 @@
     "prepack": "npm run build:lark && npm run build:client",
     "release:github": "node scripts/create-github-release.mjs",
     "lint": "eslint .",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "verify:mobile-ui": "node test/browser/run-all.mjs"
   },
   "dependencies": {
     "qrcode": "^1.5.3",

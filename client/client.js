@@ -958,10 +958,12 @@ var MOBILE_STYLES_CSS = `
          \u628A\u4E24\u8005\u62C9\u56DE\u540C\u4E00\u884C\u7684\u529E\u6CD5\u3002 */
       html[data-dshbr-drilldown="ready"] button[class*="VOzbGW_close"] {
         position: absolute !important;
-        top: 9px !important;
-        right: 9px !important;
-        width: 32px !important;
-        height: 32px !important;
+        /* 40\xD740 \u89E6\u63A7\u533A\uFF08\u5BBF\u4E3B\u539F\u4E3A 28px\uFF09\uFF1A\u914D top/right 4px \u540E\u4E2D\u5FC3\u843D\u5728 y=24\uFF0C
+           \u4E0E\u6807\u9898\u6587\u5B57\u4E2D\u5FC3\uFF08\u7EA6 23\uFF09\u57FA\u672C\u91CD\u5408\uFF1B\u53F3\u4FA7 4+40=44px \u7684\u5360\u4F4D\u4ECD\u5728\u6807\u9898 52px \u7559\u767D\u4E4B\u5185\u3002 */
+        top: 4px !important;
+        right: 4px !important;
+        width: 40px !important;
+        height: 40px !important;
         z-index: 5 !important;
       }
 
