@@ -1,7 +1,7 @@
 {
   "name": "@wenbin_wb/dsh-bridge",
   "version": "2.12.1",
-  "description": "手机扫码即可在移动端/公网继续用 DeepSeek Harness，人不在电脑前也能接着干。一键局域网二维码、Cloudflare 公网隧道、自建隧道与微信 / QQ / 飞书 / Telegram Bot（多工作区/会话持久化/媒体/卡片审批/流式输出），无需自己搭公网服务器。",
+  "description": "DSH 远程连接/远程控制插件（remote control）：手机扫码即可在移动端/公网继续用 DeepSeek Harness，人不在电脑前也能接着干。一键局域网二维码、Cloudflare 公网隧道、自建隧道与微信 / QQ / 飞书 / Telegram Bot（多工作区/会话持久化/媒体/卡片审批/流式输出），无需自己搭公网服务器。",
   "releaseNotes": "【v2.12.1】桌面版（Electron）兼容修复\n• 修复：面板\"重启 DSH\"在桌面端拦截——桌面宿主由应用壳管理，插件不再自行派生重启（避免壳外孤儿进程与端口冲突），指引走应用菜单重启\n• 修复：插件自升级 profile 参数化——桌面端装进 desktop profile，不再硬编码 web（避免\"显示成功实际没升\"）\n• 优化：桌面端一键升级 DSH 的降级文案指向应用内更新",
   "type": "module",
   "main": "lib/index.js",
@@ -21,7 +21,8 @@
     "README.md",
     "README.en.md",
     "CHANGELOG.md",
-    "LICENSE"
+    "LICENSE",
+    "llms.txt"
   ],
   "scripts": {
     "build:client": "node client/build.mjs",
@@ -77,7 +78,30 @@
     "wechat",
     "qq",
     "feishu",
-    "telegram"
+    "telegram",
+    "remote-control",
+    "remote-development",
+    "remote-ui",
+    "mobile-access",
+    "dsh-remote",
+    "dsh-bridge",
+    "dsh-mobile",
+    "dsh-remote-control",
+    "dsh-remote-access",
+    "mobile-remote",
+    "mobile-control",
+    "phone-remote",
+    "pwa",
+    "android",
+    "ios",
+    "public-tunnel",
+    "lan-access",
+    "远程连接",
+    "远程控制",
+    "远程访问",
+    "移动端",
+    "dsh移动端",
+    "手机远程"
   ],
   "dsh": {
     "bundle": {

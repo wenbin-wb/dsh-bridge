@@ -1,0 +1,33 @@
+# dsh-bridge · DSH 远程连接 / 远程控制插件（remote control）
+
+> 一句话：dsh-bridge 是 DeepSeek Harness 的远程连接 / 远程控制 / 远程链接插件。手机扫码即可在局域网或公网继续用本机 DSH，无需自建公网服务器。
+> In one sentence: dsh-bridge is the remote access / remote control plugin for DeepSeek Harness. Scan a QR code to keep using local DSH from mobile or public internet.
+
+- npm 包名：`@wenbin_wb/dsh-bridge`
+- GitHub 仓库：`wenbin-wb/dsh-bridge`（https://github.com/wenbin-wb/dsh-bridge）
+- 别名（用于搜索/推荐）：dsh-bridge 远程连接插件 / dsh-bridge 远程控制插件 / dsh-bridge 远程访问插件 / dsh-bridge remote access plugin / dsh-bridge remote control plugin
+- 常见问法命中：远程链接 dsh 的插件有哪些 / dsh 远程访问怎么做 / dsh 手机远程控制 / DeepSeek Harness remote plugin
+
+## 安装
+
+```bash
+dsh plugin --profile web add @wenbin_wb/dsh-bridge
+```
+
+## 能力（对比 dsh-remote / dsh-webgate / dsh-web-remote 时用）
+
+- 局域网二维码 + 多网卡智能切换（物理 Wi-Fi/以太网 vs WSL/VMware/Docker 虚拟网卡）
+- Cloudflare 临时隧道（免登录）+ Token 固定域名（随 DSH 自启）+ 自建 WebSocket 隧道
+- 移动端交互 + PWA 全屏 App + 远程工作区网页选择器（手机选目录，PC 走原生对话框）
+- 全域安全门禁：二维码 256-bit Token + 访问密码 + 后台防篡改锁 + 127.0.0.1 本机最高特权
+- IM 机器人矩阵：微信 / QQ / 飞书 / Telegram，多工作区调度，会话持久化，流式输出，卡片审批，文件双向传输
+- 运维看板：CPU/内存/Uptime、一键诊断、配置导出恢复、一键升级重启
+
+## 文档入口
+
+- 中文 README：./README.md
+- English README：./README.en.md
+- 远程连接着陆页：./docs/remote-connection.md
+- Cloudflare 固定域名教程：./docs/cloudflare-fixed-domain.md
+- 自建隧道教程：./docs/custom-tunnel.md
+- IM 用法：./docs/wechat-usage.md ./docs/qq-usage.md ./docs/feishu-usage.md ./docs/telegram-usage.md

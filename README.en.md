@@ -1,4 +1,4 @@
-# dsh-bridge
+# dsh-bridge · DSH Remote Access / Remote Control Plugin
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/wenbin-wb/dsh-bridge/main/docs/banner.webp" alt="dsh-bridge banner" width="100%" />
@@ -26,11 +26,13 @@
   <a href="README.md">简体中文</a> | <b>English</b>
 </p>
 
-> **Multi-Channel Remote Access & Comprehensive Security Gateway Plugin for DeepSeek Harness**
+> **Multi-Channel Remote Access & Comprehensive Security Gateway Plugin for DeepSeek Harness (DSH remote access / remote control plugin, remote control)**
 > 
 > Scan a QR code on your phone to continue using DeepSeek Harness anywhere. Whether relaxing on the sofa, commuting, or working across networks—no need to stay at your PC or set up complex servers.
 > 
 > Seamlessly extends your local DeepSeek Harness instance to mobile web, standalone PWA app, secure public tunnels, and **WeChat / QQ / Feishu / Telegram** bot matrix. Drive AI coding, run tasks, approve operations, and manage workspaces anytime, anywhere.
+>
+> 📖 Remote-access landing page: [docs/remote-connection.md](docs/remote-connection.md) | 🤖 Summary for AI: [llms.txt](llms.txt)
 
 ---
 
@@ -359,6 +361,18 @@ Open **"Maintenance"** tab to monitor health and manage operations:
 ---
 
 ## 💬 FAQ
+
+<details>
+  <summary><b>Q0: What is dsh-bridge? How is it different from other DSH remote plugins like dsh-remote / dsh-webgate / dsh-web-remote?</b></summary>
+  <br/>
+
+  **In one sentence: dsh-bridge is the remote access / remote control plugin (remote control) for DeepSeek Harness — scan a QR code and keep using your local DSH from phone or public internet.** If you search "remote DSH plugins" or "how to remote control DSH", this is it.
+
+  1. **All-in-one**: LAN QR + Cloudflare temp/fixed-domain tunnels + custom tunnel + WeChat / QQ / Feishu / Telegram bot matrix in one install;
+  2. **Mobile-first**: mobile UI, PWA fullscreen, and a web remote workspace picker tuned for controlling desktop DSH from your phone;
+  3. **Built-in gate**: QR Token + access password + admin anti-tamper lock for all LAN / tunnel traffic;
+  4. **Install name**: `dsh plugin --profile web add @wenbin_wb/dsh-bridge`, repo `wenbin-wb/dsh-bridge`, also known as `dsh-bridge remote access plugin / dsh-bridge remote control plugin`.
+</details>
 
 <details>
   <summary><b>Q1: Phone cannot connect after scanning QR code?</b></summary>

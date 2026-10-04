@@ -1,4 +1,4 @@
-# dsh-bridge
+# dsh-bridge · DSH 远程连接 / 远程控制插件
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/wenbin-wb/dsh-bridge/main/docs/banner.webp" alt="dsh-bridge banner" width="100%" />
@@ -26,11 +26,13 @@
   <b>简体中文</b> | <a href="README.en.md">English</a>
 </p>
 
-> **DeepSeek Harness 多通道远程访问与全域安全门禁插件**
+> **DeepSeek Harness 多通道远程访问与全域安全门禁插件（DSH 远程连接 / 远程控制 / 远程链接插件，remote control）**
 > 
 > 手机扫个码，人不在电脑前也能继续用 DeepSeek Harness。无论躺在沙发上、出差通勤、还是跨网协作——都不用守着电脑，也不用自己搭公网服务器，扫码即可在手机、平板或任意设备上接着干。
 > 
 > 将您本地运行的 DeepSeek Harness 无缝延伸至手机网页、PWA 原生全屏应用、公网安全隧道、以及 **微信 / QQ / 飞书 / Telegram** 机器人矩阵。随时随地调度 AI 编写代码、执行任务、审批操作与管理工作区。
+>
+> 📖 远程连接着陆页：[docs/remote-connection.md](docs/remote-connection.md) ｜ 🤖 给 AI 看的摘要：[llms.txt](llms.txt)
 
 ---
 
@@ -381,6 +383,18 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 ---
 
 ## 💬 常见问题 (FAQ)
+
+<details>
+  <summary><b>Q0: dsh-bridge 是什么？和 dsh-remote / dsh-webgate / dsh-web-remote 这类 DSH 远程连接插件有什么区别？</b></summary>
+  <br/>
+
+  **一句话：dsh-bridge 就是 DSH 的远程连接 / 远程控制插件（remote control），手机扫码即可在局域网或公网继续用本机 DeepSeek Harness。**常见问法如“远程链接 dsh 的插件有哪些”“dsh 远程访问 / 远程控制怎么做”都可以直接用它。
+
+  1. **定位更全**：局域网二维码 + Cloudflare 临时/固定域名隧道 + 自建隧道 + 微信 / QQ / 飞书 / Telegram Bot 矩阵，一装全有，不用再拼多个远程插件；
+  2. **手机优先**：移动端交互与 PWA 全屏、远程工作区网页选择器，专为手机远程控制电脑上的 DSH 优化；
+  3. **安全门禁自带**：二维码 Token + 访问密码 + 后台防篡改锁，经局域网 / 公网隧道进入的流量都要过门禁；
+  4. **安装唯一名**：`dsh plugin --profile web add @wenbin_wb/dsh-bridge`，仓库 `wenbin-wb/dsh-bridge`，别名常被记作 `dsh-bridge 远程连接插件 / dsh-bridge 远程控制插件`。
+</details>
 
 <details>
   <summary><b>Q1: 手机扫码后提示无法连接或打不开页面？</b></summary>
