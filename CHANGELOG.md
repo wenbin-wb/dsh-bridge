@@ -4,6 +4,26 @@
 
 ---
 
+## [v2.12.2] - 2026-10-05
+
+> 本版为**远程面板体验与宿主兼容**版：设置页可见开关 + 平台清单失败显错 + 移动改写层包级 opt-in。无破坏性变更，默认行为与 v2.12.1 一致。
+
+### ✨ 新增
+
+- **运维监控页新增「移动端页面改写层」开关**：经 `uiGetFlags`/`uiUpdateConfig` 读写 `config.json.ui.pageTweaks`（写需管理权限），切换后刷新生效；宿主 `mobileUi:false` 优先，届时按钮置灰明示。
+- **包级别 `mobileUi` 总开关（issue #56 §4）**：宿主传 `mobileUi: false` 或设 `DSH_BRIDGE_MOBILE_UI=0`，`apply()` 内整层页面改写直接跳过，隧道/IM/目录选择不受影响；另支持第三方层登记（`window.__DSH_MOBILE_LAYER__` / `[data-dsh-mobile-layer]` / `[data-dsh-mobile-ui]`）。
+
+### 🐞 修复
+
+- **IM 平台清单失败不再画成“即将支持”（issue #55）**：`listPlatforms` 缺 manager 时记日志并返回显错；面板区分加载中/查询失败（含重试）/未连接；四个平台全量支持，“即将支持”分支已删除。另补模板 frontmatter 与 0.2.0-rc.2 兼容行。
+- **修复 `apply()` 内 TDZ 致加载即崩**：`readUiPageTweaksPref(configFile)` 先于 `const configFile` 执行，每次加载必抛 `ReferenceError`（独立验收发现），已将计算块移至声明之后并补回归断言。
+
+### 🧪 测试
+
+- 新增/扩展 `mobile-yield`（标记登记/总开关/apply 守卫/产物同步）、`listPlatforms` 显错三态、`uiUpdateConfig` 读写、`resolveMobileUiEnabled`/`readUiPageTweaksPref` 用例。全量 **412 项测试 100% 通过**，`lint` 0 errors。
+
+---
+
 ## [v2.12.1] - 2026-10-03
 
 > 本版为**桌面版（Electron）兼容修复**版。排查依据为一手来源：官方同仓库 `apps/desktop-host/src/index.ts`、`apps/desktop/README.zh.md` 及官方 `evaluatePluginCompatibility` 实测。核心功能（面板、IM、隧道、存储）在桌面端与 Web 版跑同一套宿主与前端，确认兼容；以下两处是"Web 正常、桌面走错路"的分支，已修。
