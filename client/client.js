@@ -5725,7 +5725,7 @@ function BridgePanel({ rpcCall, preferredTab }) {
               }, "\u672A\u8FDE\u63A5"),
               !available && React.createElement("span", {
                 style: { fontSize: 11, color: "var(--dsw-alias-label-tertiary,#9ca3af)", fontWeight: 400 }
-              }, loaded ? "\u5373\u5C06\u652F\u6301" : "\u52A0\u8F7D\u4E2D\u2026")
+              }, !loaded ? "\u52A0\u8F7D\u4E2D\u2026" : "\u6570\u636E\u7F3A\u5931")
             ),
             React.createElement("div", { style: { ...s.muted, marginTop: 4, fontSize: 11 } }, desc)
           );

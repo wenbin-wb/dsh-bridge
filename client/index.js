@@ -3587,7 +3587,7 @@ function BridgePanel({ rpcCall, preferredTab }) {
         style: { display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' },
       },
         IM_PLATFORMS.map(({ id, label, icon: IconComponent, brandColor, desc }) => {
-          // #55：未加载完成 / 查询失败时不占用“即将支持”语义
+          // #55：四个平台全量支持，不存在“即将支持”——缺数据只可能是加载中或异常
           const loaded = platforms !== null && !platformsError;
           const platformData = loaded ? platforms[id] : undefined;
           const available = !!platformData;
@@ -3621,7 +3621,7 @@ function BridgePanel({ rpcCall, preferredTab }) {
               }, '未连接'),
               !available && React.createElement('span', {
                 style: { fontSize: 11, color: 'var(--dsw-alias-label-tertiary,#9ca3af)', fontWeight: 400 },
-              }, loaded ? '即将支持' : '加载中…'),
+              }, !loaded ? '加载中…' : '数据缺失'),
             ),
             React.createElement('div', { style: { ...s.muted, marginTop: 4, fontSize: 11 } }, desc),
           );
