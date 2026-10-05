@@ -5,7 +5,7 @@
 // 装进宿主不加载的 profile。
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { BridgeService, isDesktopHost, currentProfileName, resolveMobileUiEnabled } from '../lib/index.js';
+import { BridgeService, isDesktopHost, currentProfileName, resolveMobileUiEnabled, readUiPageTweaksPref } from '../lib/index.js';
 
 const quietLogger = { info() {}, warn() {}, error() {}, debug() {} };
 const makeService = () => new BridgeService({
@@ -169,6 +169,38 @@ test('resolveMobileUiEnabled：宿主 mobileUi:false 即关闭整层页面改写
   assert.equal(resolveMobileUiEnabled({ mobileUi: false }), false);
   assert.equal(resolveMobileUiEnabled({ mobileUi: 'off' }), false);
   assert.equal(resolveMobileUiEnabled({ mobileUi: '0' }), false);
+});
+
+test('readUiPageTweaksPref：缺文件/坏 JSON 默认开，仅显式 false 关闭', async () => {
+  const { join } = await import('node:path');
+  const { tmpdir } = await import('node:os');
+  const { mkdtempSync, writeFileSync, rmSync } = await import('node:fs');
+  const dir = mkdtempSync(join(tmpdir(), 'dsh-bridge-pref-'));
+  try {
+    const f = join(dir, 'config.json');
+    assert.equal(readUiPageTweaksPref(join(dir, 'missing.json')), true);
+    writeFileSync(f, '{broken');
+    assert.equal(readUiPageTweaksPref(f), true);
+    writeFileSync(f, JSON.stringify({ ui: { pageTweaks: false } }));
+    assert.equal(readUiPageTweaksPref(f), false);
+    writeFileSync(f, JSON.stringify({ ui: { pageTweaks: true } }));
+    assert.equal(readUiPageTweaksPref(f), true);
+    writeFileSync(f, JSON.stringify({}));
+    assert.equal(readUiPageTweaksPref(f), true);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('M1 回归：apply() 内 configFile 必须先声明后使用（TDZ 曾致加载即崩）', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { fileURLToPath } = await import('node:url');
+  const { dirname, resolve } = await import('node:path');
+  const src = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '..', 'lib/index.js'), 'utf8');
+  const def = src.indexOf('const configFile = join(');
+  const use = src.indexOf('const uiPageTweaks = readUiPageTweaksPref(configFile);');
+  assert.ok(def > 0 && use > 0, '锚点均应存在');
+  assert.ok(def < use, 'configFile 声明必须在使用之前，否则 apply() 抛 ReferenceError');
 });
 
 test('resolveMobileUiEnabled：环境变量 DSH_BRIDGE_MOBILE_UI=0 即关闭', () => {
