@@ -3,7 +3,7 @@
 // 用法：node test/browser/mobile-settings-close.mjs
 import path from 'node:path';
 import puppeteer from 'puppeteer-core';
-import { launchOptions, shotsDir, connect } from './helpers.mjs';
+import { launchOptions, shotsDir, connect, dismissHostNotices } from './helpers.mjs';
 
 const SHOTS = shotsDir('mobile-settings-close');
 const CHROME = launchOptions().executablePath;
@@ -122,6 +122,7 @@ for (const vp of VIEWPORTS) {
   await page.setCookie({ name: cn, value: c.slice(cn.length + 1), domain: '127.0.0.1', path: '/' });
   await page.goto(`${BASE_URL}/`, { waitUntil: 'domcontentloaded' });
   await new Promise((r) => setTimeout(r, 4200));
+  await dismissHostNotices(page);
   await page.evaluate(() => document.querySelector('button[aria-label="Settings"]')?.click());
   await new Promise((r) => setTimeout(r, 1300));
 

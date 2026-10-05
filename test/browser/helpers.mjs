@@ -109,6 +109,28 @@ export async function openGui(page, auth, viewport) {
   await page.goto(`http://127.0.0.1:${auth.port}/`, { waitUntil: 'domcontentloaded' });
 }
 
+/** 关闭宿主一次性浮层（如 0.2.0 Preview Notice 全屏浮层，会盖住设置 ✕ 与顶部可点元素）。
+ * 仅测试前置：凡命中测试（elementFromPoint）前调用一次，避免宿主弹窗污染判定。 */
+export async function dismissHostNotices(page) {
+  try {
+    await page.evaluate(() => {
+      const roots = [...document.body.children].filter(
+        (e) => e.tagName === 'DIV'
+          && !String(e.className).includes('VOzbGW')
+          && e.querySelector(':scope > div[role="dialog"]'),
+      );
+      for (const r of roots) {
+        const dlg = r.querySelector(':scope > div[role="dialog"]');
+        if (!dlg) continue;
+        const btn = [...dlg.querySelectorAll('button')].find((b) =>
+          /ok|got it|知道|关闭|dismiss|confirm|确定|不再提示/i.test((b.textContent || '').trim()));
+        (btn ?? dlg.querySelector('button'))?.click();
+      }
+    });
+    await new Promise((r) => setTimeout(r, 600));
+  } catch {}
+}
+
 /** 统一的 PASS/FAIL 记录器与收尾汇总 */
 export function createReporter(label) {
   const rows = [];
