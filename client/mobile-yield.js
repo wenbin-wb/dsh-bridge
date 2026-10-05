@@ -18,6 +18,8 @@ export const FEATURES = {
   MOBILE_HEADER: 'mobileHeader',
   MOBILE_STYLES: 'mobileStyles',
   COMPOSER_COLLAPSE: 'composerCollapse',
+  // 总开关：覆盖全部页面改写动作（含设置钻取/导航图标/iOS 键盘适配等残留项，见 #56）
+  PAGE_TWEAKS: 'pageTweaks',
 };
 
 // 内存中的动态运行时覆盖配置（可通过 ctx.reflect.get('dsh-bridge').configureFeatures(...) 设置）
@@ -65,10 +67,20 @@ export function detectMobileShellOrResponsivePlugin() {
     return true;
   }
 
-  // 3. DOM 标记探测（如 @dsh-android/dsh-client-ui-responsive 挂载的特征属性）
+  // 2b. 第三方移动层显式登记（issue #56 §3.4：不再靠猜全局变量）。
+  // 宿主按任一约定声明即可：window.__DSH_MOBILE_LAYER__ = '<plugin-id>'
+  // 或在 <html>/<body> 挂 [data-dsh-mobile-layer] / [data-dsh-mobile-ui]。
+  if (typeof window.__DSH_MOBILE_LAYER__ === 'string' && window.__DSH_MOBILE_LAYER__) {
+    return true;
+  }
+
+  // 3. DOM 标记探测（如 @dsh-android/dsh-client-ui-responsive 挂载的特征属性，
+  // 以及第三方层按约定挂载的 data-dsh-mobile-layer / data-dsh-mobile-ui）
   if (typeof document !== 'undefined') {
     if (document.querySelector('[data-dsh-responsive-mobile]') ||
-        document.querySelector('[data-dsh-mobile-shell]')) {
+        document.querySelector('[data-dsh-mobile-shell]') ||
+        document.querySelector('[data-dsh-mobile-layer]') ||
+        document.querySelector('[data-dsh-mobile-ui]')) {
       return true;
     }
   }
@@ -127,8 +139,12 @@ export function isFeatureEnabled(featureName, defaultDetector) {
   try {
     const hostConfig = window.__DSH_BRIDGE_CONFIG__;
     if (hostConfig && typeof hostConfig === 'object') {
-      if (hostConfig.disablePageTweaks === true || hostConfig.disableMobileTweaks === true) {
+      if (hostConfig.disablePageTweaks === true || hostConfig.disableMobileTweaks === true ||
+          hostConfig.mobileUi === false) {
         return false;
+      }
+      if (hostConfig.mobileUi === true) {
+        return true;
       }
       if (typeof hostConfig[featureName] === 'boolean') {
         return hostConfig[featureName];
@@ -178,6 +194,17 @@ export function shouldYieldMobileStyles() {
     // 自动判定：如果已被外部响应式插件完全接管，则让位全局样式
     return !detectMobileShellOrResponsivePlugin();
   });
+}
+
+/**
+ * 总开关：是否应该让位全部页面改写动作 (返回 true 表示跳过 drilldown/导航图标/
+ * iOS 键盘适配/折叠按钮/移动体验等所有页面侧改动，见 #56 §2.2)。
+ * 服务端 mobileUi:false 会经 head 注入的 __DSH_BRIDGE_CONFIG__ 生效，宿主也可在
+ * 加载阶段直接声明，时机早于 apply()（包级别 opt-in，见 #56 §4）。
+ * @returns {boolean}
+ */
+export function shouldYieldAllPageTweaks() {
+  return !isFeatureEnabled(FEATURES.PAGE_TWEAKS, () => true);
 }
 
 /**

@@ -5,7 +5,7 @@
 // 装进宿主不加载的 profile。
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { BridgeService, isDesktopHost, currentProfileName } from '../lib/index.js';
+import { BridgeService, isDesktopHost, currentProfileName, resolveMobileUiEnabled } from '../lib/index.js';
 
 const quietLogger = { info() {}, warn() {}, error() {}, debug() {} };
 const makeService = () => new BridgeService({
@@ -155,4 +155,31 @@ test('P1：upgradePlugin 的 profile 只认白名单，注入字符串被丢弃'
     joined.includes('--profile web') || joined.includes('--profile desktop'),
     `必须回退到合法 profile：${joined}`,
   );
+});
+
+// ---------- Issue #56 §4：包级别 mobileUi opt-in ----------
+
+test('resolveMobileUiEnabled：默认开启（不误伤正常用户）', () => {
+  assert.equal(resolveMobileUiEnabled(), true);
+  assert.equal(resolveMobileUiEnabled({}), true);
+  assert.equal(resolveMobileUiEnabled({ mobileUi: true }), true);
+});
+
+test('resolveMobileUiEnabled：宿主 mobileUi:false 即关闭整层页面改写', () => {
+  assert.equal(resolveMobileUiEnabled({ mobileUi: false }), false);
+  assert.equal(resolveMobileUiEnabled({ mobileUi: 'off' }), false);
+  assert.equal(resolveMobileUiEnabled({ mobileUi: '0' }), false);
+});
+
+test('resolveMobileUiEnabled：环境变量 DSH_BRIDGE_MOBILE_UI=0 即关闭', () => {
+  const prev = process.env.DSH_BRIDGE_MOBILE_UI;
+  try {
+    process.env.DSH_BRIDGE_MOBILE_UI = '0';
+    assert.equal(resolveMobileUiEnabled({}), false);
+    process.env.DSH_BRIDGE_MOBILE_UI = '1';
+    assert.equal(resolveMobileUiEnabled({}), true);
+  } finally {
+    if (prev === undefined) delete process.env.DSH_BRIDGE_MOBILE_UI;
+    else process.env.DSH_BRIDGE_MOBILE_UI = prev;
+  }
 });

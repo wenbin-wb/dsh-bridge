@@ -9,6 +9,7 @@ import {
   shouldYieldMobileHeader,
   shouldYieldMobileStyles,
   shouldYieldComposerCollapse,
+  shouldYieldAllPageTweaks,
   setRuntimeFeatureOverrides,
   getRuntimeFeatureOverrides,
 } from './mobile-yield.js'
@@ -3156,6 +3157,9 @@ function BridgePanel({ rpcCall, preferredTab }) {
   }, [preferredTab]);
   // 平台列表和连接状态
   const [platforms, setPlatforms] = React.useState(null);
+  // #55：平台清单查询失败必须与“真·不支持”区分展示，不再把失败画成“即将支持”
+  const [platformsError, setPlatformsError] = React.useState(null);
+  const [platformsSeq, setPlatformsSeq] = React.useState(0);
   const [selectedPlatform, setSelectedPlatform] = React.useState('wechat');
 
   // 隧道页"主入口"地址复制反馈
@@ -3329,10 +3333,23 @@ function BridgePanel({ rpcCall, preferredTab }) {
       const currentSeq = ++pollPlatformsSeqRef.current;
       try {
         const r = await authRpcCall(BRIDGE_ENDPOINTS.listPlatforms, {});
-        if (alive && currentSeq === pollPlatformsSeqRef.current && r?.ok) {
+        if (!alive || currentSeq !== pollPlatformsSeqRef.current) return;
+        if (r?.ok) {
           setPlatforms(r.value ?? {});
+          setPlatformsError(null);
+        } else {
+          // #55：查询失败（桌面宿主注入回归等）必须可见，不得渲染成“即将支持”
+          const msg = r?.error?.message ?? r?.message ?? 'listPlatforms 查询失败';
+          setPlatformsError(msg);
+          try { console.warn('[dsh-bridge] listPlatforms failed:', msg); } catch {}
         }
-      } catch { /* 忽略，不影响主面板 */ }
+      } catch (e) {
+        if (alive && currentSeq === pollPlatformsSeqRef.current) {
+          const msg = e?.message ?? String(e);
+          setPlatformsError(msg);
+          try { console.warn('[dsh-bridge] listPlatforms RPC error:', msg); } catch {}
+        }
+      }
       finally {
         inFlight = false;
       }
@@ -3342,7 +3359,7 @@ function BridgePanel({ rpcCall, preferredTab }) {
     poll();
     const t = setInterval(poll, 4000);
     return () => { alive = false; clearInterval(t); };
-  }, [authRpcCall, adminUnlocked, isLocalhost]);
+  }, [authRpcCall, adminUnlocked, isLocalhost, platformsSeq]);
 
   React.useEffect(() => {
     // 远程上锁时：加载一次（拿到 auth 判断锁定/显示锁屏），但不轮询（避免 401 风暴）
@@ -3555,12 +3572,24 @@ function BridgePanel({ rpcCall, preferredTab }) {
     ];
     
     tabContent = React.createElement('div', null,
+      // #55：清单查询失败时显错 + 重试，不再静默画成“即将支持”
+      platformsError && React.createElement('div', {
+        style: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, padding: '10px 12px', borderRadius: 8, border: '1px solid var(--dsw-alias-state-danger-primary,#f87171)', background: 'var(--dsw-alias-state-danger-bg,#fef2f2)', fontSize: 12 },
+      },
+        React.createElement('span', { style: { flex: 1 } }, '平台清单加载失败：' + platformsError),
+        React.createElement('button', {
+          onClick: () => { setPlatformsError(null); setPlatformsSeq((s) => s + 1); },
+          style: { cursor: 'pointer', borderRadius: 6, padding: '4px 12px' },
+        }, '重试'),
+      ),
       // 平台选择器（可点击切换）
       React.createElement('div', {
         style: { display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' },
       },
         IM_PLATFORMS.map(({ id, label, icon: IconComponent, brandColor, desc }) => {
-          const platformData = platforms?.[id];
+          // #55：未加载完成 / 查询失败时不占用“即将支持”语义
+          const loaded = platforms !== null && !platformsError;
+          const platformData = loaded ? platforms[id] : undefined;
           const available = !!platformData;
           const active = platformData?.status === 'connected' || platformData?.status === 'starting' || platformData?.status === 'reconnecting';
           
@@ -3592,7 +3621,7 @@ function BridgePanel({ rpcCall, preferredTab }) {
               }, '未连接'),
               !available && React.createElement('span', {
                 style: { fontSize: 11, color: 'var(--dsw-alias-label-tertiary,#9ca3af)', fontWeight: 400 },
-              }, '即将支持'),
+              }, loaded ? '即将支持' : '加载中…'),
             ),
             React.createElement('div', { style: { ...s.muted, marginTop: 4, fontSize: 11 } }, desc),
           );
@@ -5332,14 +5361,24 @@ function apply(ctx) {
   // 会导致激活等待（宿主 env 无该服务，entry did not activate）。
   const intl = createTranslator(ctx);
   localeT = (key, vars) => intl.t(key, vars);
+  // 包级别 opt-in（issue #56 §4）：整层页面改写在此统一让位。关闭时跳过钻取/
+  // 导航图标/iOS 键盘适配/折叠按钮/移动体验等全部页面侧改动；RPC、翻译、
+  // 工作区弹窗与目录 Slot（远程功能面）不受影响。判定来源：URL >
+  // window.__DSH_BRIDGE_CONFIG__（宿主/服务端注入，mobileUi:false 即关）>
+  // 运行时反射 > localStorage > 第三方层标记/自动探测。
+  const pageTweaksOn = !shouldYieldAllPageTweaks();
   // 放在最前：交互层先就绪，后续任何初始化抛异常都不会留下「CSS 生效但监听器缺失」
   // 的状态（CSS 6.2 块另有 <html> 就绪开关双重兜底）。
-  setupSettingsDrilldown();
+  if (pageTweaksOn) {
+    setupSettingsDrilldown();
+  }
   // 设置页左侧导航栏图标定制：将原生通用齿轮替换为远程访问专属图标
-  if (typeof ctx.effect === 'function') {
-    ctx.effect(() => registerSettingsNavIcon(() => '远程访问'), 'dsh-bridge: settings nav icon');
-  } else {
-    registerSettingsNavIcon(() => '远程访问');
+  if (pageTweaksOn) {
+    if (typeof ctx.effect === 'function') {
+      ctx.effect(() => registerSettingsNavIcon(() => '远程访问'), 'dsh-bridge: settings nav icon');
+    } else {
+      registerSettingsNavIcon(() => '远程访问');
+    }
   }
   const rpcCall = (endpoint, payload, signal) =>
     ctx.connection.rpc.call(BRIDGE_RPC_CHANNEL, endpoint, payload, signal);
@@ -5347,10 +5386,12 @@ function apply(ctx) {
   window.__dshOpenRemoteWorkspaceModal = (onAdded, onPickDirect, onCancel) =>
     showRemoteWorkspaceDialog(rpcCall, onAdded, ctx, onPickDirect, onCancel);
 
-  setupIosKeyboardAdapter();
-  setupComposerCollapse();
+  if (pageTweaksOn) {
+    setupIosKeyboardAdapter();
+    setupComposerCollapse();
 
-  setupMobileExperience(rpcCall, ctx);
+    setupMobileExperience(rpcCall, ctx);
+  }
 
   const injected = () => ({ pick: () => ctx.workspaces?.pickDirectory?.() });
 

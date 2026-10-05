@@ -522,3 +522,64 @@ test('listAgentPresets 在旧版 DSH / 服务异常时返回 available:false（�
   assert.equal(r2.ok, true)
   assert.equal(r2.value.available, false)
 })
+
+// ---------------------------------------------------------------------------
+// 6. RPC：listPlatforms 缺 manager 时必须显错（Issue #55）
+// 背景：此前返回 ok({})，前端把“查询失败”画成“即将支持”，桌面宿主专项排查困难。
+// ---------------------------------------------------------------------------
+
+function makePlatformsHarness(platformManager) {
+  let handler
+  const errors = []
+  const ctx = {
+    connection: { rpc: { handle: (channel, fn) => { handler = fn; return () => {} } } },
+    get: () => undefined,
+  }
+  installBridgeRpc(ctx, {
+    service: {},
+    authManager: null,
+    platformManager,
+    logger: { info() {}, warn() {}, error: (msg) => errors.push(String(msg)) },
+  })
+  return { call: (endpoint, payload = {}) => handler(endpoint, payload), errors }
+}
+
+test('#55 listPlatforms 缺 platformManager 时返回 ok:false（前端显错而非“即将支持”）', async () => {
+  const { call, errors } = makePlatformsHarness(null)
+  const r = await call(BRIDGE_ENDPOINTS.listPlatforms, {})
+  assert.equal(r.ok, false)
+  assert.match(r.error.message, /PlatformManager/)
+  assert.ok(errors.some((m) => m.includes('#55')), '应记 error 日志便于桌面宿主排查')
+})
+
+test('#55 listPlatforms 空表时仍 ok:true 但记 warn（与缺 manager 区分）', async () => {
+  let warned = false
+  let handler
+  const ctx = {
+    connection: { rpc: { handle: (channel, fn) => { handler = fn; return () => {} } } },
+    get: () => undefined,
+  }
+  installBridgeRpc(ctx, {
+    service: {},
+    authManager: null,
+    platformManager: { getStatus: () => ({}) },
+    logger: { info() {}, warn: () => { warned = true }, error() {} },
+  })
+  const r = await handler(BRIDGE_ENDPOINTS.listPlatforms, {})
+  assert.equal(r.ok, true)
+  assert.deepEqual(r.value, {})
+  assert.equal(warned, true)
+})
+
+test('#55 listPlatforms 正常聚合各平台状态（含 login 容错）', async () => {
+  const { call } = makePlatformsHarness({
+    getStatus: () => ({
+      wechat: { id: 'wechat', name: '微信', status: 'connected', login: {} },
+      qq: { id: 'qq', name: 'QQ', status: 'idle', login: null },
+    }),
+  })
+  const r = await call(BRIDGE_ENDPOINTS.listPlatforms, {})
+  assert.equal(r.ok, true)
+  assert.equal(r.value.wechat.status, 'connected')
+  assert.equal(r.value.qq.status, 'idle')
+})

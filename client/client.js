@@ -1412,7 +1412,9 @@ function shouldYieldToOfficialPicker(facts) {
 var FEATURES = {
   MOBILE_HEADER: "mobileHeader",
   MOBILE_STYLES: "mobileStyles",
-  COMPOSER_COLLAPSE: "composerCollapse"
+  COMPOSER_COLLAPSE: "composerCollapse",
+  // 总开关：覆盖全部页面改写动作（含设置钻取/导航图标/iOS 键盘适配等残留项，见 #56）
+  PAGE_TWEAKS: "pageTweaks"
 };
 var runtimeFeatureOverrides = {};
 function setRuntimeFeatureOverrides(overrides) {
@@ -1431,8 +1433,11 @@ function detectMobileShellOrResponsivePlugin() {
   if (window.__DSH_CLIENT_UI_RESPONSIVE__) {
     return true;
   }
+  if (typeof window.__DSH_MOBILE_LAYER__ === "string" && window.__DSH_MOBILE_LAYER__) {
+    return true;
+  }
   if (typeof document !== "undefined") {
-    if (document.querySelector("[data-dsh-responsive-mobile]") || document.querySelector("[data-dsh-mobile-shell]")) {
+    if (document.querySelector("[data-dsh-responsive-mobile]") || document.querySelector("[data-dsh-mobile-shell]") || document.querySelector("[data-dsh-mobile-layer]") || document.querySelector("[data-dsh-mobile-ui]")) {
       return true;
     }
   }
@@ -1466,8 +1471,11 @@ function isFeatureEnabled(featureName, defaultDetector) {
   try {
     const hostConfig = window.__DSH_BRIDGE_CONFIG__;
     if (hostConfig && typeof hostConfig === "object") {
-      if (hostConfig.disablePageTweaks === true || hostConfig.disableMobileTweaks === true) {
+      if (hostConfig.disablePageTweaks === true || hostConfig.disableMobileTweaks === true || hostConfig.mobileUi === false) {
         return false;
+      }
+      if (hostConfig.mobileUi === true) {
+        return true;
       }
       if (typeof hostConfig[featureName] === "boolean") {
         return hostConfig[featureName];
@@ -1500,6 +1508,9 @@ function shouldYieldMobileStyles() {
   return !isFeatureEnabled(FEATURES.MOBILE_STYLES, () => {
     return !detectMobileShellOrResponsivePlugin();
   });
+}
+function shouldYieldAllPageTweaks() {
+  return !isFeatureEnabled(FEATURES.PAGE_TWEAKS, () => true);
 }
 function shouldYieldComposerCollapse() {
   return !isFeatureEnabled(FEATURES.COMPOSER_COLLAPSE, () => {
@@ -5252,6 +5263,8 @@ function BridgePanel({ rpcCall, preferredTab }) {
     if (preferredTab) setActiveTab(preferredTab);
   }, [preferredTab]);
   const [platforms, setPlatforms] = React.useState(null);
+  const [platformsError, setPlatformsError] = React.useState(null);
+  const [platformsSeq, setPlatformsSeq] = React.useState(0);
   const [selectedPlatform, setSelectedPlatform] = React.useState("wechat");
   const [copiedUrl, setCopiedUrl] = React.useState("");
   const copyEntryUrl = React.useCallback((url) => {
@@ -5392,10 +5405,27 @@ function BridgePanel({ rpcCall, preferredTab }) {
       const currentSeq = ++pollPlatformsSeqRef.current;
       try {
         const r = await authRpcCall(BRIDGE_ENDPOINTS.listPlatforms, {});
-        if (alive && currentSeq === pollPlatformsSeqRef.current && r?.ok) {
+        if (!alive || currentSeq !== pollPlatformsSeqRef.current) return;
+        if (r?.ok) {
           setPlatforms(r.value ?? {});
+          setPlatformsError(null);
+        } else {
+          const msg = r?.error?.message ?? r?.message ?? "listPlatforms \u67E5\u8BE2\u5931\u8D25";
+          setPlatformsError(msg);
+          try {
+            console.warn("[dsh-bridge] listPlatforms failed:", msg);
+          } catch {
+          }
         }
-      } catch {
+      } catch (e) {
+        if (alive && currentSeq === pollPlatformsSeqRef.current) {
+          const msg = e?.message ?? String(e);
+          setPlatformsError(msg);
+          try {
+            console.warn("[dsh-bridge] listPlatforms RPC error:", msg);
+          } catch {
+          }
+        }
       } finally {
         inFlight = false;
       }
@@ -5407,7 +5437,7 @@ function BridgePanel({ rpcCall, preferredTab }) {
       alive = false;
       clearInterval(t);
     };
-  }, [authRpcCall, adminUnlocked, isLocalhost]);
+  }, [authRpcCall, adminUnlocked, isLocalhost, platformsSeq]);
   React.useEffect(() => {
     load();
     if (!adminUnlocked && !isLocalhost) return;
@@ -5635,6 +5665,21 @@ function BridgePanel({ rpcCall, preferredTab }) {
     tabContent = React.createElement(
       "div",
       null,
+      // #55：清单查询失败时显错 + 重试，不再静默画成“即将支持”
+      platformsError && React.createElement(
+        "div",
+        {
+          style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 12, padding: "10px 12px", borderRadius: 8, border: "1px solid var(--dsw-alias-state-danger-primary,#f87171)", background: "var(--dsw-alias-state-danger-bg,#fef2f2)", fontSize: 12 }
+        },
+        React.createElement("span", { style: { flex: 1 } }, "\u5E73\u53F0\u6E05\u5355\u52A0\u8F7D\u5931\u8D25\uFF1A" + platformsError),
+        React.createElement("button", {
+          onClick: () => {
+            setPlatformsError(null);
+            setPlatformsSeq((s2) => s2 + 1);
+          },
+          style: { cursor: "pointer", borderRadius: 6, padding: "4px 12px" }
+        }, "\u91CD\u8BD5")
+      ),
       // 平台选择器（可点击切换）
       React.createElement(
         "div",
@@ -5642,7 +5687,8 @@ function BridgePanel({ rpcCall, preferredTab }) {
           style: { display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }
         },
         IM_PLATFORMS.map(({ id, label, icon: IconComponent, brandColor, desc }) => {
-          const platformData = platforms?.[id];
+          const loaded = platforms !== null && !platformsError;
+          const platformData = loaded ? platforms[id] : void 0;
           const available = !!platformData;
           const active = platformData?.status === "connected" || platformData?.status === "starting" || platformData?.status === "reconnecting";
           return React.createElement(
@@ -5679,7 +5725,7 @@ function BridgePanel({ rpcCall, preferredTab }) {
               }, "\u672A\u8FDE\u63A5"),
               !available && React.createElement("span", {
                 style: { fontSize: 11, color: "var(--dsw-alias-label-tertiary,#9ca3af)", fontWeight: 400 }
-              }, "\u5373\u5C06\u652F\u6301")
+              }, loaded ? "\u5373\u5C06\u652F\u6301" : "\u52A0\u8F7D\u4E2D\u2026")
             ),
             React.createElement("div", { style: { ...s.muted, marginTop: 4, fontSize: 11 } }, desc)
           );
@@ -7221,17 +7267,24 @@ function apply(ctx) {
   window.__dshClientCtx = ctx;
   const intl = createTranslator(ctx);
   localeT = (key, vars) => intl.t(key, vars);
-  setupSettingsDrilldown();
-  if (typeof ctx.effect === "function") {
-    ctx.effect(() => registerSettingsNavIcon(() => "\u8FDC\u7A0B\u8BBF\u95EE"), "dsh-bridge: settings nav icon");
-  } else {
-    registerSettingsNavIcon(() => "\u8FDC\u7A0B\u8BBF\u95EE");
+  const pageTweaksOn = !shouldYieldAllPageTweaks();
+  if (pageTweaksOn) {
+    setupSettingsDrilldown();
+  }
+  if (pageTweaksOn) {
+    if (typeof ctx.effect === "function") {
+      ctx.effect(() => registerSettingsNavIcon(() => "\u8FDC\u7A0B\u8BBF\u95EE"), "dsh-bridge: settings nav icon");
+    } else {
+      registerSettingsNavIcon(() => "\u8FDC\u7A0B\u8BBF\u95EE");
+    }
   }
   const rpcCall = (endpoint, payload, signal) => ctx.connection.rpc.call(BRIDGE_RPC_CHANNEL, endpoint, payload, signal);
   window.__dshOpenRemoteWorkspaceModal = (onAdded, onPickDirect, onCancel) => showRemoteWorkspaceDialog(rpcCall, onAdded, ctx, onPickDirect, onCancel);
-  setupIosKeyboardAdapter();
-  setupComposerCollapse();
-  setupMobileExperience(rpcCall, ctx);
+  if (pageTweaksOn) {
+    setupIosKeyboardAdapter();
+    setupComposerCollapse();
+    setupMobileExperience(rpcCall, ctx);
+  }
   const injected = () => ({ pick: () => ctx.workspaces?.pickDirectory?.() });
   ctx.slots.inject(
     "conversation.hero.workspace.directoryFlow",

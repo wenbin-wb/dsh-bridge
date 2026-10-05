@@ -89,6 +89,7 @@ This plugin supports **both old and new DSH releases** — there is no need to p
 | `0.1.0` ~ `0.1.1` | ✅ Supported (loopback-only RPC channel hardening) |
 | `0.1.2` ~ `0.1.4` | ✅ Supported |
 | `0.1.5-alpha.1` ~ `0.1.5-rc.2` | ✅ Supported (since v2.10.9) |
+| Desktop builtin host `0.2.0-rc.2` (profile `desktop`) | ⚠️ Verifying (known #55: IM platform list may misrender in desktop settings while web works) |
 
 > **About the built-in DSH authentication**: since `0.1.2`, `dsh web` ships browser authentication — it prints a URL carrying a one-time token (`http://127.0.0.1:3080/?token=…`), which is exchanged for a session cookie bound to the loopback address. Afterwards `/`, `/api` and every plugin RPC channel require that cookie.
 >

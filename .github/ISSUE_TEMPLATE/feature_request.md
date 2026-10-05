@@ -1,3 +1,10 @@
+---
+name: 功能建议
+about: 描述你想解决的场景与期望行为
+title: "[Feat] "
+labels: enhancement
+---
+
 # 功能建议 / 改进请求
 
 ## 你想解决什么问题？

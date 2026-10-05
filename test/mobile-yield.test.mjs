@@ -10,10 +10,12 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  FEATURES,
   detectMobileShellOrResponsivePlugin,
   shouldYieldMobileHeader,
   shouldYieldMobileStyles,
   shouldYieldComposerCollapse,
+  shouldYieldAllPageTweaks,
   setRuntimeFeatureOverrides,
   getRuntimeFeatureOverrides,
   resetRuntimeFeatureOverrides,
@@ -242,4 +244,63 @@ test('client/client.js 打包产物必须同步包含让位逻辑', () => {
   assert.match(unescapedBundle, /shouldYieldMobileStyles/);
   assert.match(unescapedBundle, /shouldYieldComposerCollapse/);
   assert.match(unescapedBundle, /__DSH_MOBILE_SHELL__/);
+});
+
+// ---------- 4. 回归测试（Issue #56）：第三方层登记 + 包级总开关 ----------
+
+test('#56 第三方移动层显式登记 window.__DSH_MOBILE_LAYER__ 即让位', () => {
+  const cleanup = setupMockBrowser({ windowProps: { __DSH_MOBILE_LAYER__: 'dsh-tauri-mobile-ui' } });
+  try {
+    assert.equal(detectMobileShellOrResponsivePlugin(), true);
+    assert.equal(shouldYieldMobileHeader(), true);
+    assert.equal(shouldYieldMobileStyles(), true);
+  } finally {
+    cleanup();
+  }
+});
+
+test('#56 第三方 DOM 标记 [data-dsh-mobile-layer] / [data-dsh-mobile-ui] 即让位', () => {
+  for (const sel of ['[data-dsh-mobile-layer]', '[data-dsh-mobile-ui]']) {
+    const cleanup = setupMockBrowser({ matchingSelectors: [sel] });
+    try {
+      assert.equal(detectMobileShellOrResponsivePlugin(), true, sel);
+    } finally {
+      cleanup();
+    }
+  }
+});
+
+test('#56 宿主 mobileUi:false 即关闭整层页面改写（含总开关）', () => {
+  const cleanup = setupMockBrowser({ windowProps: { __DSH_BRIDGE_CONFIG__: { mobileUi: false } } });
+  try {
+    assert.equal(shouldYieldAllPageTweaks(), true);
+    assert.equal(shouldYieldMobileHeader(), true);
+    assert.equal(shouldYieldComposerCollapse(), true);
+  } finally {
+    cleanup();
+  }
+});
+
+test('#56 纯 Web 默认环境下总开关保持开启（不误伤正常用户）', () => {
+  const cleanup = setupMockBrowser();
+  try {
+    assert.equal(shouldYieldAllPageTweaks(), false);
+    assert.equal(FEATURES.PAGE_TWEAKS, 'pageTweaks');
+  } finally {
+    cleanup();
+  }
+});
+
+test('#56 apply() 必须经总开关守卫全部页面改写入口', () => {
+  assert.match(indexSource, /shouldYieldAllPageTweaks/);
+  assert.match(indexSource, /pageTweaksOn/);
+  // 残留项（钻取/导航图标/iOS 适配）必须包在总开关内，而非无条件执行
+  assert.match(indexSource, /if\s*\(\s*pageTweaksOn\s*\)\s*\{[\s\S]*?setupSettingsDrilldown\(\)/);
+  assert.match(indexSource, /if\s*\(\s*pageTweaksOn\s*\)\s*\{[\s\S]*?setupMobileExperience\(rpcCall,\s*ctx\)/);
+});
+
+test('#56 打包产物必须同步包含登记标记与总开关', () => {
+  assert.match(unescapedBundle, /__DSH_MOBILE_LAYER__/);
+  assert.match(unescapedBundle, /data-dsh-mobile-layer/);
+  assert.match(unescapedBundle, /shouldYieldAllPageTweaks/);
 });
