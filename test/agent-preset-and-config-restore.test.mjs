@@ -583,3 +583,48 @@ test('#55 listPlatforms 正常聚合各平台状态（含 login 容错）', asyn
   assert.equal(r.value.wechat.status, 'connected')
   assert.equal(r.value.qq.status, 'idle')
 })
+
+// ---------------------------------------------------------------------------
+// 7. RPC：页面改写层用户偏好读写（设置面板可见开关）
+// ---------------------------------------------------------------------------
+
+function makeUiFlagsHarness({ stored = {}, authManager = null } = {}) {
+  let handler
+  const ctx = {
+    connection: { rpc: { handle: (channel, fn) => { handler = fn; return () => {} } } },
+    get: () => undefined,
+  }
+  const state = { pageTweaks: stored.pageTweaks ?? true }
+  installBridgeRpc(ctx, {
+    service: {},
+    authManager,
+    platformManager: null,
+    logger: { info() {}, warn() {}, error() {} },
+    getUiFlags: async () => ({ pageTweaks: state.pageTweaks, hostAllows: true, effective: state.pageTweaks }),
+    setUiFlags: async (patch) => {
+      if (patch.pageTweaks !== undefined) state.pageTweaks = patch.pageTweaks === true
+      return { pageTweaks: state.pageTweaks, hostAllows: true, effective: state.pageTweaks }
+    },
+  })
+  return (endpoint, payload = {}) => handler(endpoint, payload)
+}
+
+test('uiGetFlags 返回三态（用户偏好/宿主允许/实际生效）', async () => {
+  const call = makeUiFlagsHarness({ stored: { pageTweaks: false } })
+  const r = await call(BRIDGE_ENDPOINTS.uiGetFlags, {})
+  assert.equal(r.ok, true)
+  assert.equal(r.value.pageTweaks, false)
+  assert.equal(r.value.effective, false)
+})
+
+test('uiUpdateConfig 非法值拒绝，合法值持久化并返回三态', async () => {
+  const call = makeUiFlagsHarness({})
+  const bad = await call(BRIDGE_ENDPOINTS.uiUpdateConfig, { pageTweaks: 'yes' })
+  assert.equal(bad.ok, false)
+  const r = await call(BRIDGE_ENDPOINTS.uiUpdateConfig, { pageTweaks: false })
+  assert.equal(r.ok, true)
+  assert.equal(r.value.pageTweaks, false)
+  assert.equal(r.value.effective, false)
+  const back = await call(BRIDGE_ENDPOINTS.uiGetFlags, {})
+  assert.equal(back.value.pageTweaks, false)
+})

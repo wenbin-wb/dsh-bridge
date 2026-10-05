@@ -1755,6 +1755,9 @@ var BRIDGE_ENDPOINTS = {
   authAdminLock: "authAdminLock",
   // 首次启用引导：用户确认已了解后置位，避免重复打扰
   dismissFirstRunGuide: "dismissFirstRunGuide",
+  // 页面改写层用户偏好（设置面板可见开关，issue #55 讨论衍生）
+  uiGetFlags: "uiGetFlags",
+  uiUpdateConfig: "uiUpdateConfig",
   // 平台管理器（多 IM 平台统一接口）
   listPlatforms: "listPlatforms",
   platformLogin: "platformLogin",
@@ -4581,6 +4584,63 @@ function RestartDshCard({ rpcCall }) {
     )
   );
 }
+function PageTweaksCard({ status, rpcCall }) {
+  const [pending, setPending] = React.useState(false);
+  const [err, setErr] = React.useState(null);
+  const effective = status?.mobileUi ?? true;
+  const hostAllows = status?.mobileUiHost ?? true;
+  const toggle = async () => {
+    setPending(true);
+    setErr(null);
+    try {
+      const r = await rpcCall(BRIDGE_ENDPOINTS.uiUpdateConfig, { pageTweaks: !effective });
+      if (!r?.ok) throw new Error(r?.error?.message ?? "\u4FDD\u5B58\u5931\u8D25");
+      try {
+        window.localStorage?.setItem("dsh_bridge:feature:pageTweaks", r.value.effective ? "1" : "0");
+      } catch {
+      }
+      window.location.reload();
+    } catch (e) {
+      setErr(e?.message ?? String(e));
+    } finally {
+      setPending(false);
+    }
+  };
+  return React.createElement(
+    "div",
+    { style: { ...s.card, marginBottom: 16 } },
+    React.createElement(
+      "div",
+      { style: { marginBottom: 10 } },
+      React.createElement(
+        "div",
+        { style: { ...s.label, fontSize: 13, display: "flex", alignItems: "center", gap: 6 } },
+        "\u{1F4F1} \u79FB\u52A8\u7AEF\u9875\u9762\u6539\u5199\u5C42"
+      ),
+      React.createElement(
+        "div",
+        { style: { ...s.muted, marginTop: 3 } },
+        "\u63A7\u5236\u624B\u673A\u7AEF\u9876\u680F\u3001\u5168\u5C40\u79FB\u52A8\u6837\u5F0F\u3001\u8F93\u5165\u6846\u6298\u53E0\u7B49\u9875\u9762\u6539\u5199\u3002\u5173\u95ED\u540E\u4EC5\u4FDD\u7559\u8FDC\u7A0B\u8BBF\u95EE/\u96A7\u9053/\u673A\u5668\u4EBA\u529F\u80FD\uFF0C\u5237\u65B0\u9875\u9762\u751F\u6548\u3002" + (!hostAllows ? "\u5F53\u524D\u5BBF\u4E3B\u5DF2\u5168\u5C40\u5173\u95ED\u6B64\u5C42\uFF08mobileUi:false\uFF09\uFF0C\u6B64\u5904\u4E0D\u53EF\u5F00\u542F\u3002" : "")
+      )
+    ),
+    React.createElement(
+      "div",
+      { style: { display: "flex", alignItems: "center", gap: 10 } },
+      React.createElement("button", {
+        type: "button",
+        disabled: pending || !hostAllows,
+        onClick: toggle,
+        style: { ...effective ? s.btnGhost : s.btnPri, height: 32, fontSize: 12, padding: "0 14px", opacity: pending || !hostAllows ? 0.5 : 1 }
+      }, pending ? "\u4FDD\u5B58\u4E2D\u2026" : effective ? "\u5173\u95ED\u9875\u9762\u6539\u5199" : hostAllows ? "\u5F00\u542F\u9875\u9762\u6539\u5199" : "\u5BBF\u4E3B\u5DF2\u5173\u95ED"),
+      React.createElement(
+        "span",
+        { style: { ...s.muted, fontSize: 12 } },
+        "\u5F53\u524D\uFF1A" + (effective ? "\u5F00\u542F" : "\u5173\u95ED")
+      )
+    ),
+    err && React.createElement("div", { style: { marginTop: 8, fontSize: 12, color: "var(--dsw-alias-state-error-primary,#dc2626)" } }, "\u4FDD\u5B58\u5931\u8D25\uFF1A" + err)
+  );
+}
 function RemoteWorkspaceCard({ rpcCall }) {
   const [workspaces, setWorkspaces] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
@@ -5647,6 +5707,7 @@ function BridgePanel({ rpcCall, preferredTab }) {
       React.Fragment,
       null,
       React.createElement(SystemMetricsWidget, { metrics: status?.system }),
+      React.createElement(PageTweaksCard, { status, rpcCall: authRpcCall }),
       React.createElement(RemoteWorkspaceCard, { rpcCall: authRpcCall }),
       React.createElement(NetworkDiagnosticWidget, { rpcCall: authRpcCall }),
       React.createElement(BackupRestoreWidget, {

@@ -304,3 +304,11 @@ test('#56 打包产物必须同步包含登记标记与总开关', () => {
   assert.match(unescapedBundle, /data-dsh-mobile-layer/);
   assert.match(unescapedBundle, /shouldYieldAllPageTweaks/);
 });
+
+test('设置面板可见开关 PageTweaksCard 必须存在并走 uiUpdateConfig', () => {
+  assert.match(indexSource, /function PageTweaksCard/);
+  assert.match(indexSource, /uiUpdateConfig/);
+  assert.match(indexSource, /dsh_bridge:feature:pageTweaks/);
+  assert.match(unescapedBundle, /PageTweaksCard/);
+  assert.match(unescapedBundle, /uiUpdateConfig/);
+});

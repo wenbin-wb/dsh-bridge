@@ -2502,6 +2502,51 @@ function RestartDshCard({ rpcCall }) {
   );
 }
 
+// 运维 Tab 内的页面改写层开关卡片（设置面板可见开关；宿主 mobileUi:false 优先）
+function PageTweaksCard({ status, rpcCall }) {
+  const [pending, setPending] = React.useState(false);
+  const [err, setErr] = React.useState(null);
+  const effective = status?.mobileUi ?? true;
+  const hostAllows = status?.mobileUiHost ?? true;
+  const toggle = async () => {
+    setPending(true);
+    setErr(null);
+    try {
+      const r = await rpcCall(BRIDGE_ENDPOINTS.uiUpdateConfig, { pageTweaks: !effective });
+      if (!r?.ok) throw new Error(r?.error?.message ?? '保存失败');
+      // 本地即时生效：与服务端注入/自动探测同优先级链，刷新后 apply() 直接读取
+      try { window.localStorage?.setItem('dsh_bridge:feature:pageTweaks', r.value.effective ? '1' : '0'); } catch {}
+      window.location.reload();
+    } catch (e) {
+      setErr(e?.message ?? String(e));
+    } finally {
+      setPending(false);
+    }
+  };
+  return React.createElement('div', { style: { ...s.card, marginBottom: 16 } },
+    React.createElement('div', { style: { marginBottom: 10 } },
+      React.createElement('div', { style: { ...s.label, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 } },
+        '📱 移动端页面改写层'
+      ),
+      React.createElement('div', { style: { ...s.muted, marginTop: 3 } },
+        '控制手机端顶栏、全局移动样式、输入框折叠等页面改写。关闭后仅保留远程访问/隧道/机器人功能，刷新页面生效。'
+        + (!hostAllows ? '当前宿主已全局关闭此层（mobileUi:false），此处不可开启。' : '')
+      ),
+    ),
+    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 10 } },
+      React.createElement('button', {
+        type: 'button',
+        disabled: pending || !hostAllows,
+        onClick: toggle,
+        style: { ...(effective ? s.btnGhost : s.btnPri), height: 32, fontSize: 12, padding: '0 14px', opacity: (pending || !hostAllows) ? 0.5 : 1 },
+      }, pending ? '保存中…' : (effective ? '关闭页面改写' : (hostAllows ? '开启页面改写' : '宿主已关闭'))),
+      React.createElement('span', { style: { ...s.muted, fontSize: 12 } },
+        '当前：' + (effective ? '开启' : '关闭')),
+    ),
+    err && React.createElement('div', { style: { marginTop: 8, fontSize: 12, color: 'var(--dsw-alias-state-error-primary,#dc2626)' } }, '保存失败：' + err),
+  );
+}
+
 // 运维 Tab 内的远程工作区管理卡片
 function RemoteWorkspaceCard({ rpcCall }) {
   const [workspaces, setWorkspaces] = React.useState([]);
@@ -3554,6 +3599,7 @@ function BridgePanel({ rpcCall, preferredTab }) {
   } else if (activeTab === 'ops') {
     tabContent = React.createElement(React.Fragment, null,
       React.createElement(SystemMetricsWidget, { metrics: status?.system }),
+      React.createElement(PageTweaksCard, { status, rpcCall: authRpcCall }),
       React.createElement(RemoteWorkspaceCard, { rpcCall: authRpcCall }),
       React.createElement(NetworkDiagnosticWidget, { rpcCall: authRpcCall }),
       React.createElement(BackupRestoreWidget, {
