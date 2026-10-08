@@ -1,10 +1,7 @@
 // BridgeService / ProxyServer 修复回归测试（掩码回写、失效指标）
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { BridgeService, ProxyServer, normalizeExternalTunnelUrl } from '../lib/index.js'
+import { BridgeService, ProxyServer, normalizeExternalTunnelUrl, restoreExternalTunnelConfig } from '../lib/index.js'
 
 test('saveCloudflaredConfig 忽略掩码 ******，保留真实 token（掩码回写回归）', async () => {
   const svc = new BridgeService({ dshPort: 1, proxyPort: 2, onPersist: async () => {} })
@@ -60,8 +57,9 @@ test('saveExternalTunnel 登记外部已部署隧道：校验 URL、持久化、
   assert.equal(persisted.at(-1).externalTunnel, null)
 })
 
-// 落盘配置可被本地改写/手工编辑，因此"保存时校验、启动恢复时不校验"是真实缺口：
-// 非 http(s) 地址回填后 `.origin` 是字符串 "null"，会经 CORS 白名单放行全部 opaque origin。
+// 落盘配置可被本地改写/手工编辑，因此"保存时校验、启动恢复时不校验"是对称性缺口：
+// 非法值会被回填进配置对象并被面板当公网地址展示、生成二维码。注意这不是 CORS 防线——
+// 进入白名单前另有 toHttpOrigin 闸门，所以这里属于纵深防御 + 输入归一化。
 test('normalizeExternalTunnelUrl：保存与启动恢复共用同一 http(s) 收敛', () => {
   // 合法：归一化（去末尾斜杠、trim、协议与主机大小写归一）
   assert.equal(normalizeExternalTunnelUrl('https://tunnel.example.com/'), 'https://tunnel.example.com')
@@ -69,19 +67,24 @@ test('normalizeExternalTunnelUrl：保存与启动恢复共用同一 http(s) 收
   assert.equal(normalizeExternalTunnelUrl('HTTP://Example.COM'), 'http://example.com')
   assert.equal(normalizeExternalTunnelUrl('https://tunnel.example.com:8443/path'), 'https://tunnel.example.com:8443/path')
 
-  // 非法：非 http(s) 与解析失败一律丢弃（这些值的 .origin 都是 "null"）
+  // 非法：非 http(s) 与解析失败一律丢弃
   for (const bad of ['dsh-app://app', 'file:///etc/passwd', 'javascript:alert(1)', 'data:text/html,x', 'ftp://x.com', 'not-a-url', '', null, undefined, 0, {}, []]) {
     assert.equal(normalizeExternalTunnelUrl(bad), null, `${String(bad)} 不得回填/登记`)
   }
 })
 
-test('启动恢复外部隧道必须走 normalizeExternalTunnelUrl（结构守卫）', () => {
-  const src = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '..', 'lib/index.js'), 'utf8')
-  assert.match(
-    src,
-    /const restoredUrl = normalizeExternalTunnelUrl\(stored\.externalTunnel\?\.url\)/,
-    'loadConfig() 恢复 externalTunnelConfig 时必须复用同一收敛函数，否则会重新出现"恢复不校验"缺口',
-  )
+test('restoreExternalTunnelConfig：恢复侧丢弃非法值，且不把"未登记"误报为非法', () => {
+  // 被篡改/手工编辑的落盘值：丢弃 + 标记 invalid（供告警）
+  assert.deepEqual(restoreExternalTunnelConfig({ url: 'dsh-app://app' }), { config: null, invalid: true })
+  assert.deepEqual(restoreExternalTunnelConfig({ url: 'file:///etc/passwd' }), { config: null, invalid: true })
+
+  // 合法值：归一化后回填
+  assert.deepEqual(restoreExternalTunnelConfig({ url: 'https://tunnel.example.com/' }), { config: { url: 'https://tunnel.example.com' }, invalid: false })
+
+  // 未登记：静默为 null（invalid=false），不产生误导性告警
+  for (const empty of [{}, { url: '' }, { url: '   ' }, null, undefined]) {
+    assert.deepEqual(restoreExternalTunnelConfig(empty), { config: null, invalid: false }, `${JSON.stringify(empty)} 不应被当成非法地址`)
+  }
 })
 
 test('getStatus 暴露 externalTunnel（含二维码）', async () => {
