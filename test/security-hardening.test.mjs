@@ -224,3 +224,39 @@ test('WS 升级：白名单被污染出 "null" 时仍拒绝 Origin: null', async
     assert.match(ok, /^HTTP\/1\.1 101/, `合法回环来源仍应放行，实际: ${ok}`)
   } finally { await close() }
 })
+
+test('loopback-token 响应带 Cache-Control: no-store（响应体含 adminToken）', async () => {
+  const proxy = new ProxyServer({
+    localPort: 0, targetPort: 1,
+    // 仅需 createAdminSession 即可走通"回环直发"分支；internalTunnelSecret 用于判定隧道来源
+    authManager: { createAdminSession: () => 'test-only-token', internalTunnelSecret: 'secret' },
+    logger: { info() {}, warn() {}, error() {}, debug() {} },
+    allowedOrigins: () => ['http://127.0.0.1:30882'],
+  })
+  await proxy.start()
+  try {
+    const port = proxy.server.address().port
+    const call = (method) => new Promise((resolve, reject) => {
+      const req = httpRequest({ host: '127.0.0.1', port, method, path: '/__dsh_bridge__/loopback-token',
+        headers: { origin: 'http://127.0.0.1:30882' } }, (res) => {
+        const chunks = []
+        res.on('data', (c) => chunks.push(c))
+        res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks).toString() }))
+      })
+      req.on('error', reject)
+      req.end()
+    })
+
+    const post = await call('POST')
+    assert.equal(post.status, 200)
+    assert.match(post.body, /adminToken/, '前置条件：该响应体确实携带令牌')
+    assert.equal(post.headers['cache-control'], 'no-store', 'Vary: Origin 只影响缓存键，不禁缓存')
+    assert.equal(post.headers['access-control-allow-origin'], 'http://127.0.0.1:30882')
+
+    const preflight = await call('OPTIONS')
+    assert.equal(preflight.status, 204)
+    assert.equal(preflight.headers['cache-control'], 'no-store')
+  } finally {
+    await proxy.stop()
+  }
+})
