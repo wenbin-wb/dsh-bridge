@@ -3231,6 +3231,8 @@ function BridgePanel({ rpcCall, preferredTab }) {
     window.location.protocol === 'file:' ||
     window.location.protocol === 'vscode-webview:' ||
     window.location.protocol === 'app:' ||
+    // 官方 Desktop 使用 dsh-app://app/；漏判会使 IM 轮询在首次请求前被暂停。
+    (window.location.protocol === 'dsh-app:' && window.location.hostname === 'app') ||
     window.location.hostname.endsWith('.local')
   );
   const [adminUnlocked, setAdminUnlocked] = React.useState(false);

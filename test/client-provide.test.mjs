@@ -55,6 +55,46 @@ const unescapedBundle = bundle.replace(
 
 const { apply } = await import('../client/index.js');
 
+test('IM 平台首次轮询：Desktop 与回环可加载，未解锁远程页面仍暂停', async () => {
+  const originalEffect = global.React.useEffect;
+  const originalFetch = global.fetch;
+  const originalLocation = window.location;
+  try {
+    global.fetch = async () => ({ ok: true, json: async () => ({ ok: true, adminToken: 'test-only' }) });
+    for (const [url, shouldPoll] of [
+      ['dsh-app://app/', true],
+      ['http://127.0.0.1:3082/', true],
+      ['https://remote.example/', false],
+      ['dsh-app://untrusted/', false],
+    ]) {
+      window.location = new URL(url);
+      const effects = [];
+      global.React.useEffect = (effect) => effects.push(effect);
+      const ctx = createMockCtx();
+      const endpoints = [];
+      ctx.connection.rpc.call = async (_channel, endpoint) => {
+        endpoints.push(endpoint);
+        return { ok: true, value: {} };
+      };
+      apply(ctx);
+      effects.length = 0;
+      const panel = ctx._getProvided()['dsh-bridge'].render({ preferredTab: 'bot' });
+      panel.type(panel.props);
+      const cleanups = effects.map(effect => effect()).filter(fn => typeof fn === 'function');
+      try {
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(endpoints.includes('listPlatforms'), shouldPoll, url);
+      } finally {
+        cleanups.forEach(cleanup => cleanup());
+      }
+    }
+  } finally {
+    global.React.useEffect = originalEffect;
+    global.fetch = originalFetch;
+    window.location = originalLocation;
+  }
+});
+
 function createMockCtx() {
   const provided = {};
   const registeredSlots = [];
