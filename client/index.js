@@ -78,6 +78,9 @@ function isLocalEnvironment() {
     proto === 'file:' ||
     proto === 'vscode-webview:' ||
     proto === 'app:' ||
+    // 官方 Desktop（0.2.0-rc.2）页面来源为 dsh-app://app/；与 BridgePanel 的
+    // isLocalhost 判定保持一致，否则同一页面在两处本机判定上会得到相反结论。
+    (proto === 'dsh-app:' && host === 'app') ||
     typeof window.__DSH_ELECTRON__ !== 'undefined' ||
     (typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.includes('Electron'))
   );

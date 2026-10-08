@@ -225,6 +225,31 @@ test('client/client.js 打包产物必须同步包含宿主控制面', () => {
   assert.match(unescapedBundle, /Session actions/, '产物缺少会话操作英文匹配，请运行 npm run build:client');
 });
 
+test('打包产物与源码同步：两处 dsh-app 本机判定都必须进产物', () => {
+  // 背景（PR #61）：DSH Desktop 用 dsh-app://app/ 加载面板。BridgePanel 的 isLocalhost
+  // 与模块级 isLocalEnvironment() 都必须识别该来源；两者不同步会让同一页面在两处
+  // 本机判定上得到相反结论。产物是提交进仓库的（client/client.js），只改源码忘记
+  // npm run build:client 时线上仍是旧判定——本用例专门拦这种情况。
+  const sourceConditions = indexSource.match(/["']dsh-app:["']\s*&&\s*[A-Za-z_$][\w.$]*\s*===\s*["']app["']/g) || [];
+  const bundleConditions = unescapedBundle.match(/["']dsh-app:["']\s*&&\s*[A-Za-z_$][\w.$]*\s*===\s*["']app["']/g) || [];
+
+  assert.equal(sourceConditions.length, 2, `client/index.js 应含 2 处 dsh-app 判定（isLocalEnvironment 与 BridgePanel），实际 ${sourceConditions.length}`);
+  assert.equal(
+    bundleConditions.length, sourceConditions.length,
+    `产物里的 dsh-app 判定数量与源码不一致（源码 ${sourceConditions.length} / 产物 ${bundleConditions.length}），请运行 npm run build:client`,
+  );
+  assert.match(
+    unescapedBundle,
+    /["']dsh-app:["']\s*&&\s*[\w.$]*host\s*===\s*["']app["']/,
+    '产物缺少 isLocalEnvironment 的 dsh-app 判定，请运行 npm run build:client',
+  );
+  assert.match(
+    unescapedBundle,
+    /["']dsh-app:["']\s*&&\s*window\.location\.hostname\s*===\s*["']app["']/,
+    '产物缺少 BridgePanel isLocalhost 的 dsh-app 判定，请运行 npm run build:client',
+  );
+});
+
 // ---------- 6. 宿主按钮文案匹配（中英双语，见 PR #48 后侧边栏空白回归） ----------
 //
 // 宿主按钮 aria-label 随界面语言切换：中文「打开侧边栏 / 收起侧边栏 / 操作 / 新建会话」，
