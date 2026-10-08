@@ -169,9 +169,12 @@ test('BridgeService 白名单：隧道地址非 http(s) 时不产生 "null"', as
     for (const origin of origins) {
       assert.match(origin, /^https?:\/\//, `白名单只允许 http(s) origin，实际: ${origin}`)
     }
-    // http(s) 的隧道地址仍应正常放行（修复不得削弱既有能力）
+    // http(s) 的隧道地址仍应正常放行（修复不得削弱既有能力）。
+    // 用严格相等比对而非子串匹配：CodeQL js/incomplete-url-substring-sanitization
+    // 会把「URL 字面量 + includes/startsWith」判成不完整的 URL 校验。
     service.customTunnel = { publicUrl: 'https://tunnel.example.com' }
-    assert.ok(proxy.allowedOrigins().includes('https://tunnel.example.com'))
+    const httpsOrigins = proxy.allowedOrigins().filter((origin) => origin === 'https://tunnel.example.com')
+    assert.equal(httpsOrigins.length, 1, `合法 https 隧道来源应放行，实际: ${JSON.stringify(proxy.allowedOrigins())}`)
   } finally {
     await proxy.stop()
   }
