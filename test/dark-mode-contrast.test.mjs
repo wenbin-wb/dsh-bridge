@@ -87,17 +87,71 @@ function buttonStyleBody(source, label) {
   assert.fail(`未找到 ${label} 的 style 对象（含 ...s.btnPri）——文案或样式结构已变，请同步本测试`);
 }
 
-/** 覆盖 `color: '#ffffff'`、`color: 'white'` 与条件式 `color: x ? '#ffffff' : ...` */
-const LITERAL_WHITE = /color:\s*[^,\n]*(?:['"]#(?:fff|ffffff)['"]|['"]white['"])/i;
+/**
+ * 按逗号切分 style 体的顶层成员，跳过字符串与括号（`var(--x, #fff)` 里的逗号
+ * 不能切断、三元里的冒号不能当属性分隔）。
+ */
+function topLevelProps(body) {
+  const parts = [];
+  let cur = '';
+  let depth = 0;
+  let quote = null;
+  for (let i = 0; i < body.length; i += 1) {
+    const c = body[i];
+    if (quote) {
+      if (c === '\\') { i += 1; cur += c; continue; }
+      if (c === quote) quote = null;
+      cur += c;
+      continue;
+    }
+    if (c === "'" || c === '"' || c === '`') { quote = c; cur += c; continue; }
+    // 注释里的冒号（如 `3.77:1`）不能当属性分隔，逗号也不能切断属性
+    if (c === '/' && body[i + 1] === '/') {
+      while (i < body.length && body[i] !== '\n') i += 1;
+      continue;
+    }
+    if (c === '/' && body[i + 1] === '*') {
+      i = body.indexOf('*/', i + 2);
+      if (i < 0) break;
+      i += 1;
+      continue;
+    }
+    if (c === '(' || c === '[' || c === '{') depth += 1;
+    else if (c === ')' || c === ']' || c === '}') depth -= 1;
+    else if (c === ',' && depth === 0) { parts.push(cur); cur = ''; continue; }
+    cur += c;
+  }
+  if (cur.trim()) parts.push(cur);
+  const props = {};
+  for (const part of parts) {
+    let q = null;
+    for (let i = 0; i < part.length; i += 1) {
+      const c = part[i];
+      if (q) { if (c === q) q = null; continue; }
+      if (c === "'" || c === '"' || c === '`') { q = c; continue; }
+      if (c === ':') {
+        const key = part.slice(0, i).trim();
+        if (/^[A-Za-z_$][\w$]*$/.test(key)) props[key] = part.slice(i + 1).trim();
+        break;
+      }
+    }
+  }
+  return props;
+}
 
-test('安全认证页：保存访问密码 / 保存管理密码按钮不得硬编码前景色', () => {
+const HAS_TOKEN = (v) => /var\(--dsw-/.test(v ?? '');
+
+test('安全认证页：保存访问密码 / 保存管理密码按钮的前景必须随主题翻转', () => {
   for (const label of ['保存访问密码', '保存管理密码']) {
     const body = buttonStyleBody(indexSource, label);
     assert.match(body, /\.\.\.s\.btnPri/, `${label} 应继承 s.btnPri 的主题前景色`);
-    assert.doesNotMatch(
-      body,
-      LITERAL_WHITE,
-      `${label} 不得硬编码白色前景：暗色主题下 --dsw-alias-brand-primary 是近白 #f9fafb，白字不可见`,
+    // 背景在"品牌底"与"成功态纯色底"之间切换：前景也必须是切换式
+    // （品牌分支走令牌 → 暗色下品牌底是近白、前景相应变深；成功分支写死纯色对）。
+    const fg = topLevelProps(body).color ?? '';
+    assert.match(
+      fg,
+      /var\(--dsw-alias-/,
+      `${label} 的 color 必须含主题令牌：暗色主题下品牌底是近白 #f9fafb，写死白字会不可见（实际 color: ${fg}）`,
     );
   }
 });
@@ -115,39 +169,47 @@ test('警示按钮（解锁管理权限 / 立即设置密码）必须成对使�
   assert.match(warnDef, /color:\s*'var\(--dsw-static-amber-900/, 's.btnWarn 前景应用琥珀深色令牌');
 });
 
-test('通用不变式：主按钮覆盖背景色时必须成对给出前景色', () => {
+test('通用不变式：主按钮的背景与前景必须成对翻转（否则另一套主题下必有低对比）', () => {
   const offenders = [];
   const re = /\.\.\.s\.btnPri/g;
   let m;
   while ((m = re.exec(indexSource)) !== null) {
     const body = enclosingStyleBody(indexSource, m.index);
     if (!body) continue;
-    const bg = /background:\s*([^,\n]+)/.exec(body);
-    const fg = /color:\s*[^,\n]*?['"]([^'"]+)['"]/.exec(body);
-    const bgIsToken = Boolean(bg && bg[1].includes('var(--dsw-alias'));
-    const bgIsLiteral = Boolean(bg && /^['"]#/.test(bg[1].trim()));
-    const fgIsLiteral = Boolean(fg && (fg[1].startsWith('#') || fg[1] === 'white'));
+    const props = topLevelProps(body);
+    const bg = props.background;
+    const fg = props.color;
+    if (bg === undefined) continue; // 未覆盖背景 = 完全继承 s.btnPri，配对天然成立
     const line = indexSource.slice(0, m.index).split('\n').length;
-    if (bgIsToken && fgIsLiteral) {
-      offenders.push({ line, kind: '令牌背景 + 硬编码前景', background: bg[1].trim(), color: fg[1] });
-    }
-    if (bgIsLiteral && !fg) {
-      offenders.push({ line, kind: '硬编码背景 + 未指定前景（会继承品牌前景令牌）', background: bg[1].trim() });
+    // 背景含 `undefined` 分支 = 该分支回落到 s.btnPri 的品牌底（令牌，随主题翻转）
+    const bgFlips = HAS_TOKEN(bg) || /\bundefined\b/.test(bg ?? '');
+    const fgFlips = HAS_TOKEN(fg) || fg === undefined; // 缺省 = 继承 s.btnPri 的翻转前景
+
+    if (fg === undefined && bg !== undefined) {
+      offenders.push({ line, kind: '覆盖了背景却未给前景（会继承品牌前景令牌）', background: bg.slice(0, 80) });
+    } else if (bg !== undefined && bgFlips !== fgFlips) {
+      // 一方随主题翻转、另一方是写死值 → 必有一套主题下前景/背景撞色
+      offenders.push({
+        line,
+        kind: bgFlips ? '背景随主题翻转但前景写死' : '前景随主题翻转但背景写死',
+        background: bg.slice(0, 80),
+        color: (fg ?? '(缺失)').slice(0, 80),
+      });
     }
   }
   assert.deepEqual(
     offenders,
     [],
-    `背景与前景必须成对（任一方是主题令牌、另一方写死，都会在另一套主题下低对比）：${JSON.stringify(offenders)}`,
+    `背景与前景必须成对（任一方翻转、另一方不翻转，都会在另一套主题下低对比）：${JSON.stringify(offenders, null, 2)}`,
   );
 });
 
 test('打包产物同步：两处修复都必须进 client/client.js', () => {
   for (const label of ['保存访问密码', '保存管理密码']) {
-    assert.doesNotMatch(
-      buttonStyleBody(unescapedBundle, label),
-      LITERAL_WHITE,
-      `产物里 ${label} 仍硬编码白色前景，请运行 npm run build:client`,
+    assert.match(
+      topLevelProps(buttonStyleBody(unescapedBundle, label)).color ?? '',
+      /var\(--dsw-alias-/,
+      `产物里 ${label} 的前景未随主题翻转，请运行 npm run build:client`,
     );
   }
   for (const label of ['🔑 解锁管理权限', '🔐 立即设置密码']) {

@@ -2398,7 +2398,8 @@ var TunnelEntryCard = React.memo(function TunnelEntryCard2({
           ...s.btnPri,
           alignSelf: "flex-start",
           opacity: entry && entry.configured === false ? 0.4 : 1,
-          background: entry && entry.phase === "connecting" ? "var(--dsw-alias-state-info-primary,#3b82f6)" : void 0
+          background: entry && entry.phase === "connecting" ? "#2563eb" : void 0,
+          color: entry && entry.phase === "connecting" ? "#ffffff" : "var(--dsw-alias-label-primary-foreground, #fff)"
         },
         onClick: onStart,
         disabled: Boolean(entry && entry.configured === false || entry && (entry.phase === "connecting" || entry.phase === "downloading")),
@@ -3230,7 +3231,10 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
                 fontSize: 12,
                 whiteSpace: "nowrap",
                 flexShrink: 0,
-                background: saveAccessSuccess ? "#059669" : "var(--dsw-alias-brand-primary, #4f6ef7)",
+                background: saveAccessSuccess ? "#047857" : "var(--dsw-alias-brand-primary, #4f6ef7)",
+                // 纯色底必须配纯色前景：#059669 + 白 = 3.77:1（不达 AA），
+                // 而继承的 label-primary-foreground 暗色是深色，配中绿底仅 3.3:1。
+                color: saveAccessSuccess ? "#ffffff" : "var(--dsw-alias-label-primary-foreground, #fff)",
                 // 前景色继承 s.btnPri 的 var(--dsw-alias-label-primary-foreground)：暗色主题下
                 // 品牌色是近白（--dsw-static-neutral-bluish-50 = #f9fafb），硬编码白字会看不见。
                 cursor: savingAccess ? "wait" : "pointer"
@@ -3347,7 +3351,9 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
                 fontSize: 12,
                 whiteSpace: "nowrap",
                 flexShrink: 0,
-                background: saveAdminSuccess ? "#059669" : "var(--dsw-alias-brand-primary, #4f6ef7)",
+                background: saveAdminSuccess ? "#047857" : "var(--dsw-alias-brand-primary, #4f6ef7)",
+                // 纯色底必须配纯色前景（同上：#059669 + 白 = 3.77:1，#047857 + 白 = 5.48:1）。
+                color: saveAdminSuccess ? "#ffffff" : "var(--dsw-alias-label-primary-foreground, #fff)",
                 // 同上：不得硬编码前景色，否则暗色主题下品牌色为近白时按钮文字不可见。
                 cursor: savingAdmin ? "wait" : "pointer"
               },
@@ -4981,7 +4987,8 @@ function VersionBanner({ rpcCall }) {
                   height: 28,
                   fontSize: 12,
                   padding: "0 14px",
-                  background: upgradeResult?.ok ? "var(--dsw-alias-state-success-primary,#059669)" : "var(--dsw-alias-brand-primary,#4f6ef7)",
+                  background: upgradeResult?.ok ? "#047857" : "var(--dsw-alias-brand-primary,#4f6ef7)",
+                  color: upgradeResult?.ok ? "#ffffff" : "var(--dsw-alias-label-primary-foreground, #fff)",
                   opacity: upgrading || restarting ? 0.6 : 1
                 },
                 onClick: handleUpgrade,
@@ -5145,7 +5152,8 @@ function VersionBanner({ rpcCall }) {
                   height: 28,
                   fontSize: 12,
                   padding: "0 14px",
-                  background: dshUpgradeResult?.ok ? "var(--dsw-alias-state-success-primary,#059669)" : "var(--dsw-alias-brand-primary,#4f6ef7)",
+                  background: dshUpgradeResult?.ok ? "#047857" : "var(--dsw-alias-brand-primary,#4f6ef7)",
+                  color: dshUpgradeResult?.ok ? "#ffffff" : "var(--dsw-alias-label-primary-foreground, #fff)",
                   opacity: dshUpgrading || restarting ? 0.6 : 1
                 },
                 onClick: handleUpgradeDsh,
