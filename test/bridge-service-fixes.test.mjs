@@ -1,7 +1,7 @@
 // BridgeService / ProxyServer 修复回归测试（掩码回写、失效指标）
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { BridgeService, ProxyServer, normalizeExternalTunnelUrl, restoreExternalTunnelConfig } from '../lib/index.js'
+import { BridgeService, ProxyServer, normalizeExternalTunnelUrl, restoreExternalTunnelConfig, restorePersistedServiceState } from '../lib/index.js'
 
 test('saveCloudflaredConfig 忽略掩码 ******，保留真实 token（掩码回写回归）', async () => {
   const svc = new BridgeService({ dshPort: 1, proxyPort: 2, onPersist: async () => {} })
@@ -61,11 +61,18 @@ test('saveExternalTunnel 登记外部已部署隧道：校验 URL、持久化、
 // 非法值会被回填进配置对象并被面板当公网地址展示、生成二维码。注意这不是 CORS 防线——
 // 进入白名单前另有 toHttpOrigin 闸门，所以这里属于纵深防御 + 输入归一化。
 test('normalizeExternalTunnelUrl：保存与启动恢复共用同一 http(s) 收敛', () => {
-  // 合法：归一化（去末尾斜杠、trim、协议与主机大小写归一）
+  // 合法：归一化（裸 origin 去末尾斜杠、trim、协议与主机大小写归一）
   assert.equal(normalizeExternalTunnelUrl('https://tunnel.example.com/'), 'https://tunnel.example.com')
   assert.equal(normalizeExternalTunnelUrl('  https://tunnel.example.com  '), 'https://tunnel.example.com')
   assert.equal(normalizeExternalTunnelUrl('HTTP://Example.COM'), 'http://example.com')
   assert.equal(normalizeExternalTunnelUrl('https://tunnel.example.com:8443/path'), 'https://tunnel.example.com:8443/path')
+  assert.equal(normalizeExternalTunnelUrl('https://user:pass@host.example.com/'), 'https://user:pass@host.example.com')
+
+  // 路径/查询里的尾斜杠有意义，不得被剥离（回归：原先对整串 replace(/\/+$/) 会改写它们）
+  assert.equal(normalizeExternalTunnelUrl('https://tunnel.example.com/app/'), 'https://tunnel.example.com/app/')
+  assert.equal(normalizeExternalTunnelUrl('https://tunnel.example.com/?q=1/'), 'https://tunnel.example.com/?q=1/')
+  assert.equal(normalizeExternalTunnelUrl('https://tunnel.example.com/p//'), 'https://tunnel.example.com/p//')
+  assert.equal(normalizeExternalTunnelUrl('https://tunnel.example.com/#frag/'), 'https://tunnel.example.com/#frag/')
 
   // 非法：非 http(s) 与解析失败一律丢弃
   for (const bad of ['dsh-app://app', 'file:///etc/passwd', 'javascript:alert(1)', 'data:text/html,x', 'ftp://x.com', 'not-a-url', '', null, undefined, 0, {}, []]) {
@@ -85,6 +92,53 @@ test('restoreExternalTunnelConfig：恢复侧丢弃非法值，且不把"未登�
   for (const empty of [{}, { url: '' }, { url: '   ' }, null, undefined]) {
     assert.deepEqual(restoreExternalTunnelConfig(empty), { config: null, invalid: false }, `${JSON.stringify(empty)} 不应被当成非法地址`)
   }
+})
+
+// 行为测试替代原先与实现文本耦合的"源码正则"守卫：直接驱动 apply() 用的恢复接线。
+test('restorePersistedServiceState：启动恢复接线（篡改值不得进入配置对象）', async () => {
+  const logs = []
+  const logger = { info: (m) => logs.push(['info', m]), warn: (m) => logs.push(['warn', m]), error: (m) => logs.push(['error', m]) }
+  const makeSvc = () => new BridgeService({ dshPort: 1, proxyPort: 2, onPersist: async () => {} })
+
+  // 被篡改的落盘值：丢弃 + 告警；认证已开启时不提示首启引导
+  const tampered = makeSvc()
+  restorePersistedServiceState({ service: tampered, stored: { externalTunnel: { url: 'dsh-app://app' } }, logger, authEnabled: true })
+  assert.equal(tampered.externalTunnelConfig, null, '非法隧道地址不得进入配置对象')
+  assert.equal(tampered.firstRunGuidePending, false, '认证已开启时不提示首启引导')
+  assert.ok(
+    logs.some(([level, m]) => level === 'warn' && String(m).includes('已忽略非法的外部隧道地址配置')),
+    `应有一条非法地址告警，实际日志: ${JSON.stringify(logs)}`,
+  )
+
+  // 合法配置：归一化回填 + LAN 回填
+  const ok = makeSvc()
+  restorePersistedServiceState({
+    service: ok,
+    stored: { externalTunnel: { url: 'https://tunnel.example.com/' }, lan: { selectedIp: '192.168.1.9' }, wizard: { guideShown: true } },
+    logger, authEnabled: false,
+  })
+  assert.deepEqual(ok.externalTunnelConfig, { url: 'https://tunnel.example.com' })
+  assert.equal(ok.selectedLanIp, '192.168.1.9')
+  assert.equal(ok.firstRunGuidePending, false, '已展示过引导则不再提示')
+
+  // 首启引导判据：认证未开启且从未展示 → 提示
+  const fresh = makeSvc()
+  restorePersistedServiceState({ service: fresh, stored: {}, logger, authEnabled: false })
+  assert.equal(fresh.firstRunGuidePending, true)
+
+  // autoStart 只按配置触发对应拉起，且不会因非法地址而触发
+  const started = []
+  const auto = makeSvc()
+  auto.startCloudflared = async (opts) => { started.push(['cloudflared', opts]) }
+  auto.startCustomTunnel = async (opts) => { started.push(['customTunnel', opts]) }
+  restorePersistedServiceState({
+    service: auto,
+    stored: { cloudflared: { autoStart: true, token: 't' }, customTunnel: { autoStart: false, serverUrl: 'https://t.example.com' } },
+    logger, authEnabled: true,
+  })
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.deepEqual(started, [['cloudflared', { autoStart: true }]], '只有 autoStart 的 cloudflared 被拉起')
+  assert.equal(auto.customTunnelConfig.serverUrl, 'https://t.example.com')
 })
 
 test('getStatus 暴露 externalTunnel（含二维码）', async () => {
