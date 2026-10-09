@@ -124,9 +124,14 @@ test('对比度：纯色底按钮（保存成功态 / 升级重开按钮）在�
   const blueBg = /height: 36, background: '(#[0-9a-f]{6})'/.exec(indexSource)?.[1];
   assert.ok(greenBg && greenFg && blueBg, '未能从源码取到按钮配色');
 
+  // 另外两处纯色底也钉进数值断言（复核指出：结构不变式不验数值，
+  // 这两处此前在测试里没有任何数值断言）
+  assert.match(indexSource, /background: '(#[0-9a-f]{6})', color: '#ffffff', height: 26/, '红色危险按钮应在源码中');
   const pairs = [
     [greenFg, greenBg, '保存成功态绿底'],
     ['#ffffff', blueBg, '蓝底白字按钮'],
+    ['#ffffff', '#2563eb', '隧道连接中按钮'],
+    ['#ffffff', '#dc2626', '红色危险按钮'],
     ['#27241f', '#f59e0b', '琥珀警示按钮（s.btnWarn 底）'],
   ];
   for (const [fg, bg, name] of pairs) {
