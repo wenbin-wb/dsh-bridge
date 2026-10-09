@@ -1,8 +1,8 @@
 {
   "name": "@wenbin_wb/dsh-bridge",
-  "version": "2.12.2",
+  "version": "2.12.3",
   "description": "DSH 远程连接/远程控制插件（remote control）：手机扫码即可在移动端/公网继续用 DeepSeek Harness，人不在电脑前也能接着干。一键局域网二维码、Cloudflare 公网隧道、自建隧道与微信 / QQ / 飞书 / Telegram Bot（多工作区/会话持久化/媒体/卡片审批/流式输出），无需自己搭公网服务器。",
-  "releaseNotes": "【v2.12.2】运维监控页新增移动端页面改写层开关；IM 平台清单加载失败改为报错重试显示。",
+  "releaseNotes": "【v2.12.3】安全加固与暗色主题可读性修复：收紧回环令牌的跨域授权、令牌响应禁止缓存、隧道地址凭据仅管理员可见；修复桌面版 IM 平台加载与暗色主题多处文字/按钮看不清；升级 ws、globals。",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
