@@ -1,7 +1,7 @@
 // BridgeService / ProxyServer 修复回归测试（掩码回写、失效指标）
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { BridgeService, ProxyServer, normalizeExternalTunnelUrl, restoreExternalTunnelConfig, restorePersistedServiceState } from '../lib/index.js'
+import { BridgeService, ProxyServer, normalizeExternalTunnelUrl, restoreExternalTunnelConfig, restorePersistedServiceState, assertCustomTunnelServerUrl, normalizeCustomTunnelServerUrl } from '../lib/index.js'
 
 test('saveCloudflaredConfig 忽略掩码 ******，保留真实 token（掩码回写回归）', async () => {
   const svc = new BridgeService({ dshPort: 1, proxyPort: 2, onPersist: async () => {} })
@@ -184,6 +184,49 @@ test('setLanIp 按调用方视图返回状态（管理员分支不得拿到被�
   const guestView = await svc.setLanIp({ ip: null, adminAuthValid: false })
   assert.equal(guestView.externalTunnel.url, '')
   assert.equal(guestView.externalTunnel.qr, null)
+})
+
+// 自建隧道 serverUrl 是管理员配置的**出站连接目标**，URL 里可能内嵌 Basic Auth
+// （ws 会把 userinfo 转成 Authorization 头）。与 externalTunnel 同策略：仅管理员视图返回。
+test('getStatus：自建隧道 serverUrl 仅管理员可见（访客只保留"是否已配置"）', async () => {
+  const svc = new BridgeService({ dshPort: 1, proxyPort: 2, onPersist: async () => {} })
+  svc.customTunnelConfig = { serverUrl: 'https://user:pass@vps.example.com', accessToken: 'tok' }
+
+  const admin = await svc.getStatus({ adminAuthValid: true })
+  assert.equal(admin.customTunnel.configured, true)
+  assert.equal(admin.customTunnel.serverUrl, 'https://user:pass@vps.example.com')
+
+  const guest = await svc.getStatus({ adminAuthValid: false })
+  assert.equal(guest.customTunnel.configured, true, '"是否已配置"对访客仍可见')
+  assert.equal(guest.customTunnel.serverUrl, '', '访客不得拿到出站连接地址')
+
+  const dflt = await svc.getStatus()
+  assert.equal(dflt.customTunnel.serverUrl, '', '默认（不传参）即访客视图')
+})
+
+test('assertCustomTunnelServerUrl：只收敛协议，不剥离 userinfo', () => {
+  // 合法：ws/wss/http/https（ws 库会把 http(s) 归一为 ws(s)）；userinfo 必须保留
+  for (const ok of ['wss://tunnel.example.com/ws', 'ws://192.168.1.5:8080', 'https://user:pass@vps.example.com', 'http://vps.example.com']) {
+    assert.doesNotThrow(() => assertCustomTunnelServerUrl(ok), `${ok} 应被接受`)
+  }
+  assert.equal(new URL('https://user:pass@vps.example.com').username, 'user', '前提：userinfo 可解析且有意保留')
+
+  // 非法协议 / 无法解析：拒绝
+  for (const bad of ['file:///etc/passwd', 'javascript:alert(1)', 'dsh-app://app', 'ftp://x.com', 'not-a-url', '']) {
+    assert.throws(() => assertCustomTunnelServerUrl(bad), /ws:\/\/ 或 wss:\/\//, `${bad} 应被拒绝`)
+  }
+})
+
+test('normalizeCustomTunnelServerUrl：保存前归一化（undefined 保留 / 空串清除 / 非空校验）', () => {
+  assert.equal(normalizeCustomTunnelServerUrl(undefined), undefined, 'undefined 表示保留现值')
+  assert.equal(normalizeCustomTunnelServerUrl(''), '', '空串表示清除')
+  assert.equal(normalizeCustomTunnelServerUrl('   '), '', '空白串等价于清除')
+  assert.equal(
+    normalizeCustomTunnelServerUrl('  https://user:pass@vps.example.com  '),
+    'https://user:pass@vps.example.com',
+    'trim 且保留 userinfo',
+  )
+  assert.throws(() => normalizeCustomTunnelServerUrl('ftp://x.com'), /ws:\/\/ 或 wss:\/\//)
 })
 
 test('stripSessionProjections 剥离 session.list/history 大投影字段（共享逻辑）', async () => {
