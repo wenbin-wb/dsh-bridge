@@ -1,0 +1,41 @@
+{
+  "_说明": [
+    "插件引用、且 **DSH 主题系统确实定义**的令牌清单（入仓清单，测试据此判断引用合法性）。",
+    "来源（一手）：/home/wenbin/.local/node-v24.20.0/lib/node_modules/@deepseek-ai/dsh/ 全树执行",
+    "  grep -rhoE --include=*.js --include=*.css -- '--dsw-(alias|static)-[a-z0-9-]+:'  后取并集。",
+    "用途：test/design-token-contrast.test.mjs 断言「插件引用的令牌必须 DSH 有定义、或插件在",
+    "client/theme-tokens.js 里自己定义」。此前 12 个 state-*-bg/border/info/danger 令牌凭空引用、",
+    "深色主题下浅底浅字，正是缺这条不变式导致的。DSH 升级后请按上面命令重新生成。",
+    "重新生成时间（本机）：DSH 定义 184 个，插件引用 29 个，交集 17 个。",
+    "dshLabelTokenValues：DSH 定义的 label 族在两套主题下的实际取值（对比度用例输入），同一命令集提取。"
+  ],
+  "dshDefinedAndReferenced": [
+    "dsw-alias-bg-layer-1",
+    "dsw-alias-bg-layer-2",
+    "dsw-alias-bg-layer-3",
+    "dsw-alias-border-l1",
+    "dsw-alias-border-l2",
+    "dsw-alias-brand-primary",
+    "dsw-alias-interactive-bg-hover",
+    "dsw-alias-label-primary",
+    "dsw-alias-label-primary-foreground",
+    "dsw-alias-label-secondary",
+    "dsw-alias-label-tertiary",
+    "dsw-alias-state-error-primary",
+    "dsw-alias-state-success-primary",
+    "dsw-alias-state-warn-primary",
+    "dsw-static-amber-900",
+    "dsw-static-blue-600",
+    "dsw-static-neutral-bluish-50"
+  ],
+  "dshLabelTokenValues": {
+    "light": {
+      "label-primary": "#0f1115",
+      "label-secondary": "#61666b"
+    },
+    "dark": {
+      "label-primary": "#f9fafb",
+      "label-secondary": "#cfd3d6"
+    }
+  }
+}
