@@ -185,10 +185,11 @@ test('通用不变式：主按钮的背景与前景必须成对翻转（否则�
     const bgFlips = HAS_TOKEN(bg) || /\bundefined\b/.test(bg ?? '');
     const fgFlips = HAS_TOKEN(fg) || fg === undefined; // 缺省 = 继承 s.btnPri 的翻转前景
 
-    if (fg === undefined && bg !== undefined) {
+    if (fg === undefined) {
       offenders.push({ line, kind: '覆盖了背景却未给前景（会继承品牌前景令牌）', background: bg.slice(0, 80) });
-    } else if (bg !== undefined && bgFlips !== fgFlips) {
+    } else if (bgFlips !== fgFlips) {
       // 一方随主题翻转、另一方是写死值 → 必有一套主题下前景/背景撞色
+      // （bg 已在上面 continue 过未定义的情况，这里无需再与 undefined 比较）
       offenders.push({
         line,
         kind: bgFlips ? '背景随主题翻转但前景写死' : '前景随主题翻转但背景写死',
