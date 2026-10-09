@@ -145,10 +145,45 @@ test('getStatus 暴露 externalTunnel（含二维码）', async () => {
   const svc = new BridgeService({ dshPort: 1, proxyPort: 2, onPersist: async () => {} })
   await svc.saveExternalTunnel({ url: 'https://ext.example.com' })
 
-  const status = await svc.getStatus()
+  const status = await svc.getStatus({ adminAuthValid: true })
   assert.equal(status.externalTunnel.configured, true)
   assert.equal(status.externalTunnel.url, 'https://ext.example.com')
   assert.ok(status.externalTunnel.qr, '登记后应生成二维码')
+})
+
+// 外部隧道 URL 由用户自由填写，可能内嵌 Basic Auth 凭据（https://user:pass@host），
+// 二维码等价于同一串凭据。策略与 cloudflared.token 一致：仅管理员视图可见。
+test('getStatus：外部隧道 URL/二维码仅管理员可见（访客只保留"是否已登记"）', async () => {
+  const svc = new BridgeService({ dshPort: 1, proxyPort: 2, onPersist: async () => {} })
+  await svc.saveExternalTunnel({ url: 'https://user:pass@tunnel.example.com' })
+
+  const admin = await svc.getStatus({ adminAuthValid: true })
+  assert.equal(admin.externalTunnel.configured, true)
+  assert.equal(admin.externalTunnel.url, 'https://user:pass@tunnel.example.com')
+  assert.ok(admin.externalTunnel.qr, '管理员应拿到二维码')
+
+  const guest = await svc.getStatus({ adminAuthValid: false })
+  assert.equal(guest.externalTunnel.configured, true, '"是否已登记"对访客仍可见')
+  assert.equal(guest.externalTunnel.url, '', '访客不得拿到隧道 URL')
+  assert.equal(guest.externalTunnel.qr, null, '访客不得拿到二维码（等价于同一串凭据）')
+
+  // 默认即访客视图：调用方忘记传参时不得泄漏
+  const dflt = await svc.getStatus()
+  assert.equal(dflt.externalTunnel.url, '')
+  assert.equal(dflt.externalTunnel.qr, null)
+})
+
+test('setLanIp 按调用方视图返回状态（管理员分支不得拿到被掩码的状态）', async () => {
+  const svc = new BridgeService({ dshPort: 1, proxyPort: 2, onPersist: async () => {} })
+  await svc.saveExternalTunnel({ url: 'https://tunnel.example.com' })
+
+  const adminView = await svc.setLanIp({ ip: null, adminAuthValid: true })
+  assert.equal(adminView.externalTunnel.url, 'https://tunnel.example.com')
+  assert.ok(adminView.externalTunnel.qr)
+
+  const guestView = await svc.setLanIp({ ip: null, adminAuthValid: false })
+  assert.equal(guestView.externalTunnel.url, '')
+  assert.equal(guestView.externalTunnel.qr, null)
 })
 
 test('stripSessionProjections 剥离 session.list/history 大投影字段（共享逻辑）', async () => {

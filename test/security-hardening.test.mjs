@@ -6,6 +6,9 @@ import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
 import net from 'node:net'
 import { request as httpRequest } from 'node:http'
+import { readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { BridgeService, ProxyServer, toHttpOrigin } from '../lib/index.js'
 import { AuthManager } from '../lib/auth/manager.js'
 import { makeSessionsFile } from './helpers.mjs'
@@ -259,4 +262,16 @@ test('loopback-token 响应带 Cache-Control: no-store（响应体含 adminToken
   } finally {
     await proxy.stop()
   }
+})
+
+// 结构不变式：getStatus 的默认视图是"访客"，管理员专属分支必须显式声明 adminAuthValid，
+// 否则会把仅限管理员可见的字段（外部隧道 URL/二维码、cloudflared token）误掩码。
+test('bridge-rpc：状态查询必须显式声明视图（不得出现无参 service.getStatus()）', () => {
+  const src = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '..', 'lib/bridge-rpc.js'), 'utf8')
+  const bare = src.match(/service\.getStatus\(\s*\)/g) ?? []
+  assert.equal(
+    bare.length,
+    0,
+    '无参 getStatus 默认访客视图；管理员分支请用 adminStatus() 或显式传 { adminAuthValid: true }',
+  )
 })
