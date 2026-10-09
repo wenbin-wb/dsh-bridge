@@ -3217,7 +3217,8 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
                 whiteSpace: "nowrap",
                 flexShrink: 0,
                 background: saveAccessSuccess ? "#059669" : "var(--dsw-alias-brand-primary, #4f6ef7)",
-                color: "#ffffff",
+                // 前景色继承 s.btnPri 的 var(--dsw-alias-label-primary-foreground)：暗色主题下
+                // 品牌色是近白（--dsw-static-neutral-bluish-50 = #f9fafb），硬编码白字会看不见。
                 cursor: savingAccess ? "wait" : "pointer"
               },
               onClick: handleSaveAccessPassword,
@@ -3333,7 +3334,7 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
                 whiteSpace: "nowrap",
                 flexShrink: 0,
                 background: saveAdminSuccess ? "#059669" : "var(--dsw-alias-brand-primary, #4f6ef7)",
-                color: "#ffffff",
+                // 同上：不得硬编码前景色，否则暗色主题下品牌色为近白时按钮文字不可见。
                 cursor: savingAdmin ? "wait" : "pointer"
               },
               onClick: handleSaveAdminPassword,
