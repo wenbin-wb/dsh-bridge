@@ -1233,37 +1233,10 @@ var MOBILE_STYLES_CSS = `
       to { transform: translateY(0); }
     }
 
-    /* \u6DF1\u8272\u6A21\u5F0F\u9002\u914D\uFF1Adsh-bridge \u76EE\u5F55\u6D4F\u89C8\u5668\u5F39\u7A97\u4F7F\u7528\u4E86 DSH \u4E3B\u9898\u7CFB\u7EDF\u672A\u5B9A\u4E49\u7684
-       state-*-bg / state-*-border / state-*-primary \u53D8\u91CF\uFF0C\u8865\u4E0A\u6DF1\u8272\u6A21\u5F0F\u503C\uFF0C\u907F\u514D\u6D45\u8272 fallback \u6C38\u8FDC\u751F\u6548 */
-    body[data-ds-dark-theme] {
-      --dsw-alias-state-info-bg: rgba(65, 118, 230, 0.12);
-      --dsw-alias-state-info-border: rgba(65, 118, 230, 0.25);
-      --dsw-alias-state-info-primary: #60a5fa;
-      --dsw-alias-state-success-bg: rgba(34, 197, 94, 0.12);
-      --dsw-alias-state-success-border: rgba(34, 197, 94, 0.25);
-      --dsw-alias-state-success-primary: #4ade80;
-      --dsw-alias-state-warn-bg: rgba(245, 158, 11, 0.12);
-      --dsw-alias-state-warn-border: rgba(245, 158, 11, 0.25);
-      --dsw-alias-state-warn-primary: #fbbf24;
-      --dsw-alias-state-error-bg: rgba(239, 68, 68, 0.12);
-      --dsw-alias-state-error-border: rgba(239, 68, 68, 0.25);
-      --dsw-alias-state-error-primary: #f87171;
-    }
-
-    /* \u6DF1\u8272\u6A21\u5F0F\uFF1A\u76F4\u63A5\u8986\u76D6\u5F39\u7A97\u5185\u6240\u6709\u4F7F\u7528 #fff/#ffffff fallback \u7684\u5185\u8054\u80CC\u666F\uFF0C
-       \u786E\u4FDD\u5373\u4F7F CSS \u53D8\u91CF\u672A\u6B63\u786E\u7EE7\u627F\uFF0C\u5F39\u7A97\u4E5F\u4E0D\u4F1A\u663E\u793A\u767D\u8272\u80CC\u666F */
-    body[data-ds-dark-theme] #dsh-remote-workspace-modal .dsh-ws-dialog-card,
-    body[data-ds-dark-theme] #dsh-remote-workspace-modal .dsh-ws-dialog-card * {
-      --dsw-alias-bg-layer-1: #1b1b1c;
-      --dsw-alias-bg-layer-2: #2c2c2e;
-      --dsw-alias-bg-layer-3: #353638;
-      --dsw-alias-border-l2: #3c3c3d;
-      --dsw-alias-label-primary: #f9fafb;
-      --dsw-alias-label-secondary: #adb2b8;
-      --dsw-alias-label-tertiary: #81858c;
-      --dsw-alias-brand-primary: #f9fafb;
-      --dsw-alias-label-primary-foreground: #0f1115;
-    }
+    /* \u6DF1\u8272\u6A21\u5F0F\u9002\u914D\u5DF2\u8FC1\u79FB\u5230 client/theme-tokens.js \u5E76\u6539\u4E3A**\u65E0\u6761\u4EF6\u6CE8\u5165**\uFF1A
+       \u539F\u6765\u8FD9\u4E24\u5757\u5728\u8FD9\u91CC\uFF0C\u800C injectMobileStyles() \u4F1A\u5728 __TAURI__ / __DSH_DESKTOP__ /
+       \u5916\u90E8\u54CD\u5E94\u5F0F\u63D2\u4EF6\u5B58\u5728\u65F6\u76F4\u63A5 return\uFF0C\u5BFC\u81F4\u684C\u9762\u7AEF Shell \u4E0B\u6DF1\u8272\u8865\u4E01\u4ECE\u672A\u751F\u6548\u3002
+       \u8FD9\u91CC\u4E0D\u518D\u91CD\u590D\u5B9A\u4E49\uFF0C\u907F\u514D\u4E24\u5904\u7248\u672C\u6F02\u79FB\u3002 */
 
     @media (min-width: 768px) {
       .dsh-mobile-app-header,
@@ -1272,6 +1245,40 @@ var MOBILE_STYLES_CSS = `
         display: none !important;
       }
     }
+`;
+
+// client/theme-tokens.js
+var THEME_TOKENS_CSS = `
+  /* \u6DF1\u8272\uFF1A\u544A\u8B66\u9762 / \u8FB9\u6846 / info \u4E0E danger \u8865\u8272\uFF08DSH \u672A\u5B9A\u4E49\uFF0C\u9760 fallback \u4F1A\u6C38\u8FDC\u62FF\u5230\u6D45\u8272\uFF09 */
+  body[data-ds-dark-theme] {
+    --dsw-alias-state-info-bg: rgba(65, 118, 230, 0.12);
+    --dsw-alias-state-info-border: rgba(65, 118, 230, 0.25);
+    --dsw-alias-state-success-bg: rgba(34, 197, 94, 0.12);
+    --dsw-alias-state-success-border: rgba(34, 197, 94, 0.25);
+    --dsw-alias-state-warn-bg: rgba(245, 158, 11, 0.12);
+    --dsw-alias-state-warn-border: rgba(245, 158, 11, 0.25);
+    --dsw-alias-state-error-bg: rgba(239, 68, 68, 0.12);
+    --dsw-alias-state-error-border: rgba(239, 68, 68, 0.25);
+    --dsw-alias-state-info-primary: #60a5fa;
+    --dsw-alias-state-danger-bg: rgba(239, 68, 68, 0.12);
+    --dsw-alias-state-danger-primary: #f87171;
+    --dsw-alias-border-secondary: #3c3c3d;
+  }
+
+  /* \u6DF1\u8272\u6A21\u5F0F\uFF1A\u76F4\u63A5\u8986\u76D6\u5F39\u7A97\u5185\u6240\u6709\u4F7F\u7528 #fff/#ffffff fallback \u7684\u5185\u8054\u80CC\u666F\uFF0C
+     \u786E\u4FDD\u5373\u4F7F CSS \u53D8\u91CF\u672A\u6B63\u786E\u7EE7\u627F\uFF0C\u5F39\u7A97\u4E5F\u4E0D\u4F1A\u663E\u793A\u767D\u8272\u80CC\u666F */
+  body[data-ds-dark-theme] #dsh-remote-workspace-modal .dsh-ws-dialog-card,
+  body[data-ds-dark-theme] #dsh-remote-workspace-modal .dsh-ws-dialog-card * {
+    --dsw-alias-bg-layer-1: #1b1b1c;
+    --dsw-alias-bg-layer-2: #2c2c2e;
+    --dsw-alias-bg-layer-3: #353638;
+    --dsw-alias-border-l2: #3c3c3d;
+    --dsw-alias-label-primary: #f9fafb;
+    --dsw-alias-label-secondary: #adb2b8;
+    --dsw-alias-label-tertiary: #81858c;
+    --dsw-alias-brand-primary: #f9fafb;
+    --dsw-alias-label-primary-foreground: #0f1115;
+  }
 `;
 
 // client/unlock-manager.js
@@ -1958,8 +1965,8 @@ var s = {
   qr: { width: 200, height: 200, maxWidth: "100%", borderRadius: 10, border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", margin: "8px 0", display: "block", background: "#ffffff", padding: 6, boxSizing: "border-box" },
   tag: { display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "3px 10px", borderRadius: 999, fontSize: 12, fontWeight: 500, whiteSpace: "nowrap", flexShrink: 0, minWidth: "max-content", lineHeight: 1.4 },
   input: { width: "100%", font: "inherit", fontSize: 13, padding: "7px 10px", borderRadius: 8, border: "1px solid var(--dsw-alias-border-l2,#d1d5db)", background: "var(--dsw-alias-bg-layer-2,#f9fafb)", color: "var(--dsw-alias-label-primary,currentColor)", outline: "none", boxSizing: "border-box" },
-  warn: { background: "var(--dsw-alias-state-warn-bg,#fffbeb)", border: "1px solid var(--dsw-alias-state-warn-border,#fde68a)", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "var(--dsw-alias-state-warn-primary,#92400e)", lineHeight: 1.6 },
-  err: { background: "var(--dsw-alias-state-error-bg,#fef2f2)", border: "1px solid var(--dsw-alias-state-error-border,#fecaca)", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "var(--dsw-alias-state-error-primary,#991b1b)", lineHeight: 1.6 },
+  warn: { background: "var(--dsw-alias-state-warn-bg,#fffbeb)", border: "1px solid var(--dsw-alias-state-warn-border,#fde68a)", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "var(--dsw-alias-label-primary, #0f1115)", lineHeight: 1.6 },
+  err: { background: "var(--dsw-alias-state-error-bg,#fef2f2)", border: "1px solid var(--dsw-alias-state-error-border,#fecaca)", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "var(--dsw-alias-label-primary, #0f1115)", lineHeight: 1.6 },
   tip: { background: "var(--dsw-alias-bg-layer-2,#f9fafb)", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "var(--dsw-alias-label-secondary,#6b7280)", lineHeight: 1.6 }
 };
 var Icons = {
@@ -2058,27 +2065,27 @@ function StatusTag({ running, status }) {
   let text = running ? "\u8FD0\u884C\u4E2D" : "\u672A\u542F\u52A8";
   if (status === "connected") {
     bg = "var(--dsw-alias-state-success-bg,#ecfdf5)";
-    color = "var(--dsw-alias-state-success-primary,#059669)";
+    color = "var(--dsw-alias-label-primary, #0f1115)";
     text = "\u5DF2\u8FDE\u63A5";
   } else if (status === "starting" || status === "connecting" || status === "downloading") {
     bg = "var(--dsw-alias-state-info-bg,#eff6ff)";
-    color = "var(--dsw-alias-state-info-primary,#3b82f6)";
+    color = "var(--dsw-alias-label-primary, #0f1115)";
     text = status === "downloading" ? "\u4E0B\u8F7D\u4E2D\u2026" : "\u8FDE\u63A5\u4E2D\u2026";
   } else if (status === "reconnecting") {
     bg = "var(--dsw-alias-state-warn-bg,#fffbeb)";
-    color = "var(--dsw-alias-state-warn-primary,#d97706)";
+    color = "var(--dsw-alias-label-primary, #0f1115)";
     text = "\u81EA\u52A8\u91CD\u8FDE\u4E2D\u2026";
   } else if (status === "paused") {
     bg = "var(--dsw-alias-state-warn-bg,#fffbeb)";
-    color = "var(--dsw-alias-state-warn-primary,#d97706)";
+    color = "var(--dsw-alias-label-primary, #0f1115)";
     text = "\u6682\u505C\u4E2D";
   } else if (status === "error") {
     bg = "var(--dsw-alias-state-error-bg,#fef2f2)";
-    color = "var(--dsw-alias-state-error-primary,#dc2626)";
+    color = "var(--dsw-alias-label-primary, #0f1115)";
     text = "\u5F02\u5E38";
   } else if (running) {
     bg = "var(--dsw-alias-state-success-bg,#ecfdf5)";
-    color = "var(--dsw-alias-state-success-primary,#059669)";
+    color = "var(--dsw-alias-label-primary, #0f1115)";
     text = "\u8FD0\u884C\u4E2D";
   }
   return React.createElement("span", {
@@ -2129,7 +2136,7 @@ function QrBlock({ url, qr, onReset, auth, onNavigateSecurity }) {
           border: "1px solid var(--dsw-alias-state-success-primary,#10b981)",
           borderRadius: 8,
           fontSize: 12,
-          color: "var(--dsw-alias-state-success-primary,#059669)",
+          color: "var(--dsw-alias-label-primary, #0f1115)",
           marginBottom: 8,
           fontWeight: 500,
           flexWrap: "wrap",
@@ -2358,7 +2365,7 @@ var TunnelEntryCard = React.memo(function TunnelEntryCard2({
         style: {
           fontSize: 12,
           lineHeight: 1.5,
-          color: entry.phase === "error" ? "var(--dsw-alias-state-error-primary,#dc2626)" : entry.phase === "reconnecting" ? "var(--dsw-alias-state-warn-primary,#d97706)" : "var(--dsw-alias-label-secondary,#6b7280)"
+          color: entry.phase === "error" || entry.phase === "reconnecting" ? "var(--dsw-alias-label-primary, #0f1115)" : "var(--dsw-alias-label-secondary,#6b7280)"
         }
       }, entry.stateDetail),
       // 操作行：running → 关闭/停止重连（+ 重置）；!running → 开启
@@ -2391,7 +2398,8 @@ var TunnelEntryCard = React.memo(function TunnelEntryCard2({
           ...s.btnPri,
           alignSelf: "flex-start",
           opacity: entry && entry.configured === false ? 0.4 : 1,
-          background: entry && entry.phase === "connecting" ? "var(--dsw-alias-state-info-primary,#3b82f6)" : void 0
+          background: entry && entry.phase === "connecting" ? "#2563eb" : void 0,
+          color: entry && entry.phase === "connecting" ? "#ffffff" : "var(--dsw-alias-label-primary-foreground, #fff)"
         },
         onClick: onStart,
         disabled: Boolean(entry && entry.configured === false || entry && (entry.phase === "connecting" || entry.phase === "downloading")),
@@ -2540,7 +2548,10 @@ var CustomTunnelConfigForm = React.memo(function CustomTunnelConfigForm2({ serve
           ...s.btnPri,
           alignSelf: "flex-start",
           opacity: !dirty || saving ? saveSuccess ? 1 : 0.5 : 1,
-          background: saveSuccess ? "var(--dsw-alias-state-success-primary,#059669)" : void 0
+          background: saveSuccess ? "#047857" : void 0,
+          // 成功态底色是写死的绿，前景必须一并写死：label-primary-foreground 在暗色主题
+          // 下是深色，配中绿底只有 3.3:1。#047857 + 白 = 5.48:1，两主题一致。
+          color: saveSuccess ? "#ffffff" : "var(--dsw-alias-label-primary-foreground, #fff)"
         },
         disabled: !dirty && !saveSuccess || saving,
         onClick: handleSave
@@ -2607,7 +2618,7 @@ var TunnelCard = React.memo(function TunnelCard2({
       style: {
         ...s.block,
         fontSize: 12,
-        color: phase === "error" ? "var(--dsw-alias-state-error-primary,#dc2626)" : phase === "reconnecting" ? "var(--dsw-alias-state-warn-primary,#d97706)" : "var(--dsw-alias-label-secondary,#6b7280)"
+        color: phase === "error" || phase === "reconnecting" ? "var(--dsw-alias-label-primary, #0f1115)" : "var(--dsw-alias-label-secondary,#6b7280)"
       }
     }, state?.detail ?? phase),
     url && React.createElement(QrBlock, { url, qr, onReset, auth, onNavigateSecurity }),
@@ -2675,7 +2686,7 @@ var CloudflareConfigForm = React.memo(function CloudflareConfigForm2({ token, ho
         "div",
         { style: { fontSize: 12, fontWeight: 500, color: "var(--dsw-alias-brand-primary, #3b82f6)" } },
         "\u2699\uFE0F \u9AD8\u7EA7\u914D\u7F6E\uFF1A\u56FA\u5B9A\u57DF\u540D (Cloudflare Token) ",
-        (token || hostname) && React.createElement("span", { style: { fontSize: 11, color: "var(--dsw-alias-state-success-primary, #059669)", fontWeight: 400 } }, "\u25CF \u5DF2\u914D\u7F6E\u56FA\u5B9A\u57DF\u540D")
+        (token || hostname) && React.createElement("span", { style: { fontSize: 11, color: "var(--dsw-alias-label-primary, #0f1115)", fontWeight: 400 } }, "\u25CF \u5DF2\u914D\u7F6E\u56FA\u5B9A\u57DF\u540D")
       ),
       React.createElement("span", { style: { fontSize: 11, color: "var(--dsw-alias-label-secondary, #9ca3af)" } }, open ? "\u25B4 \u6298\u53E0" : "\u25BE \u5C55\u5F00")
     ),
@@ -2733,7 +2744,7 @@ var CloudflareConfigForm = React.memo(function CloudflareConfigForm2({ token, ho
           }
         }, "\u6E05\u9664"),
         msg && React.createElement("span", {
-          style: { fontSize: 12, color: msg.ok ? "var(--dsw-alias-state-success-primary, #059669)" : "var(--dsw-alias-state-error-primary, #dc2626)" }
+          style: { fontSize: 12, color: "var(--dsw-alias-label-primary, #0f1115)" }
         }, msg.text)
       )
     )
@@ -2802,7 +2813,7 @@ var ExternalTunnelCard = React.memo(function ExternalTunnelCard2({ ext, onSave }
         }
       }, "\u6E05\u9664"),
       msg && React.createElement("span", {
-        style: { fontSize: 12, color: msg.ok ? "var(--dsw-alias-state-success-primary, #059669)" : "var(--dsw-alias-state-error-primary, #dc2626)" }
+        style: { fontSize: 12, color: "var(--dsw-alias-label-primary, #0f1115)" }
       }, msg.text)
     )
   );
@@ -3057,7 +3068,7 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
             background: "var(--dsw-alias-bg-layer-2,#f3f4f6)",
             color: "var(--dsw-alias-label-secondary,#4b5563)"
           }
-        }, "\u{1F512} \u540E\u53F0\u9632\u7BE1\u6539: ", React.createElement("strong", { style: { color: "var(--dsw-alias-state-success-primary,#059669)" } }, adminLabel))
+        }, "\u{1F512} \u540E\u53F0\u9632\u7BE1\u6539: ", React.createElement("strong", { style: { color: "var(--dsw-alias-label-primary, #0f1115)" } }, adminLabel))
       ),
       topMsg && React.createElement("div", {
         style: {
@@ -3066,7 +3077,7 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
           borderRadius: 6,
           fontSize: 12,
           background: topMsg.ok ? "var(--dsw-alias-state-success-bg,#ecfdf5)" : "var(--dsw-alias-state-error-bg,#fef2f2)",
-          color: topMsg.ok ? "var(--dsw-alias-state-success-primary,#059669)" : "var(--dsw-alias-state-error-primary,#dc2626)"
+          color: "var(--dsw-alias-label-primary, #0f1115)"
         }
       }, topMsg.text),
       // 访问认证已开启但尚未设置任何密码/Token 保护：局域网/公网访客可免密进入，高危提示
@@ -3080,7 +3091,7 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
             fontSize: 12,
             background: "var(--dsw-alias-state-error-bg,#fef2f2)",
             border: "1px solid var(--dsw-alias-state-error-border,#fecaca)",
-            color: "var(--dsw-alias-state-error-primary,#dc2626)",
+            color: "var(--dsw-alias-label-primary, #0f1115)",
             lineHeight: 1.6
           }
         },
@@ -3220,7 +3231,10 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
                 fontSize: 12,
                 whiteSpace: "nowrap",
                 flexShrink: 0,
-                background: saveAccessSuccess ? "#059669" : "var(--dsw-alias-brand-primary, #4f6ef7)",
+                background: saveAccessSuccess ? "#047857" : "var(--dsw-alias-brand-primary, #4f6ef7)",
+                // 纯色底必须配纯色前景：#059669 + 白 = 3.77:1（不达 AA），
+                // 而继承的 label-primary-foreground 暗色是深色，配中绿底仅 3.3:1。
+                color: saveAccessSuccess ? "#ffffff" : "var(--dsw-alias-label-primary-foreground, #fff)",
                 // 前景色继承 s.btnPri 的 var(--dsw-alias-label-primary-foreground)：暗色主题下
                 // 品牌色是近白（--dsw-static-neutral-bluish-50 = #f9fafb），硬编码白字会看不见。
                 cursor: savingAccess ? "wait" : "pointer"
@@ -3241,7 +3255,7 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
               borderRadius: 6,
               fontSize: 12,
               background: msgAccess.ok ? "var(--dsw-alias-state-success-bg,#ecfdf5)" : "var(--dsw-alias-state-error-bg,#fef2f2)",
-              color: msgAccess.ok ? "var(--dsw-alias-state-success-primary,#059669)" : "var(--dsw-alias-state-error-primary,#dc2626)"
+              color: "var(--dsw-alias-label-primary, #0f1115)"
             }
           }, msgAccess.text)
         ),
@@ -3337,7 +3351,9 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
                 fontSize: 12,
                 whiteSpace: "nowrap",
                 flexShrink: 0,
-                background: saveAdminSuccess ? "#059669" : "var(--dsw-alias-brand-primary, #4f6ef7)",
+                background: saveAdminSuccess ? "#047857" : "var(--dsw-alias-brand-primary, #4f6ef7)",
+                // 纯色底必须配纯色前景（同上：#059669 + 白 = 3.77:1，#047857 + 白 = 5.48:1）。
+                color: saveAdminSuccess ? "#ffffff" : "var(--dsw-alias-label-primary-foreground, #fff)",
                 // 同上：不得硬编码前景色，否则暗色主题下品牌色为近白时按钮文字不可见。
                 cursor: savingAdmin ? "wait" : "pointer"
               },
@@ -3357,7 +3373,7 @@ var AccessAuthCard = React.memo(function AccessAuthCard2({ auth, rpcCall, onUpda
               borderRadius: 6,
               fontSize: 12,
               background: msgAdmin.ok ? "var(--dsw-alias-state-success-bg,#ecfdf5)" : "var(--dsw-alias-state-error-bg,#fef2f2)",
-              color: msgAdmin.ok ? "var(--dsw-alias-state-success-primary,#059669)" : "var(--dsw-alias-state-error-primary,#dc2626)"
+              color: "var(--dsw-alias-label-primary, #0f1115)"
             }
           }, msgAdmin.text)
         ),
@@ -3737,7 +3753,7 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall }) {
             { key: id, style: { ...s.tag, background: "var(--dsw-alias-bg-layer-2,#f3f4f6)", color: "var(--dsw-alias-label-primary,currentColor)", gap: 6 } },
             React.createElement("span", { style: { fontSize: 12, wordBreak: "break-all" } }, id),
             React.createElement("button", {
-              style: { cursor: "pointer", border: "none", background: "none", color: "var(--dsw-alias-state-error-primary,#dc2626)", fontSize: 12, padding: 0 },
+              style: { cursor: "pointer", border: "none", background: "none", color: "var(--dsw-alias-label-primary, #0f1115)", fontSize: 12, padding: 0 },
               onClick: () => removeAllow(id),
               title: "\u79FB\u51FA\u767D\u540D\u5355"
             }, "\xD7")
@@ -3772,7 +3788,7 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall }) {
         platform.status !== "connected" && platform.status !== "starting" && React.createElement("button", { style: s.btnPri, onClick: onReconnect, disabled: busy, title: platform?.configured ? "\u4F7F\u7528\u5DF2\u4FDD\u5B58\u7684\u51ED\u8BC1\u76F4\u63A5\u6062\u590D\u8FDE\u63A5\uFF0C\u65E0\u9700\u91CD\u65B0\u626B\u7801" : "\u9996\u6B21\u4F7F\u7528\u9700\u626B\u7801\u7ED1\u5B9A" }, platform?.configured ? "\u91CD\u65B0\u8FDE\u63A5" : "\u8FDE\u63A5"),
         (platform.status === "connected" || platform.status === "starting") && React.createElement("button", { style: s.btnGhost, onClick: onStop, disabled: busy, title: '\u505C\u6B62\u63A5\u6536\u6D88\u606F\uFF1B\u51ED\u8BC1\u4FDD\u7559\uFF0C\u53EF\u968F\u65F6"\u91CD\u65B0\u8FDE\u63A5"\u6062\u590D' }, "\u65AD\u5F00"),
         React.createElement("button", {
-          style: { ...s.btnGhost, color: "var(--dsw-alias-state-error-primary,#dc2626)", borderColor: "var(--dsw-alias-state-error-primary,#dc2626)", opacity: busy ? 0.5 : 1 },
+          style: { ...s.btnGhost, color: "var(--dsw-alias-label-primary, #0f1115)", borderColor: "var(--dsw-alias-state-error-primary,#dc2626)", opacity: busy ? 0.5 : 1 },
           disabled: busy,
           onClick: () => {
             if (window.confirm("\u786E\u8BA4\u89E3\u7ED1\uFF1F\u8FD9\u5C06\u6E05\u9664\u4FDD\u5B58\u7684\u51ED\u8BC1\u3002")) act(BRIDGE_ENDPOINTS.platformUnbind, {});
@@ -3966,7 +3982,7 @@ function PlatformCard({ platformId, platformName, platformDesc, rpcCall }) {
           { style: { ...s.muted, marginTop: 4 } },
           login.phase === "scaned" ? "\u5DF2\u626B\u7801\uFF0C\u8BF7\u5728\u624B\u673A\u4E0A\u786E\u8BA4\u2026" : platformId === "wechat" ? "\u8BF7\u4F7F\u7528\u5FAE\u4FE1\u626B\u7801\u767B\u5F55\uFF08ClawBot\uFF09" : "\u8BF7\u626B\u7801\u767B\u5F55"
         ),
-        login.error && React.createElement("div", { style: { ...s.muted, marginTop: 4, color: "var(--dsw-alias-state-warn-primary,#92400e)" } }, login.error)
+        login.error && React.createElement("div", { style: { ...s.muted, marginTop: 4, color: "var(--dsw-alias-label-primary, #0f1115)" } }, login.error)
       ) : platformId === "qq" || platformId === "feishu" || platformId === "telegram" ? React.createElement(
         "div",
         { style: { display: "flex", flexDirection: "column", gap: 10, marginTop: 4 } },
@@ -4166,7 +4182,7 @@ function SystemMetricsWidget({ metrics }) {
         React.createElement("div", { style: { color: "var(--dsw-alias-label-tertiary, #9ca3af)", fontSize: 11, marginBottom: 2 } }, "DSH \u8FD0\u884C\u65F6\u95F4 (Uptime)"),
         React.createElement(
           "div",
-          { style: { fontWeight: 600, color: "var(--dsw-alias-state-success-primary, #059669)" } },
+          { style: { fontWeight: 600, color: "var(--dsw-alias-label-primary, #0f1115)" } },
           formatUptime(metrics.uptime?.processSec)
         )
       ),
@@ -4261,7 +4277,7 @@ function NetworkDiagnosticWidget({ rpcCall }) {
       result && React.createElement("span", {
         style: {
           fontSize: 12,
-          color: result.overall === "healthy" ? "var(--dsw-alias-state-success-primary, #059669)" : "var(--dsw-alias-state-warn-primary, #d97706)",
+          color: "var(--dsw-alias-label-primary, #0f1115)",
           fontWeight: 600
         }
       }, result.overall === "healthy" ? "\u2713 \u6240\u6709\u7F51\u7EDC\u63A2\u6D4B\u9879\u6B63\u5E38" : "\u25B2 \u68C0\u6D4B\u5230\u90E8\u5206\u5EF6\u8FDF\u8F83\u9AD8\u6216\u5F02\u5E38")
@@ -4331,7 +4347,7 @@ function NetworkDiagnosticWidget({ rpcCall }) {
               fontSize: 11,
               fontWeight: 600,
               flexShrink: 0,
-              color: item.latencyMs < 500 ? "var(--dsw-alias-state-success-primary, #059669)" : "var(--dsw-alias-state-warn-primary, #d97706)"
+              color: "var(--dsw-alias-label-primary, #0f1115)"
             }
           }, `${item.latencyMs}ms`)
         );
@@ -4441,7 +4457,7 @@ function BackupRestoreWidget({ rpcCall, onUpdate }) {
         borderRadius: 6,
         fontSize: 12,
         background: msg.ok ? "var(--dsw-alias-state-success-bg,#ecfdf5)" : "var(--dsw-alias-state-error-bg,#fef2f2)",
-        color: msg.ok ? "var(--dsw-alias-state-success-primary,#059669)" : "var(--dsw-alias-state-error-primary,#dc2626)"
+        color: "var(--dsw-alias-label-primary, #0f1115)"
       }
     }, msg.text)
   );
@@ -4580,7 +4596,7 @@ function RestartDshCard({ rpcCall }) {
           alignItems: "center",
           gap: 8,
           fontSize: 12,
-          color: status?.phase === "success" ? "var(--dsw-alias-state-success-primary, #059669)" : status?.phase === "timeout" ? "var(--dsw-alias-state-error-primary, #dc2626)" : "var(--dsw-alias-state-info-primary, #2563eb)",
+          color: "var(--dsw-alias-label-primary, #0f1115)",
           fontWeight: 500
         }
       },
@@ -4645,7 +4661,7 @@ function PageTweaksCard({ status, rpcCall }) {
         "\u5F53\u524D\uFF1A" + (effective ? "\u5F00\u542F" : "\u5173\u95ED")
       )
     ),
-    err && React.createElement("div", { style: { marginTop: 8, fontSize: 12, color: "var(--dsw-alias-state-error-primary,#dc2626)" } }, "\u4FDD\u5B58\u5931\u8D25\uFF1A" + err)
+    err && React.createElement("div", { style: { marginTop: 8, fontSize: 12, color: "var(--dsw-alias-label-primary, #0f1115)" } }, "\u4FDD\u5B58\u5931\u8D25\uFF1A" + err)
   );
 }
 function RemoteWorkspaceCard({ rpcCall }) {
@@ -4869,7 +4885,7 @@ function VersionBanner({ rpcCall }) {
             style: {
               ...s.tag,
               background: hasUpdate ? "var(--dsw-alias-state-info-bg,#eff6ff)" : isLatest ? "var(--dsw-alias-state-success-bg,#ecfdf5)" : "var(--dsw-alias-bg-layer-2,#f3f4f6)",
-              color: hasUpdate ? "var(--dsw-alias-state-info-primary,#2563eb)" : isLatest ? "var(--dsw-alias-state-success-primary,#059669)" : "var(--dsw-alias-label-secondary,#6b7280)",
+              color: hasUpdate || isLatest ? "var(--dsw-alias-label-primary, #0f1115)" : "var(--dsw-alias-label-secondary,#6b7280)",
               padding: "3px 10px",
               fontSize: 12,
               fontWeight: 500,
@@ -4884,7 +4900,7 @@ function VersionBanner({ rpcCall }) {
           info ? `v${info.current}` : "\u7248\u672C\u68C0\u67E5\u4E2D\u2026",
           isLatest && React.createElement("span", { style: { opacity: 0.85, fontSize: 11, fontWeight: 400 } }, "\xB7 \u5DF2\u662F\u6700\u65B0"),
           hasUpdate && React.createElement("span", { style: { fontWeight: 600, fontSize: 11 } }, `\u2794 v${info.latest}`),
-          info?.error && React.createElement("span", { style: { color: "var(--dsw-alias-state-warn-primary,#d97706)", fontSize: 11 } }, "(\u7F51\u7EDC\u8D85\u65F6)")
+          info?.error && React.createElement("span", { style: { color: "var(--dsw-alias-label-primary, #0f1115)", fontSize: 11 } }, "(\u7F51\u7EDC\u8D85\u65F6)")
         ),
         // DSH 宿主版本标签（有新版时黄色高亮）
         info?.dshVersion && React.createElement(
@@ -4893,7 +4909,7 @@ function VersionBanner({ rpcCall }) {
             style: {
               ...s.tag,
               background: dshHasUpdate ? "var(--dsw-alias-state-warn-bg,#fffbeb)" : "var(--dsw-alias-bg-layer-2,#f3f4f6)",
-              color: dshHasUpdate ? "var(--dsw-alias-state-warn-primary,#d97706)" : "var(--dsw-alias-label-tertiary,#6b7280)",
+              color: dshHasUpdate ? "var(--dsw-alias-label-primary, #0f1115)" : "var(--dsw-alias-label-tertiary,#6b7280)",
               padding: "3px 10px",
               fontSize: 12,
               fontWeight: 500,
@@ -4960,7 +4976,7 @@ function VersionBanner({ rpcCall }) {
               style: {
                 fontSize: 13,
                 fontWeight: 600,
-                color: "var(--dsw-alias-state-info-primary,#1e40af)"
+                color: "var(--dsw-alias-label-primary, #0f1115)"
               }
             }, `\u53D1\u73B0\u65B0\u7248\u672C v${info.latest}\uFF08\u5F53\u524D v${info.current}\uFF09`),
             React.createElement(
@@ -4971,7 +4987,8 @@ function VersionBanner({ rpcCall }) {
                   height: 28,
                   fontSize: 12,
                   padding: "0 14px",
-                  background: upgradeResult?.ok ? "var(--dsw-alias-state-success-primary,#059669)" : "var(--dsw-alias-brand-primary,#4f6ef7)",
+                  background: upgradeResult?.ok ? "#047857" : "var(--dsw-alias-brand-primary,#4f6ef7)",
+                  color: upgradeResult?.ok ? "#ffffff" : "var(--dsw-alias-label-primary-foreground, #fff)",
                   opacity: upgrading || restarting ? 0.6 : 1
                 },
                 onClick: handleUpgrade,
@@ -5001,7 +5018,7 @@ function VersionBanner({ rpcCall }) {
                 whiteSpace: "pre-line"
               }
             },
-            React.createElement("div", { style: { fontWeight: 600, color: "var(--dsw-alias-state-info-primary, #2563eb)", marginBottom: 2 } }, "\u2728 \u66F4\u65B0\u4EAE\u70B9\uFF1A"),
+            React.createElement("div", { style: { fontWeight: 600, color: "var(--dsw-alias-label-primary, #0f1115)", marginBottom: 2 } }, "\u2728 \u66F4\u65B0\u4EAE\u70B9\uFF1A"),
             info.releaseNotes
           ),
           // 升级成功后：引导重启 DSH 操作卡片
@@ -5021,7 +5038,7 @@ function VersionBanner({ rpcCall }) {
               { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 8 } },
               React.createElement("span", { style: { fontSize: 16 } }, "\u2728"),
               React.createElement("span", {
-                style: { fontSize: 13, fontWeight: 600, color: "var(--dsw-alias-state-success-primary, #059669)" }
+                style: { fontSize: 13, fontWeight: 600, color: "var(--dsw-alias-label-primary, #0f1115)" }
               }, `\u5DF2\u6210\u529F\u5347\u7EA7\u5230 v${info.latest}\uFF01\u9700\u8981\u91CD\u542F DSH \u670D\u52A1\u4F7F\u65B0\u7248\u672C\u751F\u6548`)
             ),
             !restarting && !restartStatus && React.createElement(
@@ -5035,7 +5052,8 @@ function VersionBanner({ rpcCall }) {
                   height: 30,
                   fontSize: 12,
                   padding: "0 14px",
-                  background: "var(--dsw-alias-state-success-primary, #059669)"
+                  background: "#047857",
+                  color: "#ffffff"
                 },
                 onClick: handleRestart
               }, "\u{1F504} \u7ACB\u5373\u91CD\u542F DSH \u670D\u52A1"),
@@ -5057,7 +5075,7 @@ function VersionBanner({ rpcCall }) {
                   alignItems: "center",
                   gap: 8,
                   fontSize: 12,
-                  color: restartStatus?.phase === "success" ? "var(--dsw-alias-state-success-primary, #059669)" : restartStatus?.phase === "timeout" ? "var(--dsw-alias-state-error-primary, #dc2626)" : "var(--dsw-alias-state-info-primary, #2563eb)",
+                  color: "var(--dsw-alias-label-primary, #0f1115)",
                   fontWeight: 500
                 }
               },
@@ -5072,7 +5090,7 @@ function VersionBanner({ rpcCall }) {
             style: {
               background: "var(--dsw-alias-state-error-bg,#fef2f2)",
               border: "1px solid var(--dsw-alias-state-error-border,#fecaca)",
-              color: "var(--dsw-alias-state-error-primary,#991b1b)",
+              color: "var(--dsw-alias-label-primary, #0f1115)",
               padding: "8px 12px",
               borderRadius: 6,
               fontSize: 12,
@@ -5124,7 +5142,7 @@ function VersionBanner({ rpcCall }) {
             "div",
             { style: { display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 8 } },
             React.createElement("div", {
-              style: { fontSize: 13, fontWeight: 600, color: "var(--dsw-alias-state-warn-primary,#92400e)" }
+              style: { fontSize: 13, fontWeight: 600, color: "var(--dsw-alias-label-primary, #0f1115)" }
             }, `DSH \u6709\u65B0\u7248\u672C v${info.dshLatest}\uFF08\u5F53\u524D v${info.dshVersion}\uFF09`),
             info?.dshUpgradable ? React.createElement(
               "button",
@@ -5134,7 +5152,8 @@ function VersionBanner({ rpcCall }) {
                   height: 28,
                   fontSize: 12,
                   padding: "0 14px",
-                  background: dshUpgradeResult?.ok ? "var(--dsw-alias-state-success-primary,#059669)" : "var(--dsw-alias-brand-primary,#4f6ef7)",
+                  background: dshUpgradeResult?.ok ? "#047857" : "var(--dsw-alias-brand-primary,#4f6ef7)",
+                  color: dshUpgradeResult?.ok ? "#ffffff" : "var(--dsw-alias-label-primary-foreground, #fff)",
                   opacity: dshUpgrading || restarting ? 0.6 : 1
                 },
                 onClick: handleUpgradeDsh,
@@ -5165,7 +5184,7 @@ function VersionBanner({ rpcCall }) {
               marginTop: 10,
               fontSize: 12,
               lineHeight: 1.6,
-              color: dshUpgradeResult.ok ? "var(--dsw-alias-state-success-primary,#059669)" : "var(--dsw-alias-state-error-primary,#dc2626)"
+              color: "var(--dsw-alias-label-primary, #0f1115)"
             }
           }, dshUpgradeResult.message),
           dshUpgradeResult?.ok && !dismissRestart && React.createElement(
@@ -5174,7 +5193,7 @@ function VersionBanner({ rpcCall }) {
               style: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 10 }
             },
             React.createElement("button", {
-              style: { ...s.btnPri, height: 30, fontSize: 12, padding: "0 14px", background: "var(--dsw-alias-state-success-primary,#059669)" },
+              style: { ...s.btnPri, height: 30, fontSize: 12, padding: "0 14px", background: "#047857", color: "#ffffff" },
               onClick: handleRestart
             }, "\u{1F504} \u7ACB\u5373\u91CD\u542F DSH \u670D\u52A1"),
             React.createElement("button", {
@@ -5191,7 +5210,7 @@ function VersionBanner({ rpcCall }) {
                 gap: 8,
                 fontSize: 12,
                 marginTop: 8,
-                color: restartStatus?.phase === "success" ? "var(--dsw-alias-state-success-primary,#059669)" : restartStatus?.phase === "timeout" ? "var(--dsw-alias-state-error-primary,#dc2626)" : "var(--dsw-alias-state-info-primary,#2563eb)",
+                color: "var(--dsw-alias-label-primary, #0f1115)",
                 fontWeight: 500
               }
             },
@@ -5887,7 +5906,7 @@ function BridgePanel({ rpcCall, preferredTab }) {
                 fontSize: 12,
                 fontWeight: 600,
                 background: "var(--dsw-alias-state-info-bg,#eff6ff)",
-                color: "var(--dsw-alias-state-info-primary,#2563eb)",
+                color: "var(--dsw-alias-label-primary, #0f1115)",
                 border: "1px solid var(--dsw-alias-state-info-border,#bfdbfe)"
               }
             }, "\u{1F511} \u4F7F\u7528\u7BA1\u7406\u5BC6\u7801\u89E3\u9501") : React.createElement("span", {
@@ -5900,7 +5919,7 @@ function BridgePanel({ rpcCall, preferredTab }) {
                 fontSize: 12,
                 fontWeight: 600,
                 background: "var(--dsw-alias-state-success-bg,#ecfdf5)",
-                color: "var(--dsw-alias-state-success-primary,#059669)",
+                color: "var(--dsw-alias-label-primary, #0f1115)",
                 border: "1px solid var(--dsw-alias-state-success-border,#a7f3d0)"
               }
             }, "\u{1F510} \u4F7F\u7528\u8BBF\u95EE\u5BC6\u7801\u89E3\u9501")
@@ -5926,11 +5945,11 @@ function BridgePanel({ rpcCall, preferredTab }) {
             autoFocus: true
           }),
           unlockErr && React.createElement("div", {
-            style: { fontSize: 12, color: "var(--dsw-alias-state-error-primary,#dc2626)" }
+            style: { fontSize: 12, color: "var(--dsw-alias-label-primary, #0f1115)" }
           }, unlockErr),
           React.createElement("button", {
             type: "submit",
-            style: { ...s.btnPri, width: "100%", justifyContent: "center", height: 36, background: "#4f6ef7", color: "#ffffff" },
+            style: { ...s.btnPri, width: "100%", justifyContent: "center", height: 36, background: "#4560ea", color: "#ffffff" },
             disabled: unlocking
           }, unlocking ? "\u9A8C\u8BC1\u4E2D\u2026" : "\u89E3\u9501\u7BA1\u7406\u6743\u9650")
         ),
@@ -5976,7 +5995,7 @@ function BridgePanel({ rpcCall, preferredTab }) {
         style: {
           ...s.card,
           background: "var(--dsw-alias-state-error-bg,#fef2f2)",
-          color: "var(--dsw-alias-state-error-primary,#dc2626)",
+          color: "var(--dsw-alias-label-primary, #0f1115)",
           fontSize: 13,
           marginBottom: 16,
           display: "flex",
@@ -6033,7 +6052,7 @@ function BridgePanel({ rpcCall, preferredTab }) {
           borderRadius: 8,
           marginBottom: 14,
           fontSize: 12,
-          color: "var(--dsw-alias-state-warn-primary,#92400e)"
+          color: "var(--dsw-alias-label-primary, #0f1115)"
         }
       },
       React.createElement(
@@ -6119,7 +6138,7 @@ function BridgePanel({ rpcCall, preferredTab }) {
             autoFocus: true
           }),
           unlockErr && React.createElement("div", {
-            style: { fontSize: 12, color: "var(--dsw-alias-state-error-primary,#dc2626)" }
+            style: { fontSize: 12, color: "var(--dsw-alias-label-primary, #0f1115)" }
           }, unlockErr),
           React.createElement(
             "div",
@@ -6131,7 +6150,7 @@ function BridgePanel({ rpcCall, preferredTab }) {
             }, "\u53D6\u6D88"),
             React.createElement("button", {
               type: "submit",
-              style: { ...s.btnPri, background: "#4f6ef7", color: "#fff" },
+              style: { ...s.btnPri, background: "#4560ea", color: "#fff" },
               disabled: unlocking || !unlockPassword
             }, unlocking ? "\u9A8C\u8BC1\u4E2D\u2026" : "\u7ACB\u5373\u89E3\u9501")
           )
@@ -6144,6 +6163,16 @@ function BridgePanel({ rpcCall, preferredTab }) {
       )
     )
   );
+}
+function injectThemeTokens() {
+  if (typeof document === "undefined") return;
+  if (document.getElementById("dsh-bridge-theme-tokens")) return;
+  const style = document.createElement("style");
+  style.id = "dsh-bridge-theme-tokens";
+  style.dataset.plugin = "@wenbin_wb/dsh-bridge";
+  style.dataset.pluginCss = "@wenbin_wb/dsh-bridge/theme-tokens";
+  style.textContent = THEME_TOKENS_CSS;
+  document.head.appendChild(style);
 }
 function injectMobileStyles() {
   if (typeof document === "undefined") return;
@@ -6570,21 +6599,21 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
       <!-- \u7BA1\u7406\u6743\u9650\u89E3\u9501\u5757\uFF08\u8FDC\u7A0B\u8BBF\u95EE\u9700\u8981\u7BA1\u7406\u5BC6\u7801\uFF1Blocal_only \u7B56\u7565\u4E0B\u4E0D\u663E\u793A\uFF0C\u4EC5\u63D0\u793A\uFF09 -->
       ${needUnlock && unlockable ? `
         <div style="padding: 14px 16px; background: var(--dsw-alias-state-warn-bg, #fffbeb); border-bottom: 1px solid var(--dsw-alias-state-warn-border, #fde68a); flex-shrink: 0;">
-          <div style="font-size: 12px; font-weight: 600; color: var(--dsw-alias-state-warn-primary, #92400e); margin-bottom: 6px;">\u{1F512} \u6B64\u64CD\u4F5C\u9700\u8981\u7BA1\u7406\u5458\u6743\u9650</div>
+          <div style="font-size: 12px; font-weight: 600; color: var(--dsw-alias-label-primary, #0f1115); margin-bottom: 6px;">\u{1F512} \u6B64\u64CD\u4F5C\u9700\u8981\u7BA1\u7406\u5458\u6743\u9650</div>
           <div style="font-size: 11px; color: var(--dsw-alias-label-secondary, #6b7280); margin-bottom: 8px; line-height: 1.5;">\u8FDC\u7A0B\u8BBF\u95EE\u65F6\u6D4F\u89C8/\u6DFB\u52A0\u5DE5\u4F5C\u533A\u9700\u8F93\u5165\u540E\u53F0\u7BA1\u7406\u5BC6\u7801\u89E3\u9501\uFF08\u4E0E\u8BBF\u95EE\u5BC6\u7801\u4E0D\u540C\uFF09\u3002</div>
           <form id="dsh-ws-unlock-form" style="display: flex; gap: 8px;">
             <input id="dsh-ws-unlock-input" type="password" placeholder="\u8BF7\u8F93\u5165\u540E\u53F0\u7BA1\u7406\u5BC6\u7801" value="${escapeHtml(unlockInput)}"
               style="flex: 1; font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--dsw-alias-border-l2, #d1d5db); background: var(--dsw-alias-bg-layer-1, #fff); color: var(--dsw-alias-label-primary, currentColor); outline: none; box-sizing: border-box;" />
             <button type="submit" style="border: none; background: var(--dsw-static-blue-600, #4f6ef7); color: #fff; border-radius: 8px; padding: 0 14px; font-size: 12px; font-weight: 600; cursor: pointer; flex-shrink: 0;" ${unlocking ? "disabled" : ""}>${unlocking ? "\u89E3\u9501\u4E2D\u2026" : "\u89E3\u9501"}</button>
           </form>
-          ${unlockErr ? `<div style="font-size: 11px; color: var(--dsw-alias-state-error-primary, #dc2626); margin-top: 6px;">${escapeHtml(unlockErr)}</div>` : ""}
+          ${unlockErr ? `<div style="font-size: 11px; color: var(--dsw-alias-label-primary, #0f1115); margin-top: 6px;">${escapeHtml(unlockErr)}</div>` : ""}
         </div>
       ` : ""}
 
       <div style="padding: 12px 16px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 10px;">
         <!-- \u63D0\u793A\u4FE1\u606F\u6A2A\u5E45 -->
         ${statusMessage ? `
-          <div style="padding: 8px 12px; border-radius: 8px; font-size: 12px; line-height: 1.5; font-weight: 500; display: flex; align-items: center; gap: 8px; ${isErrorMessage ? "background: var(--dsw-alias-state-error-bg, #fef2f2); border: 1px solid var(--dsw-alias-state-error-border, #fecaca); color: var(--dsw-alias-state-error-primary, #dc2626);" : "background: var(--dsw-alias-state-success-bg, #ecfdf5); border: 1px solid var(--dsw-alias-state-success-border, #a7f3d0); color: var(--dsw-alias-state-success-primary, #059669);"}">
+          <div style="padding: 8px 12px; border-radius: 8px; font-size: 12px; line-height: 1.5; font-weight: 500; display: flex; align-items: center; gap: 8px; ${isErrorMessage ? "background: var(--dsw-alias-state-error-bg, #fef2f2); border: 1px solid var(--dsw-alias-state-error-border, #fecaca); color: var(--dsw-alias-label-primary, #0f1115);" : "background: var(--dsw-alias-state-success-bg, #ecfdf5); border: 1px solid var(--dsw-alias-state-success-border, #a7f3d0); color: var(--dsw-alias-label-primary, #0f1115);"}">
             <span>${isErrorMessage ? "\u26A0\uFE0F" : "\u{1F389}"}</span>
             <span>${escapeHtml(statusMessage)}</span>
           </div>
@@ -6682,7 +6711,7 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
                   <span style="font-family: ui-monospace, Menlo, monospace; font-weight: 500; color: var(--dsw-alias-label-primary, #111827); overflow: hidden; text-overflow: ellipsis;">${escapeHtml(e.name)}</span>
                   <span style="color: var(--dsw-alias-label-tertiary, #9ca3af); font-size: 12px; margin-left: 2px; flex-shrink: 0;">\u203A</span>
                 </div>
-                <button class="dsh-ws-pick-entry-btn" data-path="${escapeHtml(e.path)}" title="\u76F4\u63A5\u6DFB\u52A0\u6B64\u5B50\u6587\u4EF6\u5939\u4E3A\u5DE5\u4F5C\u533A\u5E76\u8FDB\u5165" style="border: 1px solid var(--dsw-alias-state-success-border, #a7f3d0); background: var(--dsw-alias-state-success-bg, #ecfdf5); color: var(--dsw-alias-state-success-primary, #059669); padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0; margin-left: 8px; white-space: nowrap; transition: all 0.1s;">
+                <button class="dsh-ws-pick-entry-btn" data-path="${escapeHtml(e.path)}" title="\u76F4\u63A5\u6DFB\u52A0\u6B64\u5B50\u6587\u4EF6\u5939\u4E3A\u5DE5\u4F5C\u533A\u5E76\u8FDB\u5165" style="border: 1px solid var(--dsw-alias-state-success-border, #a7f3d0); background: var(--dsw-alias-state-success-bg, #ecfdf5); color: var(--dsw-alias-label-primary, #0f1115); padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0; margin-left: 8px; white-space: nowrap; transition: all 0.1s;">
                   + \u9009\u4E3A\u5DE5\u4F5C\u533A
                 </button>
               </div>
@@ -7334,6 +7363,7 @@ function setupComposerCollapse() {
 }
 function apply(ctx) {
   window.__dshClientCtx = ctx;
+  injectThemeTokens();
   const intl = createTranslator(ctx);
   localeT = (key, vars) => intl.t(key, vars);
   const pageTweaksOn = !shouldYieldAllPageTweaks();
