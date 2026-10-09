@@ -22,7 +22,7 @@ const unescapedBundle = rawBundle.replace(
   (_, braced, u, x) => String.fromCodePoint(parseInt(braced ?? u ?? x, 16)),
 );
 
-/** 从 openIndex 处的 '{' 起做花括号配平（跳过字符串字面量），返回对象体。 */
+/** 从 openIndex 处的 '{' 起做花括号配平（跳过字符串字面量与注释），返回对象体。 */
 function braceBody(source, openIndex) {
   let depth = 0;
   let quote = null;
@@ -33,6 +33,17 @@ function braceBody(source, openIndex) {
       if (ch === quote) quote = null;
       continue;
     }
+    // 注释里的花括号不能参与配平，否则插一行说明就会把对象边界算错
+    if (ch === '/' && source[i + 1] === '/') {
+      const nl = source.indexOf('\n', i);
+      i = nl < 0 ? source.length : nl;
+      continue;
+    }
+    if (ch === '/' && source[i + 1] === '*') {
+      const end = source.indexOf('*/', i + 2);
+      i = end < 0 ? source.length : end + 1;
+      continue;
+    }
     if (ch === "'" || ch === '"' || ch === '`') { quote = ch; continue; }
     if (ch === '{') depth += 1;
     else if (ch === '}') {
@@ -41,6 +52,16 @@ function braceBody(source, openIndex) {
     }
   }
   return null;
+}
+
+/** 取 `s.<key>` 定义的样式对象体（配平提取；非贪婪正则会把后续条目一起吞掉，实测会漏判）。 */
+function styleDefBody(source, key) {
+  const m = new RegExp(`\\n\\s*${key}:\\s*\\{`).exec(source);
+  assert.ok(m, `未找到 s.${key} 定义`);
+  const open = source.indexOf('{', m.index);
+  const body = braceBody(source, open);
+  assert.ok(body, `s.${key} 定义无法配平`);
+  return body;
 }
 
 /** 取包含 from 位置的那个 style 对象体（向前找最近的 `style:` 及其后的 `{`）。 */
@@ -87,11 +108,11 @@ test('警示按钮（解锁管理权限 / 立即设置密码）必须成对使�
     assert.match(body, /\.\.\.s\.btnWarn/, `${label} 应使用 s.btnWarn 的琥珀底 + 深色字`);
     assert.doesNotMatch(body, /background:\s*['"]#/, `${label} 不得硬编码背景色`);
   }
-  // s.btnWarn 本身必须是"琥珀底 + 与底色配套的深色字"（amber-500 / amber-900，两主题 7.2:1）
-  const warnDef = /\n\s*btnWarn:\s*\{([\s\S]*?)\n\s*\},/.exec(indexSource);
-  assert.ok(warnDef, '未找到 s.btnWarn 定义');
-  assert.match(warnDef[1], /background:\s*'var\(--dsw-alias-state-warn-primary/, 's.btnWarn 背景应用琥珀令牌');
-  assert.match(warnDef[1], /color:\s*'var\(--dsw-static-amber-900/, 's.btnWarn 前景应用琥珀深色令牌');
+  // s.btnWarn 本身必须是"琥珀底 + 与底色配套的深色字"（amber-500 / amber-900，两主题 7.2:1）。
+  // 用配平提取：非贪婪正则 `\{([\s\S]*?)\n\s*\},` 会一路吞到后面的条目，导致断言形同虚设。
+  const warnDef = styleDefBody(indexSource, 'btnWarn');
+  assert.match(warnDef, /background:\s*'var\(--dsw-alias-state-warn-primary/, 's.btnWarn 背景应用琥珀令牌');
+  assert.match(warnDef, /color:\s*'var\(--dsw-static-amber-900/, 's.btnWarn 前景应用琥珀深色令牌');
 });
 
 test('通用不变式：主按钮覆盖背景色时必须成对给出前景色', () => {
