@@ -22,23 +22,25 @@ const unescapedBundle = rawBundle.replace(
 
 /**
  * 取按钮文案前的一段窗口（覆盖该按钮的 style 对象字面量）。
- * 同一文案可能还出现在提示语里，因此优先选窗口内含 `...s.btnPri` 的那一处；
+ * 同一文案可能还出现在提示语里，因此只接受"窗口内含 `...s.btnPri`"的那一处；
  * 引号形式随构建器变化（源码单引号 / 产物双引号），两种都接受。
+ * 取不到就直接失败——绝不允许"窗口没命中"退化成静默通过。
  */
-function styleWindow(source, label, size = 700) {
+function styleWindow(source, label, size = 900) {
   const needle = new RegExp(`['"]${label}['"]`, 'g');
-  let first = null;
   let m;
   while ((m = needle.exec(source)) !== null) {
     const block = source.slice(Math.max(0, m.index - size), m.index);
     if (block.includes('...s.btnPri')) return block;
-    if (first === null) first = block;
   }
-  assert.ok(first !== null, `未找到按钮文案 ${label}（源码改动后请同步本测试）`);
-  return first;
+  assert.fail(
+    `未能在 ${label} 前 ${size} 字符窗口内找到 ...s.btnPri：`
+    + '按钮文案或样式结构已变，请同步本测试（窗口必须覆盖完整 style 对象）',
+  );
 }
 
-const LITERAL_WHITE = /color:\s*['"]#(?:fff|ffffff)['"]/i;
+// 覆盖 `color: '#ffffff'`、`color: 'white'` 以及条件式 `color: x ? '#ffffff' : ...`
+const LITERAL_WHITE = /color:\s*[^,\n]*(?:['"]#(?:fff|ffffff)['"]|['"]white['"])/i;
 
 test('安全认证页：保存访问密码 / 保存管理密码按钮不得硬编码前景色', () => {
   for (const label of ['保存访问密码', '保存管理密码']) {
@@ -63,8 +65,9 @@ test('通用不变式：令牌背景的主按钮不得搭配硬编码前景色',
   while ((m = re.exec(indexSource)) !== null) {
     const seg = indexSource.slice(m.index, m.index + 400);
     const bg = /background:\s*([^,\n]+)/.exec(seg);
-    const fg = /color:\s*'([^']+)'/.exec(seg);
-    if (bg && bg[1].includes('var(--dsw-alias') && fg && fg[1].startsWith('#')) {
+    const fg = /color:\s*[^,\n]*?['"]([^'"]+)['"]/.exec(seg);
+    const isLiteralColor = fg && (fg[1].startsWith('#') || fg[1] === 'white');
+    if (bg && bg[1].includes('var(--dsw-alias') && isLiteralColor) {
       offenders.push({
         line: indexSource.slice(0, m.index).split('\n').length,
         background: bg[1].trim(),
