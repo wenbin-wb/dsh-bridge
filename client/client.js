@@ -1951,6 +1951,10 @@ var s = {
   btnPri: { font: "inherit", cursor: "pointer", border: "none", background: "var(--dsw-alias-brand-primary,#4f6ef7)", color: "var(--dsw-alias-label-primary-foreground,#fff)", height: 32, padding: "0 14px", borderRadius: 999, fontSize: 13, fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 4 },
   btnGhost: { font: "inherit", cursor: "pointer", border: "1px solid var(--dsw-alias-border-l2,#d1d5db)", background: "var(--dsw-alias-bg-layer-2,#f9fafb)", color: "var(--dsw-alias-label-primary,currentColor)", height: 32, padding: "0 14px", borderRadius: 999, fontSize: 13, display: "inline-flex", alignItems: "center", gap: 4, textDecoration: "none" },
   btnLink: { font: "inherit", cursor: "pointer", border: "none", background: "none", color: "var(--dsw-alias-brand-primary,#4f6ef7)", fontSize: 12, padding: 0, display: "inline-flex", alignItems: "center", gap: 3, textDecoration: "none" },
+  // 实心警示按钮：背景与前景必须成对指定。s.btnPri 的前景令牌是配"品牌色"的，浅色主题下
+  // 为白色，直接套在琥珀底上只有 3.19:1（不达 AA）；改用琥珀配色的 amber-500 / amber-900，
+  // 两套主题下都是 7.2:1（琥珀调色板在明暗主题取值相同）。
+  btnWarn: { background: "var(--dsw-alias-state-warn-primary,#f59e0b)", color: "var(--dsw-static-amber-900,#27241f)" },
   qr: { width: 200, height: 200, maxWidth: "100%", borderRadius: 10, border: "1px solid var(--dsw-alias-border-l2,#e5e7eb)", margin: "8px 0", display: "block", background: "#ffffff", padding: 6, boxSizing: "border-box" },
   tag: { display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "3px 10px", borderRadius: 999, fontSize: 12, fontWeight: 500, whiteSpace: "nowrap", flexShrink: 0, minWidth: "max-content", lineHeight: 1.4 },
   input: { width: "100%", font: "inherit", fontSize: 13, padding: "7px 10px", borderRadius: 8, border: "1px solid var(--dsw-alias-border-l2,#d1d5db)", background: "var(--dsw-alias-bg-layer-2,#f9fafb)", color: "var(--dsw-alias-label-primary,currentColor)", outline: "none", boxSizing: "border-box" },
@@ -6039,11 +6043,11 @@ function BridgePanel({ rpcCall, preferredTab }) {
       ),
       hasAnyPassword ? React.createElement("button", {
         type: "button",
-        style: { ...s.btnPri, height: 24, fontSize: 11, padding: "0 10px", background: "#d97706" },
+        style: { ...s.btnPri, ...s.btnWarn, height: 24, fontSize: 11, padding: "0 10px" },
         onClick: () => setShowUnlockModal(true)
       }, "\u{1F511} \u89E3\u9501\u7BA1\u7406\u6743\u9650") : React.createElement("button", {
         type: "button",
-        style: { ...s.btnPri, height: 24, fontSize: 11, padding: "0 10px", background: "#d97706" },
+        style: { ...s.btnPri, ...s.btnWarn, height: 24, fontSize: 11, padding: "0 10px" },
         onClick: () => setActiveTab("security")
       }, "\u{1F510} \u7ACB\u5373\u8BBE\u7F6E\u5BC6\u7801")
     ),
