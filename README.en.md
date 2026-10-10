@@ -89,7 +89,9 @@ This plugin supports **both old and new DSH releases** — there is no need to p
 | `0.1.0` ~ `0.1.1` | ✅ Supported (loopback-only RPC channel hardening) |
 | `0.1.2` ~ `0.1.4` | ✅ Supported |
 | `0.1.5-alpha.1` ~ `0.1.5-rc.2` | ✅ Supported (since v2.10.9) |
-| Desktop builtin host `0.2.0-rc.2` (profile `desktop`) | ⚠️ Verifying (known #55: IM platform list may misrender in desktop settings while web works) |
+| `0.1.6` ~ `0.1.7` | ✅ Supported (v2.12.x adapts to the 0.1.7 storage-format and grid-layout changes; backward-compat regression covers the 0.1.6 single-file layout) |
+| `0.2.0-rc.2` (Web, profile `web`) | ✅ Supported (since v2.12.4 host CSS-module class names are resolved at runtime; the full mobile UI acceptance suite passes on this version) |
+| Desktop builtin host `0.2.0-rc.2` (profile `desktop`) | ✅ Supported (v2.12.4 fixes the mobile settings styles vanishing on the desktop host; **verified on a real desktop install**) |
 
 > **About the built-in DSH authentication**: since `0.1.2`, `dsh web` ships browser authentication — it prints a URL carrying a one-time token (`http://127.0.0.1:3080/?token=…`), which is exchanged for a session cookie bound to the loopback address. Afterwards `/`, `/api` and every plugin RPC channel require that cookie.
 >
@@ -117,6 +119,21 @@ dsh plugin --profile web add ./dsh-bridge
 # Or force install latest version via CLI:
 dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 ```
+
+### DSH Desktop (desktop app) installation
+
+The desktop (Electron) app runs on its own `desktop` profile — **a separate plugin installation from the Web profile** — so install it there as well:
+
+* **Option 1 · GUI (recommended)**: open **Settings → Plugins → "+ Add Plugin"** → type `@wenbin_wb/dsh-bridge` → on restricted networks pick the **China mainland mirror** as the install source → click **Install** → confirm the plugin is enabled under **Installed** → **restart DeepSeek Harness from the app menu** to load it.
+* **Option 2 · CLI**:
+
+```bash
+dsh plugin --profile desktop add @wenbin_wb/dsh-bridge
+```
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/wenbin-wb/dsh-bridge/main/docs/screenshots/desktop-plugin-install.webp" width="700" alt="Add the plugin in DSH Desktop (1) package name (2) mirror source (3) install (4) confirm enabled" />
+</p>
 
 ---
 

@@ -31,6 +31,12 @@ npm install
 npm test          # node --test 全部单元测试
 npm run lint      # eslint（0 error 才可通过 CI）
 npm run build:client   # 改 client/index.js 后重建产物
+
+# 发布前 / 改动移动端 UI 后：真实 GUI 行为验收（需 dsh web 正在运行 + 本机 Chrome）
+npm run verify:mobile-ui
+
+# DSH 升级前：在隔离环境把同一套验收打到目标 DSH 版本上（不碰线上实例）
+bash scripts/dsh-compat-check.sh 0.2.0-rc.2
 ```
 
 **硬性要求**（CI 会检查）：

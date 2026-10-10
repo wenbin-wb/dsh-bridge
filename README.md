@@ -91,7 +91,9 @@ dsh --version
 | `0.1.0` ~ `0.1.1` | ✅ 支持（回环专用 RPC 通道加固） |
 | `0.1.2` ~ `0.1.4` | ✅ 支持 |
 | `0.1.5-alpha.1` ~ `0.1.5-rc.2` | ✅ 支持（v2.10.9 起） |
-| 桌面版内置宿主 `0.2.0-rc.2`（profile `desktop`） | ⚠️ 验证中（已知 #55：IM 平台清单在桌面设置页可能显示异常，Web 端正常） |
+| `0.1.6` ~ `0.1.7` | ✅ 支持（v2.12.x 适配 0.1.7 存储格式与 grid 布局变更；0.1.6 旧存储布局有向后兼容回归用例） |
+| `0.2.0-rc.2`（Web，profile `web`） | ✅ 支持（v2.12.4 起宿主 CSS-module 类名改为运行时解析，全部移动端 UI 验收在该版本通过） |
+| 桌面版内置宿主 `0.2.0-rc.2`（profile `desktop`） | ✅ 支持（v2.12.4 修复桌面宿主上移动端设置页样式整片失效；**已实机验证**） |
 
 > **关于 DSH 原生鉴权**：DSH 从 `0.1.2` 起为 `dsh web` 内置了浏览器鉴权——启动时会打印带一次性 token 的地址（`http://127.0.0.1:3080/?token=…`），换取一枚绑定回环地址的会话 cookie，此后 `/`、`/api` 及各插件 RPC 通道都要求该 cookie。
 >
@@ -121,6 +123,21 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge@latest
 ```
 
 > 💡 **提示（pnpm 11 用户）**：如果升级后仍显示旧版，是由于 pnpm 11 的 `minimumReleaseAge` 机制限制。在 Web 控制台点击「一键升级」即可自动跳过限制安装最新版。
+
+### DSH Desktop 桌面版安装
+
+桌面版（Electron 应用）运行在独立的 `desktop` profile 上，**与 Web 端是两套插件安装**，需单独安装：
+
+* **方式一 · 图形界面（推荐）**：打开 **设置 → 插件 → 「+ 添加插件」** → 输入包名 `@wenbin_wb/dsh-bridge` → 国内网络可在「安装源」切换 **中国大陆镜像源** → 点击 **「安装」** → 完成后在左侧「已安装」列表确认插件已启用 → 通过**应用菜单重启 DeepSeek Harness** 后生效。
+* **方式二 · 命令行**：
+
+```bash
+dsh plugin --profile desktop add @wenbin_wb/dsh-bridge
+```
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/wenbin-wb/dsh-bridge/main/docs/screenshots/desktop-plugin-install.webp" width="700" alt="DSH Desktop 桌面版添加插件（① 输入包名 ② 选择镜像源 ③ 点击安装 ④ 确认已启用）" />
+</p>
 
 ---
 

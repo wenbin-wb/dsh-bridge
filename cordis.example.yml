@@ -1,28 +1,40 @@
-# dsh-bridge cordis.yml 配置文件示例
-# 插件开箱即用，以下配置均为可选
+# dsh-bridge cordis.yml 配置示例
+# 插件开箱即用，以下配置全部可选。
+#
+# ⚠️ IM 平台（微信/QQ/飞书/Telegram）与凭据类配置**不要写在这里**：
+#    请在 Web 设置页「远程访问」中配置，它们持久化到
+#    ~/.dsh/dsh-bridge/config.json（权限 0600），不会进仓库。
 
 - name: '@wenbin_wb/dsh-bridge'
   config:
-    # 本地代理端口 (默认 3082)
+    # 本地反向代理端口（默认 3082，手机/隧道的访问入口）
     port: 3082
 
-    # 自建隧道配置 (可选，也可在 Web 设置页面中配置)
+    # 目标 DSH web 端口（默认自动取宿主 webServer.port，异常时回退 3080）
+    # targetPort: 3080
+
+    # 移动端页面改写层总开关（issue #56）：
+    # false = 关闭手机顶栏/全局移动样式/输入框折叠等页面改写，
+    # 只保留远程访问、隧道与机器人功能。也可用环境变量 DSH_BRIDGE_MOBILE_UI=0。
+    # mobileUi: true
+
+    # 局域网二维码使用的网卡 IP（默认自动优先物理网卡）
+    # lan:
+    #   selectedIp: 192.168.1.10
+
+    # Cloudflare 固定域名隧道（推荐在 Web 面板配置；token/hostname 属敏感值，
+    # 切勿把真实值提交进仓库）
+    # cloudflared:
+    #   token: ''
+    #   hostname: ''
+    #   autoStart: false
+
+    # 访问门禁初始配置（密码等敏感值建议在 Web 面板设置，不要写进仓库）
+    # auth:
+    #   enabled: false
+
+    # 自建 WebSocket 隧道（accessToken 敏感值建议走 Web 面板）
     customTunnel:
       serverUrl: ''   # WebSocket URL, 如: wss://tunnel.example.com/connect
-      accessToken: '' # 访问令牌
-
-    # 微信 Bot 配置 (可选，建议在 Web 设置页面中扫码配置)
-    wechat:
-      digestIntervalSec: 300
-      approvalTimeoutSec: 600
-      maxMessageChars: 2000
-      sendChunkDelayMs: 1500
-
-    # QQ Bot 配置 (可选，建议在 Web 设置页面中配置)
-    qq:
-      appId: ''
-      clientSecret: ''
-      digestIntervalSec: 300
-      approvalTimeoutSec: 600
-      maxMessageChars: 2000
-      sendChunkDelayMs: 1500
+      accessToken: '' # 访问令牌（勿填真实值入库）
+      autoStart: false

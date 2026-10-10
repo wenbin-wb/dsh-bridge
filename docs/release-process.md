@@ -23,7 +23,7 @@
 3. **构建与测试**：
    - `npm run build:client`（**必须**：客户端产物要与源码同步，`npm test` 有一项断言会校验产物内嵌的 CSS 与源码逐字一致）
    - `npm test` + `npm run lint`
-   - `npm run verify:mobile-ui`（**发布前必做**：跑真实 GUI 的移动端行为验收，8 个套件。需要 dsh web 正在运行；Chrome 路径可用 `PUPPETEER_EXECUTABLE_PATH` 指定。它不在 CI 里跑，因为 CI 没有宿主）
+   - `npm run verify:mobile-ui`（**发布前必做**：跑真实 GUI 的移动端行为验收，9 个套件（清单以 `test/browser/run-all.mjs` 的 SUITES 为准）。需要 dsh web 正在运行；Chrome 路径可用 `PUPPETEER_EXECUTABLE_PATH` 指定。它不在 CI 里跑，因为 CI 没有宿主）
    - `npm run build:banner`（**仅当 `docs/screenshots/` 素材有变、需要重出 README banner 时执行**；输入没变时应跳过，否则只会产生 JPEG 重编码噪声。注意该脚本默认 Chrome 路径是写死的 Windows 路径，需用 `PUPPETEER_EXECUTABLE_PATH` 覆盖）
    - `npm run build:lark`（**仅在需要重建飞书 vendor bundle 时执行**。它用当前 esbuild 重新打包 `lib/feishu/lark-bundled.mjs`，产物会随 esbuild 版本漂移；**不要放进 `prepack`**，否则每次 `npm publish` 都会让线上 tarball 里的 vendor 文件与 tag 里的不一致）
 4. **提交**：合并到 `main`（fast-forward），提交信息 `release: vX.Y.Z — ...`
