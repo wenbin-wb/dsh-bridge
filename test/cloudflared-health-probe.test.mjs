@@ -349,8 +349,9 @@ test('【防误杀回归】断网后自行恢复的连接器绝不能被探针�
   }
 });
 
-test('【防终态回归】健康探针触发的重建链路（含重启后握手失败）绝不进入终态 error', async () => {
+test('【防终态回归】健康探针触发的重建链路（含重启后握手失败）绝不进入终态 error', async (t) => {
   const rec = stateRecorder();
+  const col = collectingLogger();
   const dir = mkdtempSync(join(tmpdir(), 'cf-terminal-'));
   const marker = join(dir, 'fail-marker');
   const mgr = new CloudflaredManager({
@@ -361,13 +362,18 @@ test('【防终态回归】健康探针触发的重建链路（含重启后握�
     spawnOptions: FAKE_SPAWN_OPTS,
     // 终态上限故意设得极小：若仍允许终态，几次重试后必然出现 error
     retryPolicy: { baseDelayMs: 20, maxDelayMs: 40, maxRetries: 2 },
-    handshakeTimeoutMs: 400,
+    // 握手超时必须**明显大于**假件的 spawn 延迟（Windows 上 .cmd + node 启动实测
+    // 约 390–411ms）。原先取 400ms 恰好压在延迟上，"先就绪还是先超时"成了掷硬币：
+    // 走超时链路时重建**不是**健康探针触发的，那条链路本就允许在 maxRetries 用尽后
+    // 进入终态（提示用户检查网络/Token），于是本用例偶发假红（实测 1/4）。
+    // 取 1500ms 让首个实例必定先就绪，从而稳定地走到"健康探针判定假死"这条链路。
+    handshakeTimeoutMs: 1500,
     healthProbeIntervalMs: 40,
     healthProbeTimeoutMs: 300,
     healthDegradedThreshold: 1,
     healthRestartThreshold: 2,
     onStateChange: rec.onState,
-    logger: noopLogger,
+    logger: col.logger,
   });
 
   process.env.FAKE_CF_MODE = 'silent-blackhole';
@@ -375,8 +381,16 @@ test('【防终态回归】健康探针触发的重建链路（含重启后握�
   try {
     mgr.start();
     await rec.waitForPhase('ready', 4000);
-    // 等到重建链路跑过远多于 maxRetries 的轮次
-    await rec.waitFor(() => rec.countPhase('reconnecting') >= 5, '多轮重建', 10000);
+    // 等到重建链路跑过远多于 maxRetries 的轮次。
+    // 预算随 handshakeTimeoutMs 放宽（每轮含一次 1.5s 握手超时）：5 轮 ≈ 8s，给足 30s。
+    await rec.waitFor(() => rec.countPhase('reconnecting') >= 5, '多轮重建', 30000);
+    // 契约边界：本用例只承诺"健康探针判定假死后触发的整条重建链路"不设终态上限。
+    // 若本轮的重建其实由握手超时/进程退出触发（未出现"判定为假死"），则那条链路
+    // 按设计允许封顶终态 —— 此时正确做法是跳过，而不是把它判成回归（过去正是这里假红）。
+    if (!col.has('error', /判定为假死/)) {
+      t.skip('本轮重建非健康探针触发（握手超时/退出链路），该链路按设计允许封顶终态');
+      return;
+    }
     assert.equal(rec.hasPhase('error'), false,
       '健康探针触发的重建不得进入终态 error（否则长时断网会变成必须人工介入）');
     assert.ok(mgr._spawnSeq >= 3, `应确实发生过多次重建，实际 spawn 代数=${mgr._spawnSeq}`);

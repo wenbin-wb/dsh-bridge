@@ -114,13 +114,20 @@ if (mode === 'crash-after-ready') {
     // FAKE_CF_METRICS_DELAY_MS>0 时让 metrics 自报行"迟到"于就绪行，用于验证：
     // 地址迟到时探针必须补启，而不是永久不启用（安全网静默失效）。
     const metricsDelay = Number(process.env.FAKE_CF_METRICS_DELAY_MS || 0);
+    // FAKE_CF_READY_DELAY_MS>0 时让"就绪行"晚于握手超时才出现，复现迟到的就绪：
+    // manager 已按超时杀掉进程并排定重试，随后同一进程才吐出就绪行。
+    const readyDelay = Number(process.env.FAKE_CF_READY_DELAY_MS || 0);
     const line = () => write(`INF Starting metrics server on 127.0.0.1:${server.address().port}/metrics`);
+    const ready = () => write('Registered tunnel connection');
     if (metricsDelay > 0) {
-      write('Registered tunnel connection');
+      if (readyDelay > 0) setTimeout(ready, readyDelay); else ready();
       setTimeout(line, metricsDelay);
+    } else if (readyDelay > 0) {
+      line();
+      setTimeout(ready, readyDelay);
     } else {
       line();
-      write('Registered tunnel connection');
+      ready();
     }
   });
   setInterval(() => {}, 1000);
