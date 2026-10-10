@@ -384,10 +384,10 @@ test('【防终态回归】健康探针触发的重建链路（含重启后握�
     // 等到重建链路跑过远多于 maxRetries 的轮次。
     // 预算随 handshakeTimeoutMs 放宽（每轮含一次 1.5s 握手超时）：5 轮 ≈ 8s，给足 30s。
     await rec.waitFor(() => rec.countPhase('reconnecting') >= 5, '多轮重建', 30000);
-    // 契约边界：本用例只承诺"健康探针判定假死后触发的整条重建链路"不设终态上限。
-    // 若本轮的重建其实由握手超时/进程退出触发（未出现"判定为假死"），则那条链路
-    // 按设计允许封顶终态 —— 此时正确做法是跳过，而不是把它判成回归（过去正是这里假红）。
-    if (!col.has('error', /判定为假死/)) {
+    // 契约边界用**状态**判定，而不是日志文案：只有健康探针那条路径会把
+    // `_healthRecovering` 置 true（见 _checkTunnelReady 的判定分支）。用文案匹配
+    // 会在文案被改写时静默跳过（独立验收指出的隐患），状态判定没有这个问题。
+    if (mgr._healthRecovering !== true) {
       t.skip('本轮重建非健康探针触发（握手超时/退出链路），该链路按设计允许封顶终态');
       return;
     }
@@ -398,6 +398,59 @@ test('【防终态回归】健康探针触发的重建链路（含重启后握�
     mgr.stop();
     clearFakeEnv();
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('【迟到就绪回归】握手超时已排定重连后，同一进程随后就绪必须撤回该次重连', async () => {
+  // 本用例覆盖的正是 fix(cloudflared) 修掉的那条竞态：握手超时先触发（排定重连），
+  // 紧接着同一进程才吐出注册成功行。修复前：20ms/500ms 后会把刚就绪的连接器再杀一次
+  // （spawnSeq 多涨一次、重试计数错位）；修复后：撤回该次重连，但真被杀掉时仍有重启来源。
+  //
+  // 构造要点：
+  //   - handshakeTimeoutMs(300) 明显小于 spawn 延迟 + FAKE_CF_READY_DELAY_MS(400)，
+  //     保证"先超时、后就绪"稳定重演（不依赖机器速度）；
+  //   - baseDelayMs/maxDelayMs=500：把"原定重试点"推到就绪之后足够远，便于断言"越过后仍无重启"；
+  //   - 把 _terminateProcess 临时换空实现：真实 kill 会让"迟到就绪"随进程一起消失，
+  //     本用例要考察的是"就绪仍能到达"这一支（真杀那支由最后的 taskkill 断言覆盖）。
+  const rec = stateRecorder();
+  const mgr = new CloudflaredManager({
+    port: 3082,
+    token: 'fake-token',
+    hostname: 'dsh.example.com',
+    binaryPath: FAKE_BIN,
+    spawnOptions: FAKE_SPAWN_OPTS,
+    retryPolicy: { baseDelayMs: 500, maxDelayMs: 500, maxRetries: 5 },
+    handshakeTimeoutMs: 300,
+    healthProbeIntervalMs: 5000, // 关掉探活干扰：本用例只考察握手超时/重连链
+    healthProbeTimeoutMs: 200,
+    healthDegradedThreshold: 9,
+    healthRestartThreshold: 9,
+    onStateChange: rec.onState,
+    logger: noopLogger,
+  });
+
+  process.env.FAKE_CF_MODE = 'silent-blackhole';
+  process.env.FAKE_CF_READY_DELAY_MS = '400';
+  const realTerminate = mgr._terminateProcess.bind(mgr);
+  mgr._terminateProcess = () => {}; // 不真杀：让"迟到就绪"有机会到达
+  try {
+    mgr.start();
+    await rec.waitForPhase('reconnecting', 4000); // 先经历握手超时已排定重连
+    await rec.waitForPhase('ready', 4000);        // 同一进程随后才就绪
+    assert.equal(mgr._retryTimer, null, '就绪后不得再留着已排定的重连定时器');
+    const seqAtReady = mgr._spawnSeq;
+    await sleep(700); // 越过原定的 +500ms 重试点
+    assert.equal(mgr._spawnSeq, seqAtReady, '越过原定重试点不得多杀一次（修复前这里会 +1）');
+    assert.equal(mgr._restartCount, 0, '就绪即证明链路可用：重试计数必须清零');
+    // 真被杀掉时仍必须有重启来源（撤回只能发生在"进程仍存活"的前提下）
+    realTerminate();
+    await rec.waitFor(() => mgr._spawnSeq > seqAtReady, '进程被真杀后仍能重启（不得留下死隧道）', 4000);
+  } finally {
+    // 必须先还原被替换掉的 _terminateProcess：stop() 正是靠它杀掉假进程，
+    // 忘了还原会让假 cloudflared 的 setInterval 一直吊住事件循环，整个测试文件挂死。
+    mgr._terminateProcess = realTerminate;
+    mgr.stop();
+    clearFakeEnv();
   }
 });
 

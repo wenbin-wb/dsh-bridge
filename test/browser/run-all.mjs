@@ -87,6 +87,7 @@ for (const r of results) {
   if (hasCounts) totalSkipped += r.skip ?? 0;
   let verdict;
   if (r.code !== 0) verdict = '❌ 失败';
+  else if (hasCounts && (r.pass + r.fail + (r.skip ?? 0)) === 0) verdict = '⚪ 未执行断言';
   else if (hasCounts && r.pass === 0 && (r.skip ?? 0) > 0) verdict = '⚪ 未执行断言';
   else verdict = '✅ 通过';
   const counts = hasCounts ? `（通过 ${r.pass}${r.skip ? `，跳过 ${r.skip}` : ''}${r.fail ? `，失败 ${r.fail}` : ''}）` : '';
