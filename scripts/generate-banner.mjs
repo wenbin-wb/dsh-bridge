@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const ROOT_DIR = join(__dirname, '..')
-const OUT_PATH = join(ROOT_DIR, 'docs', 'banner.jpg')
+const OUT_PATH = join(ROOT_DIR, 'docs', 'banner.webp')
 const SCREENSHOTS_DIR = join(ROOT_DIR, 'docs', 'screenshots')
 
 // Chrome 本地执行路径
@@ -20,10 +20,10 @@ async function sleep(ms) {
 
 async function main() {
   console.log('🖼️ 正在读取截图素材...')
-  const secImgBuf = await readFile(join(SCREENSHOTS_DIR, 'security-auth-config.jpg'))
-  const feishuChatBuf = await readFile(join(SCREENSHOTS_DIR, 'feishu-chat.jpg'))
-  const secBase64 = `data:image/jpeg;base64,${secImgBuf.toString('base64')}`
-  const feishuBase64 = `data:image/jpeg;base64,${feishuChatBuf.toString('base64')}`
+  const secImgBuf = await readFile(join(SCREENSHOTS_DIR, 'security-auth-config.webp'))
+  const feishuChatBuf = await readFile(join(SCREENSHOTS_DIR, 'feishu-chat.webp'))
+  const secBase64 = `data:image/webp;base64,${secImgBuf.toString('base64')}`
+  const feishuBase64 = `data:image/webp;base64,${feishuChatBuf.toString('base64')}`
 
   console.log('🚀 启动无头浏览器渲染 Banner...')
   const browser = await puppeteer.launch({
@@ -342,7 +342,7 @@ async function main() {
 
   await page.screenshot({
     path: OUT_PATH,
-    type: 'jpeg',
+    type: 'webp',
     quality: 95,
   })
 
