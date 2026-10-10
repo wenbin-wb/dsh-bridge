@@ -13,7 +13,7 @@
 // 用法：node test/browser/mobile-sidebar-drawer.mjs（或由 run-all.mjs / verify:mobile-ui 调用）
 import path from 'node:path';
 import puppeteer from 'puppeteer-core';
-import { launchOptions, shotsDir, connect } from './helpers.mjs';
+import { suiteResult, installLegacySelectorBridge, launchOptions, shotsDir, connect  } from './helpers.mjs';
 
 const SHOTS = shotsDir('mobile-sidebar-drawer');
 const CHROME = launchOptions().executablePath;
@@ -21,6 +21,7 @@ const { port: PORT, cookie: c, cookieName: cn } = connect();
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 
 const out = [];
+let skip = 0;
 const say = (name, ok, detail) => {
   out.push({ name, ok, detail });
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ' — ' + detail : ''}`);
@@ -30,9 +31,12 @@ const browser = await puppeteer.launch({ executablePath: CHROME, headless: true,
 
 for (const vp of [{ name: '375x667', width: 375, height: 667 }, { name: '390x844', width: 390, height: 844 }]) {
   const page = await browser.newPage();
+  // Issue #72：老套件写死 0.1.x 的 CSS-module 哈希，这里把查询字符串按宿主
+  // 真实前缀改写（只改查询、不改 DOM），使其能打在任意代次宿主上。
+  await installLegacySelectorBridge(page);
   await page.setCacheEnabled(false);
   await page.setViewport({ width: vp.width, height: vp.height, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
-  await page.setCookie({ name: cn, value: c.slice(cn.length + 1), domain: '127.0.0.1', path: '/' });
+ if (c) await page.setCookie({ name: cn, value: c.slice(cn.length + 1), domain: '127.0.0.1', path: '/' });
   await page.goto(`${BASE_URL}/`, { waitUntil: 'domcontentloaded' });
   await new Promise((r) => setTimeout(r, 5000));
 
@@ -69,41 +73,44 @@ for (const vp of [{ name: '375x667', width: 375, height: 667 }, { name: '390x844
   );
 
   // 顶栏标题与宿主当前会话同步（用户报障：0.1.7 后顶栏永远显示「新会话」，
-  // 修复为读宿主会话层级面包屑）。点击列表里第一个非占位会话，顶栏应跟随其标题。
-  const pickText = await page.evaluate(() => {
+  // 修复为读宿主会话层级面包屑）。
+  //
+  // 断言方式（Issue #72 复核修正）：**期望值取宿主自己的面包屑**，而不是从会话行
+  // innerText 里"猜"标题。此前按状态行黑名单猜，词表一旦缺词（如「等待回答」
+  // 「待回答」「N 个子智能体运行中」）就会把状态行当标题，产生确定性假红 ——
+  // 独立验收在两个视口复现，且证明插件行为其实是对的（顶栏与面包屑完全一致）。
+  const clicked = await page.evaluate(() => {
     const area = document.querySelector('div[class*="_sidebarCol"]');
-    const items = [...area.querySelectorAll('[role="treeitem"]')];
-    // 会话行（sessionRow），排除当前已选（selected）与占位「New Session」；
-    // 行文本结构为 [可选状态行*] + 标题 + 时间 → 取「非状态、非子代理徽标、非时间」行作标题。
-    const isStatusLine = (l) =>
-      /^(Running|Idle|Stopped|进行中|空闲|已停止|subagent|子代理)$/i.test(l) ||
-      /\d+\s*(subagent|子代理)|subagent|子代理/i.test(l) ||
-      /^\d+\s*(min|h|d|h前|天前|分钟前|周前|个月前)$/i.test(l);
-    const item = items.find((e) => {
-      const cls = String(e.className);
-      if (!/sessionRow/i.test(cls)) return false;
-      if (/selected/i.test(cls)) return false;
-      const lines = (e.innerText || '').split('\n').map((l) => l.trim()).filter(Boolean);
-      if (lines.length === 0) return false;
-      const titleLine = lines.find((l) => !isStatusLine(l));
-      return !!titleLine && !/^New Session$|^新会话$/.test(titleLine);
-    });
-    if (!item) return null;
-    const lines = (item.innerText || '').split('\n').map((l) => l.trim()).filter(Boolean);
-    const title = lines.find((l) => !isStatusLine(l)).slice(0, 60);
-    item.click();
-    return title;
+    const rows = [...area.querySelectorAll('[role="treeitem"]')]
+      .filter((e) => /sessionRow/i.test(String(e.className)) && !/selected/i.test(String(e.className)));
+    if (!rows.length) return false;
+    rows[0].click();
+    return true;
   });
   await new Promise((r) => setTimeout(r, 1800));
-  const titleSync = await page.evaluate(() => {
-    const t = document.querySelector('.dsh-mobile-header-title');
-    return t ? t.innerText : '';
+  const sync = await page.evaluate(() => {
+    const header = (document.querySelector('.dsh-mobile-header-title')?.innerText || '').trim();
+    // 与插件同源：宿主会话层级面包屑的「当前段」
+    const nav = document.querySelector('nav[aria-label="Session hierarchy"], nav[aria-label="会话层级"]');
+    let host = '';
+    if (nav) {
+      const segs = [...nav.querySelectorAll('[class*="crumbSeg"]')];
+      const lastSeg = segs[segs.length - 1];
+      const cur = lastSeg?.querySelector('[class*="crumbCurrent"]') || lastSeg?.querySelector('span, button');
+      host = ((cur?.getAttribute?.('aria-label') || cur?.textContent) || '').trim();
+    }
+    return { header, host };
   });
-  say(
-    `${vp.name} 顶栏标题跟随当前会话（读宿主面包屑）`,
-    pickText === null ? true : titleSync.length > 0 && titleSync === pickText,
-    pickText === null ? '本视口无可选会话行，跳过（标题修复另由专测覆盖）' : `host=${JSON.stringify(pickText)} header=${JSON.stringify(titleSync)}`,
-  );
+  if (!clicked || !sync.host) {
+    skip++;
+    console.log(`SKIP  ${vp.name} 顶栏标题跟随当前会话（读宿主面包屑） — ${!clicked ? '本视口无可选会话行' : '宿主未暴露会话层级面包屑'}，无法对照`);
+  } else {
+    say(
+      `${vp.name} 顶栏标题跟随当前会话（读宿主面包屑）`,
+      sync.header.length > 0 && sync.header === sync.host,
+      `host=${JSON.stringify(sync.host)} header=${JSON.stringify(sync.header)}`,
+    );
+  }
 
   await page.screenshot({ path: path.join(SHOTS, `open-${vp.name.split('x')[0]}.png`) });
 
@@ -118,8 +125,7 @@ for (const vp of [{ name: '375x667', width: 375, height: 667 }, { name: '390x844
   await page.close();
 }
 
-console.log(`\n==== 移动端侧边栏抽屉验收汇总：${out.filter((x) => x.ok).length}/${out.length} 通过 ====`);
 const failed = out.filter((x) => !x.ok);
 for (const f of failed) console.log(`FAIL  ${f.name}${f.detail ? ' — ' + f.detail : ''}`);
 await browser.close();
-process.exitCode = failed.length ? 1 : 0;
+if (!suiteResult({ label: '移动端侧边栏抽屉验收', pass: out.length - failed.length, fail: failed.length, skip })) process.exitCode = 1;

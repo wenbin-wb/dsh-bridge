@@ -3,7 +3,7 @@
 // 用法：node test/browser/mobile-settings-close.mjs
 import path from 'node:path';
 import puppeteer from 'puppeteer-core';
-import { launchOptions, shotsDir, connect, dismissHostNotices } from './helpers.mjs';
+import { suiteResult, openSettings, installLegacySelectorBridge, launchOptions, shotsDir, connect, dismissHostNotices } from './helpers.mjs';
 
 const SHOTS = shotsDir('mobile-settings-close');
 const CHROME = launchOptions().executablePath;
@@ -117,13 +117,16 @@ const browser = await puppeteer.launch({ executablePath: CHROME, headless: true,
 
 for (const vp of VIEWPORTS) {
   const page = await browser.newPage();
+  // Issue #72：老套件写死 0.1.x 的 CSS-module 哈希，这里把查询字符串按宿主
+  // 真实前缀改写（只改查询、不改 DOM），使其能打在任意代次宿主上。
+  await installLegacySelectorBridge(page);
   await page.setCacheEnabled(false);
   await page.setViewport({ width: vp.width, height: vp.height, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
-  await page.setCookie({ name: cn, value: c.slice(cn.length + 1), domain: '127.0.0.1', path: '/' });
+ if (c) await page.setCookie({ name: cn, value: c.slice(cn.length + 1), domain: '127.0.0.1', path: '/' });
   await page.goto(`${BASE_URL}/`, { waitUntil: 'domcontentloaded' });
   await new Promise((r) => setTimeout(r, 4200));
   await dismissHostNotices(page);
-  await page.evaluate(() => document.querySelector('button[aria-label="Settings"]')?.click());
+  await openSettings(page);
   await new Promise((r) => setTimeout(r, 1300));
 
   // --- 列表页 ---
@@ -147,7 +150,7 @@ for (const vp of VIEWPORTS) {
   say(`${vp.name} 列表页：点 ✕ 真的关闭弹窗`, await page.evaluate(() => !document.querySelector('[class*="VOzbGW_overlay"]')));
 
   // --- 详情页 ---
-  await page.evaluate(() => document.querySelector('button[aria-label="Settings"]')?.click());
+  await openSettings(page);
   await new Promise((r) => setTimeout(r, 1200));
   await page.evaluate(() => document.querySelectorAll('button[class*="VOzbGW_navCell"]')[2].click());
   await new Promise((r) => setTimeout(r, 1900));
@@ -174,5 +177,5 @@ for (const vp of VIEWPORTS) {
 
 await browser.close();
 const failed = out.filter((x) => !x.ok);
-console.log(`\n==== 关闭按钮位置验收汇总：${out.length - failed.length}/${out.length} 通过 ====`);
+suiteResult({ label: '关闭按钮位置与底部动作栏', pass: out.length - failed.length, fail: failed.length });
 if (failed.length) process.exitCode = 1;

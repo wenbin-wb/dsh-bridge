@@ -21,9 +21,16 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MOBILE_STYLES_CSS } from '../client/mobile-styles.js';
+import { FAMILY_SLOTS, renderMobileStyles } from '../client/host-families.js';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const sourceCss = MOBILE_STYLES_CSS;
+// 断言关心规则内容而非宿主前缀（Issue #72 起源码里是 __F_<SLOT>__ 占位符）：
+// 这里按 0.1.x 那一代前缀渲染做结构断言，产物同步断言用未渲染的模板原文。
+const LEGACY_FAMILIES = Object.fromEntries(
+  Object.entries(FAMILY_SLOTS).map(([slot, spec]) => [slot, spec.known[spec.known.length - 1]]),
+);
+const templateCss = MOBILE_STYLES_CSS;
+const sourceCss = renderMobileStyles(templateCss, LEGACY_FAMILIES);
 const indexSource = readFileSync(resolve(repoRoot, 'client/index.js'), 'utf8');
 const bundle = readFileSync(resolve(repoRoot, 'client/client.js'), 'utf8');
 // 产物里的中文注释被 esbuild 转成 \uXXXX（非 ASCII 标点也可能是 \xNN）转义，
@@ -201,7 +208,7 @@ test('打包产物与源码同步（含 #41 修复、无旧断点残留）', () 
     '产物缺少 #41 的面板让位规则，疑似忘记运行 npm run build:client',
   );
   assert.ok(
-    unescapedBundle.includes(sourceCss),
+    unescapedBundle.includes(templateCss),
     '产物内嵌的移动端 CSS 与源码不一致，请运行 npm run build:client',
   );
   assert.equal(unescapedBundle.includes('max-width: 768px'), false, '产物仍残留旧的 768px 移动端断点');

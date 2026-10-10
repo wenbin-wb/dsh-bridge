@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer-core';
-import { launchOptions, shotsDir, connect } from './helpers.mjs';
+import { suiteResult, openSettings, installLegacySelectorBridge, launchOptions, shotsDir, connect } from './helpers.mjs';
 
 const SHOTS = shotsDir('mobile-settings-fix');
 const CHROME = launchOptions().executablePath;
@@ -131,12 +131,15 @@ const snap = () =>
 for (const vp of VIEWPORTS) {
   const label = vp.name;
   const page = await browser.newPage();
+  // Issue #72：老套件写死 0.1.x 的 CSS-module 哈希，这里把查询字符串按宿主
+  // 真实前缀改写（只改查询、不改 DOM），使其能打在任意代次宿主上。
+  await installLegacySelectorBridge(page);
   await page.setCacheEnabled(false);
   await page.setViewport({ width: vp.width, height: vp.height, deviceScaleFactor: 1, isMobile: vp.narrow, hasTouch: vp.narrow });
-  await page.setCookie({ name: cn, value: c.slice(cn.length + 1), domain: '127.0.0.1', path: '/' });
+ if (c) await page.setCookie({ name: cn, value: c.slice(cn.length + 1), domain: '127.0.0.1', path: '/' });
   await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'domcontentloaded' });
   await new Promise((r) => setTimeout(r, 4000));
-  await page.evaluate(() => document.querySelector('button[aria-label="Settings"]')?.click());
+  await openSettings(page);
   await new Promise((r) => setTimeout(r, 1200));
 
   // ---- A. 打开后默认状态 ----
@@ -255,7 +258,7 @@ for (const vp of VIEWPORTS) {
 await browser.close();
 fs.writeFileSync(path.join(SHOTS, 'mobile-settings-fix.json'), JSON.stringify(results, null, 2));
 const failed = results.filter((r) => !r.ok);
-console.log(`\n==== 汇总：${results.length - failed.length}/${results.length} 通过 ====`);
+suiteResult({ label: '设置页几何 + 可达性 + 视图切换', pass: results.length - failed.length, fail: failed.length });
 if (failed.length) {
   console.log('失败项：');
   for (const f of failed) console.log(`  - [${f.viewport}] ${f.name} :: ${f.detail}`);

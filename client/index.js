@@ -1,6 +1,13 @@
 import { MOBILE_STYLES_CSS } from './mobile-styles.js'
 import { THEME_TOKENS_CSS } from './theme-tokens.js'
 import {
+  resolveHostFamilies,
+  renderMobileStyles,
+  watchHostFamilies,
+  familiesSignature,
+  ABSENT_FAMILY,
+} from './host-families.js'
+import {
   getAdminToken, clearAdminToken,
   queuePendingOperation, unlockAdmin, onUnlocked,
   fetchLoopbackTokenOnce,
@@ -3993,17 +4000,102 @@ function injectThemeTokens() {
 function injectMobileStyles() {
   if (typeof document === 'undefined') return;
   if (shouldYieldMobileStyles()) return;
-  if (document.getElementById('dsh-bridge-mobile-styles')) return;
 
-  const style = document.createElement('style');
-  style.id = 'dsh-bridge-mobile-styles';
-  // 归属标记（Issue #24）：本样式由 apply() 运行时创建，晚于宿主的 claimStyles
-  // 物化阶段——若不声明归属，宿主会把无主 <style> 认领给其它插件，HMR 重载时
-  // 误删整张样式表，导致移动端导航条在桌面端泄漏（≡/新会话/⊕ 元素）
-  style.dataset.plugin = '@wenbin_wb/dsh-bridge';
-  style.dataset.pluginCss = '@wenbin_wb/dsh-bridge/mobile-styles';
-  style.textContent = MOBILE_STYLES_CSS;
-  document.head.appendChild(style);
+  // 宿主 CSS-module 前缀在此刻渲染进 CSS（见 client/host-families.js）：
+  // 探测优先 → 已核实基线兜底 → 都拿不到则用永不匹配的哨兵，绝不放任
+  // `[class*="overlay"]` 这种退化选择器误伤无关组件。
+  const css = hostFamiliesCss || renderMobileStyles(MOBILE_STYLES_CSS, hostFamilies);
+  let style = document.getElementById('dsh-bridge-mobile-styles');
+  if (!style) {
+    style = document.createElement('style');
+    style.id = 'dsh-bridge-mobile-styles';
+    // 归属标记（Issue #24）：本样式由 apply() 运行时创建，晚于宿主的 claimStyles
+    // 物化阶段——若不声明归属，宿主会把无主 <style> 认领给其它插件，HMR 重载时
+    // 误删整张样式表，导致移动端导航条在桌面端泄漏（≡/新会话/⊕ 元素）
+    style.dataset.plugin = '@wenbin_wb/dsh-bridge';
+    style.dataset.pluginCss = '@wenbin_wb/dsh-bridge/mobile-styles';
+    document.head.appendChild(style);
+  }
+  // 幂等：节点复用，只在文本真的不同时才写（前缀变化 / 首挂 / 被外部改过）
+  if (style.textContent !== css) style.textContent = css;
+}
+
+// ---- 宿主类名前缀的运行时解析与自检（Issue #72） ----
+//
+// 宿主每次大版本都会重算 CSS-module 短哈希（0.1.x 的 VOzbGW_* → 0.2.0 的 wCInkW_* 等）。
+// 早期把这些哈希硬编码进选择器，导致桌面版上「样式已注入却一个元素都匹配不到」的静默失效。
+// 这里统一在运行时解析前缀，并在无法解析时给出**显式**降级信号，便于事后定位。
+let hostFamilies = {};
+let hostFamiliesSignature = '';
+let hostFamiliesCss = '';
+let hostFamiliesWarned = '';
+
+/** 生成「当前宿主前缀 + 本地名」的选择器（在事件回调里现算，故设置弹窗挂载后自动可用）。 */
+function familySelector(slot, local) {
+  return `[class*="${hostFamilies[slot] || ABSENT_FAMILY}_${local}"]`;
+}
+
+/** Workbench 面板选择器（含宿主旧版 workbenchPanel/workbench_panel 裸名兜底）。 */
+function workbenchPanelSelector({ openOnly = false } = {}) {
+  const suffix = openOnly ? ':not([class*="panelHidden"])' : '';
+  return [
+    `div${familySelector('WB', 'panel')}${suffix}`,
+    `div[class*="workbench_panel"]${suffix}`,
+    `div[class*="workbenchPanel"]${suffix}`,
+  ].join(', ');
+}
+
+function publishHostFamilies(result) {
+  if (typeof document === 'undefined') return;
+  const root = document.documentElement;
+  if (!root) return;
+  try {
+    root.setAttribute('data-dshbr-families', JSON.stringify(result.families));
+    // 每个槽位的取值来源也一并公开：单看前缀无法判断"这是探测到的、还是按基线假设的"，
+    // 而后者正是需要盯住的静默面（独立验收要求把 unverified 显性化）。
+    root.setAttribute('data-dshbr-family-sources', JSON.stringify(result.sources));
+    root.setAttribute('data-dshbr-compat', result.compat ?? (result.degraded ? 'degraded' : 'ok'));
+  } catch { /* 属性写入失败不影响样式正确性 */ }
+}
+
+function refreshHostFamilies() {
+  if (typeof document === 'undefined') return null;
+  const result = resolveHostFamilies(document);
+  publishHostFamilies(result);
+  const sig = familiesSignature(result.families);
+  if (sig !== hostFamiliesSignature) {
+    hostFamiliesSignature = sig;
+    hostFamilies = result.families;
+    hostFamiliesCss = renderMobileStyles(MOBILE_STYLES_CSS, hostFamilies);
+  }
+  // 每次解析后都确保样式表在：宿主 HMR 可能把它删掉（Issue #24），而"族签名没变"
+  // 并不代表"表还在"——把补挂挂在签名比较之外，才真的能自愈。
+  // （独立验收实测：写在 else 分支里时，删表后抖动 5 次也不会补回。）
+  injectMobileStyles();
+  // 显式告警：设置弹窗已挂在页面上却解析不出可用前缀 = 过去那种「静默失效」状态。
+  // 告警键带上降级状态，避免"同签名下 degraded 反复翻转却只报一次"。
+  const warnKey = `${sig}|degraded=${result.degraded}`;
+  if (result.degraded && hostFamiliesWarned !== warnKey) {
+    hostFamiliesWarned = warnKey;
+    try {
+      console.warn(
+        '[dsh-bridge] 无法解析宿主设置弹窗的 CSS-module 前缀，移动端设置页样式将不生效。'
+        + ` 已解析=${JSON.stringify(result.families)} 来源=${JSON.stringify(result.sources)}`,
+      );
+    } catch { /* 无 console 的环境忽略 */ }
+  } else if (!result.degraded && (result.unverified?.length || result.missing?.length)) {
+    // partial：主链路可用，但这些槽位的规则可能空转（不误伤）。用 debug 通道留痕，
+    // 不打扰普通用户，同时让"静默面"在开发者工具里可见。
+    hostFamiliesWarned = warnKey;
+    try {
+      console.debug(
+        '[dsh-bridge] 部分宿主前缀按基线假设（对应规则可能不生效）：'
+        + ` 未验证=${JSON.stringify(result.unverified ?? [])} 缺失=${JSON.stringify(result.missing ?? [])}`
+        + ` 来源=${JSON.stringify(result.sources)}`,
+      );
+    } catch { /* 无 console 的环境忽略 */ }
+  }
+  return result;
 }
 
 // 设置中心两级钻取的交互层（配合 mobile-styles.js 6.2 的 <=480px 规则）。
@@ -4046,13 +4138,13 @@ function setupSettingsDrilldown() {
     const target = event.target;
     if (!target || typeof target.closest !== 'function') return;
 
-    const panel = target.closest('div[class*="VOzbGW_panel"]');
+    const panel = target.closest(`div${familySelector('SETTINGS', 'panel')}`);
     if (!panel) return;
-    const nav = panel.querySelector('nav[class*="VOzbGW_nav"]');
+    const nav = panel.querySelector(`nav${familySelector('SETTINGS', 'nav')}`);
     if (!nav || !nav.contains(target)) return;
 
     // 点分类行 → 进入详情页（宿主自身的 onClick 负责切换 activeId，这里不拦截）
-    if (target.closest('button[class*="VOzbGW_navCell"]')) {
+    if (target.closest(`button${familySelector('SETTINGS', 'navCell')}`)) {
       panel.setAttribute(SETTINGS_VIEW_ATTR, SETTINGS_VIEW_DETAIL);
       if (nav.scrollTop) nav.scrollTop = 0;
       return;
@@ -4127,8 +4219,8 @@ function setupMobileExperience(rpcCall, ctx) {
     titleEl.className = 'dsh-mobile-header-title';
     titleEl.innerText = '新会话';
     titleEl.onclick = () => {
-      const openPanels = document.querySelectorAll('div[class*="nArs4W_panel"]:not([class*="panelHidden"]), div[class*="workbench_panel"]:not([class*="panelHidden"])');
-      openPanels.forEach((p) => p.classList.add('nArs4W_panelHidden'));
+      const openPanels = document.querySelectorAll(workbenchPanelSelector({ openOnly: true }));
+      openPanels.forEach((p) => p.classList.add('dsh-bridge-panelHidden'));
     };
 
     // 右侧 (+) 新建会话按钮 (DeepSeek App 圆形加号风格)
@@ -4143,8 +4235,8 @@ function setupMobileExperience(rpcCall, ctx) {
       </svg>
     `;
     rightBtn.onclick = () => {
-      const openPanels = document.querySelectorAll('div[class*="nArs4W_panel"]:not([class*="panelHidden"]), div[class*="workbench_panel"]:not([class*="panelHidden"])');
-      openPanels.forEach((p) => p.classList.add('nArs4W_panelHidden'));
+      const openPanels = document.querySelectorAll(workbenchPanelSelector({ openOnly: true }));
+      openPanels.forEach((p) => p.classList.add('dsh-bridge-panelHidden'));
       // 宿主新建会话按钮文案随语言切换：中文「新建会话」/ 英文 "New session"（两者都要匹配，否则英文界面下 (+) 失效）
       const dshNewBtn = document.querySelector('button[aria-label="新建会话"], button[aria-label="New session"]');
       if (dshNewBtn) dshNewBtn.click();
@@ -4231,8 +4323,8 @@ function setupMobileExperience(rpcCall, ctx) {
       // 仅在移动端切换会话时自动收起右侧面板回到对话（PC端绝不干扰）
       if (typeof window !== 'undefined' && window.innerWidth <= MOBILE_MAX_WIDTH) {
         document.body.classList.remove('dsh-workbench-open');
-        const openPanels = document.querySelectorAll('div[class*="nArs4W_panel"]:not([class*="panelHidden"]), div[class*="workbench_panel"]:not([class*="panelHidden"])');
-        openPanels.forEach((p) => p.classList.add('nArs4W_panelHidden'));
+        const openPanels = document.querySelectorAll(workbenchPanelSelector({ openOnly: true }));
+        openPanels.forEach((p) => p.classList.add('dsh-bridge-panelHidden'));
       }
     });
   }
@@ -4244,9 +4336,9 @@ function setupMobileExperience(rpcCall, ctx) {
       document.querySelectorAll('.dsh-mobile-panel-close-btn').forEach(btn => btn.remove());
       return;
     }
-    const panels = document.querySelectorAll('div[class*="nArs4W_panel"]:not([class*="panelHidden"]), div[class*="workbench_panel"]:not([class*="panelHidden"])');
+    const panels = document.querySelectorAll(workbenchPanelSelector({ openOnly: true }));
     panels.forEach((p) => {
-      const bar = p.querySelector('div[class*="tabBar"], div[class*="nArs4W_tabBar"]');
+      const bar = p.querySelector(`div[class*="tabBar"], div${familySelector('WB', 'tabBar')}`);
       if (bar && !bar.querySelector('.dsh-mobile-panel-close-btn')) {
         const btn = document.createElement('button');
         btn.className = 'dsh-mobile-panel-close-btn';
@@ -4254,7 +4346,7 @@ function setupMobileExperience(rpcCall, ctx) {
         btn.onclick = (e) => {
           e.stopPropagation();
           document.body.classList.remove('dsh-workbench-open');
-          p.classList.add('nArs4W_panelHidden');
+          p.classList.add('dsh-bridge-panelHidden');
           const collapseBtn = document.querySelector('button[class*="toggleButton"][aria-label*="收起"], button[class*="toggleButton"][aria-label*="Collapse"]');
           if (collapseBtn) collapseBtn.click();
         };
@@ -4424,7 +4516,7 @@ function setupMobileExperience(rpcCall, ctx) {
       if (deltaX > 0 && touchStartX <= 35) {
         document.body.classList.add('dsh-drawer-open');
         const collapsedToggle = document.querySelector(
-          'div[class*="hHd-Xa_collapsed"] button[class*="hHd-Xa_toggle"], button[aria-label*="打开侧边栏"], button[title*="打开侧边栏"], button[aria-label*="Open sidebar"], button[title*="Open sidebar"]',
+          `div${familySelector('SIDEBAR', 'collapsed')} button${familySelector('SIDEBAR', 'toggle')}, button[aria-label*="打开侧边栏"], button[title*="打开侧边栏"], button[aria-label*="Open sidebar"], button[title*="Open sidebar"]`,
         );
         if (collapsedToggle) collapsedToggle.click();
       } else if (deltaX < 0 && document.body.classList.contains('dsh-drawer-open')) {
@@ -5317,8 +5409,8 @@ function setupComposerCollapse() {
   const getFoldBtn = () => {
     const existing = document.querySelector('.dsh-header-fold-btn');
     if (existing) return existing;
-    const utils = document.querySelector('div[class*="wSkVaW_headerUtilities"], div[class*="headerUtilities"]');
-    const logBtn = document.querySelector('button[class*="sessionLogButton"], button[class*="nL4_yW_sessionLogButton"]');
+    const utils = document.querySelector(`div${familySelector('CONV', 'headerUtilities')}, div[class*="headerUtilities"]`);
+    const logBtn = document.querySelector(`button${familySelector('LOG', 'sessionLogButton')}, button[class*="sessionLogButton"]`);
     if (!utils) return null;
     const btn = document.createElement('button');
     btn.className = 'dsh-header-fold-btn';
@@ -5444,6 +5536,16 @@ function apply(ctx) {
   // window.__DSH_BRIDGE_CONFIG__（宿主/服务端注入，mobileUi:false 即关）>
   // 运行时反射 > localStorage > 第三方层标记/自动探测。
   const pageTweaksOn = !shouldYieldAllPageTweaks();
+  // 宿主类名前缀解析必须最早做：下面的钻取/导航图标/移动体验全都要用它现算选择器。
+  // 首次解析发生在设置弹窗挂载之前（此时用的是已核实基线），弹窗一挂上就被
+  // watchHostFamilies 重新探测并就地重渲染 CSS（见 refreshHostFamilies）。
+  if (pageTweaksOn) {
+    refreshHostFamilies();
+    const stopWatchingFamilies = watchHostFamilies(() => refreshHostFamilies());
+    if (typeof ctx.effect === 'function') {
+      ctx.effect(() => stopWatchingFamilies, 'dsh-bridge: host family watcher');
+    }
+  }
   // 放在最前：交互层先就绪，后续任何初始化抛异常都不会留下「CSS 生效但监听器缺失」
   // 的状态（CSS 6.2 块另有 <html> 就绪开关双重兜底）。
   if (pageTweaksOn) {
@@ -5451,10 +5553,11 @@ function apply(ctx) {
   }
   // 设置页左侧导航栏图标定制：将原生通用齿轮替换为远程访问专属图标
   if (pageTweaksOn) {
+    const navIconFamilies = () => hostFamilies;
     if (typeof ctx.effect === 'function') {
-      ctx.effect(() => registerSettingsNavIcon(() => '远程访问'), 'dsh-bridge: settings nav icon');
+      ctx.effect(() => registerSettingsNavIcon(() => '远程访问', navIconFamilies), 'dsh-bridge: settings nav icon');
     } else {
-      registerSettingsNavIcon(() => '远程访问');
+      registerSettingsNavIcon(() => '远程访问', navIconFamilies);
     }
   }
   const rpcCall = (endpoint, payload, signal) =>

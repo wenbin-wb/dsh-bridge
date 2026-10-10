@@ -9,7 +9,7 @@
 // 用法：node test/browser/market-install.mjs
 import path from 'node:path';
 import puppeteer from 'puppeteer-core';
-import { launchOptions, shotsDir, connect, dismissHostNotices } from './helpers.mjs';
+import { suiteResult, openSettings, installLegacySelectorBridge, launchOptions, shotsDir, connect, dismissHostNotices } from './helpers.mjs';
 
 const SHOTS = shotsDir('market-install');
 const CHROME = launchOptions().executablePath;
@@ -17,6 +17,7 @@ const { port: PORT, cookie: c, cookieName: cn } = connect();
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 
 const rows = [];
+let skip = 0;
 const say = (n, ok, d) => {
   rows.push({ n, ok, d });
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${n}${d ? ' — ' + d : ''}`);
@@ -34,13 +35,16 @@ const browser = await puppeteer.launch({ executablePath: CHROME, headless: true,
 
 for (const vp of VIEWPORTS) {
   const page = await browser.newPage();
+  // Issue #72：老套件写死 0.1.x 的 CSS-module 哈希，这里把查询字符串按宿主
+  // 真实前缀改写（只改查询、不改 DOM），使其能打在任意代次宿主上。
+  await installLegacySelectorBridge(page);
   await page.setCacheEnabled(false);
   await page.setViewport({ width: vp.w, height: vp.h, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
-  await page.setCookie({ name: cn, value: c.slice(cn.length + 1), domain: '127.0.0.1', path: '/' });
+ if (c) await page.setCookie({ name: cn, value: c.slice(cn.length + 1), domain: '127.0.0.1', path: '/' });
   await page.goto(`${BASE_URL}/`, { waitUntil: 'domcontentloaded' });
   await new Promise((r) => setTimeout(r, 4200));
   await dismissHostNotices(page);
-  await page.evaluate(() => document.querySelector('button[aria-label="Settings"]')?.click());
+  await openSettings(page);
   await new Promise((r) => setTimeout(r, 1200));
   // 宿主 0.2.0 设置导航可能已无市场入口（结构漂移）：缺席时本视口断言 SKIP，不记 FAIL
   const marketNav = await page.evaluate(() => {
@@ -51,6 +55,7 @@ for (const vp of VIEWPORTS) {
   });
   await new Promise((r) => setTimeout(r, 7000));
   if (!marketNav.hasCell) {
+    skip++;
     console.log(`SKIP  ${vp.n} 市场确认框（宿主设置导航无市场入口，0.2.0 结构漂移，待宿主稳定后重写断言）`);
     await page.close();
     continue;
@@ -70,10 +75,17 @@ for (const vp of VIEWPORTS) {
   await new Promise((r) => setTimeout(r, 2500));
 
   const m = await page.evaluate(() => {
-    // 排除设置弹窗自身：DSH 0.1.7 起 VOzbGW_overlay 是 <body> 直接子级，也同样含 role=dialog 子元素，
+    // 排除设置弹窗自身：设置弹窗的 overlay 是 <body> 直接子级、同样含 role=dialog 子元素，
     // 不排除就会把它当成「第三方模态根」，把设置导航按钮一并算进命中判定。
+    // 族名在页面内现读（Issue #72：写死 VOzbGW 在 0.2.0 上排除失效；桥只改写选择器字符串，
+    // 改不了这里的字符串比较）。
+    let settingsFamily = 'VOzbGW';
+    try {
+      const fams = JSON.parse(document.documentElement.getAttribute('data-dshbr-families') || '{}');
+      if (fams.SETTINGS) settingsFamily = fams.SETTINGS;
+    } catch { /* 老插件退回历史族名 */ }
     const dlgRoot = [...document.body.children].find(
-      (e) => e.tagName === 'DIV' && !String(e.className).includes('VOzbGW') && e.querySelector(':scope > div[role="dialog"]'),
+      (e) => e.tagName === 'DIV' && !String(e.className).includes(settingsFamily) && e.querySelector(':scope > div[role="dialog"]'),
     );
     if (!dlgRoot) return { found: false };
     const inner = dlgRoot.querySelector(':scope > div[role="dialog"]');
@@ -149,5 +161,5 @@ for (const vp of VIEWPORTS) {
 
 await browser.close();
 const failed = rows.filter((r) => !r.ok);
-console.log(`\n==== 市场安装流程验收汇总：${rows.length - failed.length}/${rows.length} 通过 ====`);
+suiteResult({ label: '市场安装流程验收', pass: rows.length - failed.length, fail: failed.length, skip: skip });
 if (failed.length) process.exitCode = 1;

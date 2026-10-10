@@ -8,6 +8,11 @@
 // 解决方案（对齐 dshmarket 与 dsh-better-sidebar）：
 // 监听设置弹窗挂载，定位到文本匹配「远程访问」的 nav 按钮，通过 CSS mask 将原生齿轮
 // 替换为专属的「手机 + 远程无线连接」矢量图标，颜色跟随 currentColor 保持原生悬停与激活态一致。
+//
+// 选择器策略（Issue #72）：以结构锚点 `[role="dialog"] nav button` 为主——它不依赖任何
+// CSS-module 哈希，0.1.x 与 0.2.0 实测都命中；宿主前缀（VOzbGW_ / wCInkW_）改由
+// client/host-families.js 运行时解析，仅在解析成功时作为补充选择器。
+import { ABSENT_FAMILY } from './host-families.js';
 
 export const SETTINGS_NAV_MARKER = 'data-dsh-bridge-settings-nav';
 
@@ -43,9 +48,12 @@ export function getNavIconCss(customSvg = REMOTE_NAV_SVG) {
  * 注册设置页导航图标适配器
  *
  * @param {() => string} [resolveLabel] 获取当前标签文本的回调
+ * @param {() => Record<string,string>} [resolveFamilies] 取运行时解析出的宿主 CSS-module
+ *   前缀表（见 client/host-families.js）。拿不到时退回纯结构锚点 `[role="dialog"] nav button`
+ *   —— 该锚点在 0.1.x 与 0.2.0 实测都命中，故即使前缀完全解析失败，本功能也不受影响。
  * @returns {() => void} 清理函数
  */
-export function registerSettingsNavIcon(resolveLabel = () => '远程访问') {
+export function registerSettingsNavIcon(resolveLabel = () => '远程访问', resolveFamilies = null) {
   if (typeof document === 'undefined') return () => {};
 
   const styleId = 'dsh-bridge-settings-nav-icon-style';
@@ -62,7 +70,13 @@ export function registerSettingsNavIcon(resolveLabel = () => '远程访问') {
   const sync = () => {
     if (disposed) return;
     const currentLabel = typeof resolveLabel === 'function' ? resolveLabel().trim() : '远程访问';
-    const buttons = document.querySelectorAll('[role="dialog"] nav button, div[class*="VOzbGW_nav"] button');
+    // 结构锚点优先（版本无关）；解析到前缀时再补一条同族选择器，覆盖 nav 结构变化的宿主
+    const families = typeof resolveFamilies === 'function' ? (resolveFamilies() || {}) : {};
+    const settingsFamily = families.SETTINGS;
+    const selector = settingsFamily && settingsFamily !== ABSENT_FAMILY
+      ? `[role="dialog"] nav button, div[class*="${settingsFamily}_nav"] button`
+      : '[role="dialog"] nav button';
+    const buttons = document.querySelectorAll(selector);
     for (const button of buttons) {
       const text = button.textContent?.trim() || '';
       if (currentLabel.length > 0 && (text === currentLabel || text.includes(currentLabel))) {

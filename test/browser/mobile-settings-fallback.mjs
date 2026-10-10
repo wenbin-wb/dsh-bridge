@@ -13,7 +13,7 @@
 // 用法：node test/browser/mobile-settings-fallback.mjs
 import path from 'node:path';
 import puppeteer from 'puppeteer-core';
-import { launchOptions, shotsDir, connect } from './helpers.mjs';
+import { suiteResult, openSettings, installLegacySelectorBridge, launchOptions, shotsDir, connect } from './helpers.mjs';
 
 const SHOTS = shotsDir('mobile-settings-fallback');
 const CHROME = launchOptions().executablePath;
@@ -34,9 +34,12 @@ for (const vp of [
   { name: '320x480', width: 320, height: 480 },
 ]) {
   const page = await browser.newPage();
+  // Issue #72：老套件写死 0.1.x 的 CSS-module 哈希，这里把查询字符串按宿主
+  // 真实前缀改写（只改查询、不改 DOM），使其能打在任意代次宿主上。
+  await installLegacySelectorBridge(page);
   await page.setCacheEnabled(false);
   await page.setViewport({ width: vp.width, height: vp.height, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
-  await page.setCookie({ name: cn, value: c.slice(cn.length + 1), domain: '127.0.0.1', path: '/' });
+ if (c) await page.setCookie({ name: cn, value: c.slice(cn.length + 1), domain: '127.0.0.1', path: '/' });
   await page.goto(`${BASE_URL}/`, { waitUntil: 'domcontentloaded' });
   await new Promise((r) => setTimeout(r, 4500));
 
@@ -45,7 +48,7 @@ for (const vp of [
 
   // 摘掉开关 = 模拟「CSS 6.2 惰性」这一回退分支
   await page.evaluate(() => document.documentElement.removeAttribute('data-dshbr-drilldown'));
-  await page.evaluate(() => document.querySelector('button[aria-label="Settings"]')?.click());
+  await openSettings(page);
   await new Promise((r) => setTimeout(r, 1500));
 
   const fb = await page.evaluate(() => {
@@ -142,17 +145,20 @@ const BROKEN_MQ_CASES = [
 
 for (const mqCase of BROKEN_MQ_CASES) {
   const page = await browser.newPage();
+  // Issue #72：老套件写死 0.1.x 的 CSS-module 哈希，这里把查询字符串按宿主
+  // 真实前缀改写（只改查询、不改 DOM），使其能打在任意代次宿主上。
+  await installLegacySelectorBridge(page);
   await page.setCacheEnabled(false);
   await page.evaluateOnNewDocument(mqCase.patch);
   await page.setViewport({ width: 375, height: 667, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
-  await page.setCookie({ name: cn, value: c.slice(cn.length + 1), domain: '127.0.0.1', path: '/' });
+ if (c) await page.setCookie({ name: cn, value: c.slice(cn.length + 1), domain: '127.0.0.1', path: '/' });
   await page.goto(`${BASE_URL}/`, { waitUntil: 'domcontentloaded' });
   await new Promise((r) => setTimeout(r, 4500));
 
   const gate = await page.evaluate(() => document.documentElement.getAttribute('data-dshbr-drilldown'));
   say(`375x667 [${mqCase.name}] 就绪开关不得打开`, gate === null, `gate=${gate}`);
 
-  await page.evaluate(() => document.querySelector('button[aria-label="Settings"]')?.click());
+  await openSettings(page);
   await new Promise((r) => setTimeout(r, 1500));
   const m = await page.evaluate(() => {
     const ov = document.querySelector('[class*="VOzbGW_overlay"]');
@@ -175,12 +181,15 @@ for (const mqCase of BROKEN_MQ_CASES) {
 // ---------- 2) 对照组：开关在时走钻取，且进退正常 ----------
 {
   const page = await browser.newPage();
+  // Issue #72：老套件写死 0.1.x 的 CSS-module 哈希，这里把查询字符串按宿主
+  // 真实前缀改写（只改查询、不改 DOM），使其能打在任意代次宿主上。
+  await installLegacySelectorBridge(page);
   await page.setCacheEnabled(false);
   await page.setViewport({ width: 375, height: 667, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
-  await page.setCookie({ name: cn, value: c.slice(cn.length + 1), domain: '127.0.0.1', path: '/' });
+ if (c) await page.setCookie({ name: cn, value: c.slice(cn.length + 1), domain: '127.0.0.1', path: '/' });
   await page.goto(`${BASE_URL}/`, { waitUntil: 'domcontentloaded' });
   await new Promise((r) => setTimeout(r, 4500));
-  await page.evaluate(() => document.querySelector('button[aria-label="Settings"]')?.click());
+  await openSettings(page);
   await new Promise((r) => setTimeout(r, 1200));
   const menu = await page.evaluate(() => {
     const ov = document.querySelector('[class*="VOzbGW_overlay"]');
@@ -220,5 +229,5 @@ for (const mqCase of BROKEN_MQ_CASES) {
 
 await browser.close();
 const failed = out.filter((x) => !x.ok);
-console.log(`\n==== 回退/对抗用例汇总：${out.length - failed.length}/${out.length} 通过 ====`);
+suiteResult({ label: '回退/对抗用例', pass: out.length - failed.length, fail: failed.length });
 if (failed.length) process.exitCode = 1;

@@ -25,9 +25,17 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MOBILE_STYLES_CSS } from '../client/mobile-styles.js';
+import { FAMILY_SLOTS, renderMobileStyles } from '../client/host-families.js';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const sourceCss = MOBILE_STYLES_CSS;
+// 本文件的断言关心的是「规则内容」，与宿主 CSS-module 前缀无关（Issue #72 起源码里
+// 一律写 __F_<SLOT>__ 占位符）。这里按 0.1.x 那一代前缀渲染，断言里的 VOzbGW_ 等
+// 历史名字因此保持字面可比；产物同步断言另用未渲染的模板原文比对。
+const LEGACY_FAMILIES = Object.fromEntries(
+  Object.entries(FAMILY_SLOTS).map(([slot, spec]) => [slot, spec.known[spec.known.length - 1]]),
+);
+const templateCss = MOBILE_STYLES_CSS;
+const sourceCss = renderMobileStyles(templateCss, LEGACY_FAMILIES);
 const structureCss = sourceCss.replace(/\/\*[\s\S]*?\*\//g, ' ');
 const indexSource = readFileSync(resolve(repoRoot, 'client/index.js'), 'utf8');
 const bundle = readFileSync(resolve(repoRoot, 'client/client.js'), 'utf8');
@@ -543,7 +551,7 @@ test('Tab 条具备横滑可达提示（边缘渐隐 + 当前项滚入可视区�
 });
 
 test('打包产物与源码同步（本次修复 + 无 hidden 残留 + 带就绪开关）', () => {
-  assert.ok(unescapedBundle.includes(sourceCss), '产物内嵌的移动端 CSS 与源码不一致，请运行 npm run build:client');
+  assert.ok(unescapedBundle.includes(templateCss), '产物内嵌的移动端 CSS 与源码不一致，请运行 npm run build:client');
   assert.ok(unescapedBundle.includes('setupSettingsDrilldown'), '产物缺少钻取交互，疑似忘记运行 npm run build:client');
   assert.ok(unescapedBundle.includes('SETTINGS_DRILLDOWN_MAX_WIDTH'), '产物缺少钻取断点常量');
   assert.ok(unescapedBundle.includes('data-dsh-tab-active'), '产物缺少 Tab 条可达提示');
@@ -556,7 +564,7 @@ test('打包产物与源码同步（本次修复 + 无 hidden 残留 + 带就绪
     '产物缺少钻取默认态规则',
   );
   assert.equal(
-    unescapedBundle.includes('VOzbGW_options"] {\n        flex: 1 1 auto !important;\n        width: 100% !important;\n        max-width: 100% !important;\n        box-sizing: border-box !important;\n        padding: 0 14px 20px !important;\n        overflow-x: hidden'),
+    unescapedBundle.includes('__F_SETTINGS__options"] {\n        flex: 1 1 auto !important;\n        width: 100% !important;\n        max-width: 100% !important;\n        box-sizing: border-box !important;\n        padding: 0 14px 20px !important;\n        overflow-x: hidden'),
     false,
     '产物仍残留把设置内容区裁切的旧规则，请运行 npm run build:client',
   );

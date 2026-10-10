@@ -5,7 +5,7 @@
 // 用法：node test/browser/mobile-settings-edge.mjs
 import path from 'node:path';
 import puppeteer from 'puppeteer-core';
-import { launchOptions, shotsDir, connect, dismissHostNotices } from './helpers.mjs';
+import { suiteResult, openSettings, installLegacySelectorBridge, launchOptions, shotsDir, connect, dismissHostNotices } from './helpers.mjs';
 
 const SHOTS = shotsDir('mobile-settings-edge');
 const CHROME = launchOptions().executablePath;
@@ -13,6 +13,7 @@ const { port: PORT, cookie: c, cookieName: cn } = connect();
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 
 const out = [];
+let skip = 0;
 const say = (name, ok, detail) => {
   out.push({ name, ok, detail });
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ' — ' + detail : ''}`);
@@ -23,13 +24,16 @@ const browser = await puppeteer.launch({ executablePath: CHROME, headless: true,
 // ---------- A. 320x480 极窄屏 ----------
 {
   const page = await browser.newPage();
+  // Issue #72：老套件写死 0.1.x 的 CSS-module 哈希，这里把查询字符串按宿主
+  // 真实前缀改写（只改查询、不改 DOM），使其能打在任意代次宿主上。
+  await installLegacySelectorBridge(page);
   await page.setCacheEnabled(false);
   await page.setViewport({ width: 320, height: 480, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
-  await page.setCookie({ name: cn, value: c.slice(cn.length + 1), domain: '127.0.0.1', path: '/' });
+ if (c) await page.setCookie({ name: cn, value: c.slice(cn.length + 1), domain: '127.0.0.1', path: '/' });
   await page.goto(`${BASE_URL}/`, { waitUntil: 'domcontentloaded' });
   await new Promise((r) => setTimeout(r, 4000));
   await dismissHostNotices(page);
-  await page.evaluate(() => document.querySelector('button[aria-label="Settings"]')?.click());
+  await openSettings(page);
   await new Promise((r) => setTimeout(r, 1200));
 
   const menu = await page.evaluate(() => {
@@ -84,13 +88,16 @@ const browser = await puppeteer.launch({ executablePath: CHROME, headless: true,
 // ---------- B. 插件市场页签在 375px 是否可达 ----------
 for (const width of [375, 390]) {
   const page = await browser.newPage();
+  // Issue #72：老套件写死 0.1.x 的 CSS-module 哈希，这里把查询字符串按宿主
+  // 真实前缀改写（只改查询、不改 DOM），使其能打在任意代次宿主上。
+  await installLegacySelectorBridge(page);
   await page.setCacheEnabled(false);
   await page.setViewport({ width, height: 800, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
-  await page.setCookie({ name: cn, value: c.slice(cn.length + 1), domain: '127.0.0.1', path: '/' });
+ if (c) await page.setCookie({ name: cn, value: c.slice(cn.length + 1), domain: '127.0.0.1', path: '/' });
   await page.goto(`${BASE_URL}/`, { waitUntil: 'domcontentloaded' });
   await new Promise((r) => setTimeout(r, 4000));
   await dismissHostNotices(page);
-  await page.evaluate(() => document.querySelector('button[aria-label="Settings"]')?.click());
+  await openSettings(page);
   await new Promise((r) => setTimeout(r, 1000));
   // 宿主 0.2.0 设置导航可能已无市场入口（结构漂移）：缺席时本段断言 SKIP，不记 FAIL
   const marketNav = await page.evaluate(() => {
@@ -102,6 +109,7 @@ for (const width of [375, 390]) {
   await new Promise((r) => setTimeout(r, 6000));
   const marketSkipped = !marketNav.hasCell;
   if (marketSkipped) {
+    skip++;
     console.log(`SKIP  ${width}px 插件市场页签（宿主设置导航无市场入口，0.2.0 结构漂移，待宿主稳定后重写断言）`);
   }
 
@@ -170,17 +178,21 @@ for (const width of [375, 390]) {
 // ---------- C. 返回后 nav 滚动状态干净 ----------
 {
   const page = await browser.newPage();
+  // Issue #72：老套件写死 0.1.x 的 CSS-module 哈希，这里把查询字符串按宿主
+  // 真实前缀改写（只改查询、不改 DOM），使其能打在任意代次宿主上。
+  await installLegacySelectorBridge(page);
   await page.setCacheEnabled(false);
   await page.setViewport({ width: 375, height: 667, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
-  await page.setCookie({ name: cn, value: c.slice(cn.length + 1), domain: '127.0.0.1', path: '/' });
+ if (c) await page.setCookie({ name: cn, value: c.slice(cn.length + 1), domain: '127.0.0.1', path: '/' });
   await page.goto(`${BASE_URL}/`, { waitUntil: 'domcontentloaded' });
   await new Promise((r) => setTimeout(r, 4000));
   await dismissHostNotices(page);
-  await page.evaluate(() => document.querySelector('button[aria-label="Settings"]')?.click());
+  await openSettings(page);
   await new Promise((r) => setTimeout(r, 1000));
   // 宿主 0.2.0 导航格数量变化（实测仅 5 格）：下标访问先判空，缺席则本段 SKIP
   const hasSixthCell = await page.evaluate(() => !!document.querySelectorAll('button[class*="VOzbGW_navCell"]')[5]);
   if (!hasSixthCell) {
+    skip++;
     console.log('SKIP  返回后 nav 滚动（宿主 0.2.0 导航不足 6 格，结构漂移，待宿主稳定后重写断言）');
     await page.close();
   } else {
@@ -201,5 +213,5 @@ for (const width of [375, 390]) {
 
 await browser.close();
 const failed = out.filter((x) => !x.ok);
-console.log(`\n==== 补充验证汇总：${out.length - failed.length}/${out.length} 通过 ====`);
+suiteResult({ label: '补充验证（极窄屏 + 页签可达性）', pass: out.length - failed.length, fail: failed.length, skip: skip });
 if (failed.length) process.exitCode = 1;
