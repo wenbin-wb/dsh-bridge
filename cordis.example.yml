@@ -18,6 +18,11 @@
     # 只保留远程访问、隧道与机器人功能。也可用环境变量 DSH_BRIDGE_MOBILE_UI=0。
     # mobileUi: true
 
+    # SSE 空闲保活（issue #71）：对经代理的事件流静默 25s 时注入 ': keepalive'
+    # 注释帧，防止 Cloudflare 等链路按空闲回收（实测 ~126s）掐断远端面板实时通道。
+    # 默认开启；仅当上游已自带等效保活且造成困扰时才需要显式 false 关闭。
+    # sseKeepalive: true
+
     # 局域网二维码使用的网卡 IP（默认自动优先物理网卡）
     # lan:
     #   selectedIp: 192.168.1.10
