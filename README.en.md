@@ -58,7 +58,8 @@
 ## ✨ Key Features
 
 - **🛜 Multi-NIC Smart Detection & Switching**: Automatically detects physical Wi-Fi, Ethernet, and virtual NICs (WSL/VMware/Docker); provides visual switching with persistent memory;
-- **🌐 Dual-Mode Cloudflare Public Tunnels**: Zero-login 1-click random temporary domains or Cloudflare Named Tunnel Token with auto-start on boot;
+- **🌐 Dual-Mode Cloudflare Public Tunnels**: Zero-login 1-click random temporary domains or Cloudflare Named Tunnel Token with auto-start on boot; built-in idle keepalive for SSE streams so remote live channels are never cut by the link;
+- **📡 Tunnel Observability**: end-to-end public-entry probe every 60s (DNS / TLS / edge / origin — catches "/ready looks fine but users cannot get in", flags suspected DNS poisoning with the resolved IP); shows the actual cloudflared path · version · source; warns when another cloudflared uses the same Tunnel Token;
 - **📱 Native-Grade Mobile UI & PWA**: Centered session header, native drawer sidebar with `[|` fold icon, anti-overlap responsive layout, PWA install support;
 - **🗂️ Web Remote Workspace Directory Picker**: Mobile/remote visits pop up responsive tree directory browser; localhost visits route to OS native dialogs; supports `/addworkspace` IM command;
 - **🔐 Comprehensive Access Security & Dual Defenses**: QR code secret Token login, visitor password gate, independent admin anti-tamper lock; host physical privilege (`127.0.0.1`) & emergency terminal reset (`reset-auth`);
@@ -170,8 +171,11 @@ Access DeepSeek Harness from anywhere outside your home network without public I
 - **Mode 2: Cloudflare Token Fixed Domain (Permanent · Free)**:
   - Create a Tunnel in [Cloudflare Zero Trust Console](https://one.dash.cloudflare.com/) and bind your custom domain;
   - Enter Tunnel Token & hostname in Advanced Settings, enable **"Auto-start with DSH"** for permanent fixed URL!
+  - (Optional) Adjust **network parameters** in the same form: protocol (QUIC / HTTP/2), edge IP (4 / 6 / auto), region (US / global) — whitelisted from official Cloudflare docs, defaults unchanged; restart the tunnel to apply, unsupported flags are skipped with a warning;
 - **Mode 3: Custom WebSocket Tunnel**:
   - Connect to your personal VPS reverse proxy server ([View Setup Guide](docs/custom-tunnel.md)), equipped with per-message gzip and SSE optimization.
+
+- **📡 At-a-Glance Health**: the `Data plane` line = latest end-to-end public probe (every 60s, with resolved IP; failures distinguish "origin down" vs "suspected DNS poisoning/fake certificate"); the `cloudflared` line = actual binary path · version · source (system installs are not version-pinned); a yellow warning appears if another cloudflared uses the same Tunnel Token.
 
 > **Custom tunnel security note**: The tunnel server (`scripts/install-tunnel-server.sh`) only authenticates the *tunnel client control channel* with `TOKEN`; public HTTP/WebSocket requests forwarded through the tunnel domain are **not independently authenticated** — security relies entirely on the plugin's local Access Auth (the `x-dsh-internal-tunnel` marker prevents tunnel traffic from using the loopback exemption). Always enable **Access Auth** with a password/QR Token in the plugin settings (especially with `scope=all` or when exposed publicly); with no password set, anyone who knows the tunnel URL can reach your DSH.
 

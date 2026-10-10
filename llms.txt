@@ -18,6 +18,7 @@ dsh plugin --profile web add @wenbin_wb/dsh-bridge
 
 - 局域网二维码 + 多网卡智能切换（物理 Wi-Fi/以太网 vs WSL/VMware/Docker 虚拟网卡）
 - Cloudflare 临时隧道（免登录）+ Token 固定域名（随 DSH 自启）+ 自建 WebSocket 隧道
+- 隧道可观测性：公网数据面端到端探测（疑似 DNS 污染自动标注解析 IP）、实际 cloudflared 路径/版本/来源展示、同 Tunnel Token 冲突检测、SSE 空闲保活（远端实时通道不掉线）、网络参数白名单（协议/边缘 IP/区域，默认零变化）
 - 移动端交互 + PWA 全屏 App + 远程工作区网页选择器（手机选目录，PC 走原生对话框）
 - 全域安全门禁：二维码 256-bit Token + 访问密码 + 后台防篡改锁 + 127.0.0.1 本机最高特权
 - IM 机器人矩阵：微信 / QQ / 飞书 / Telegram，多工作区调度，会话持久化，流式输出，卡片审批，文件双向传输

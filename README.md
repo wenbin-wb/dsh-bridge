@@ -58,7 +58,8 @@
 ## ✨ 功能特性
 
 - **🛜 局域网多网卡智能识别与切换**：自动探测物理 Wi-Fi、以太网与虚拟网卡（WSL/VMware/Docker），支持在控制台可视化一键切换并记忆持久化，彻底解决多网卡 IP 不互通问题；
-- **🌐 双模 Cloudflare 公网隧道**：免登录一键获取随机临时域名，或填入 Cloudflare Token 绑定固定域名并随 DSH 开机自启；支持 macOS 下 Gatekeeper 隔离自愈与全局探测；
+- **🌐 双模 Cloudflare 公网隧道**：免登录一键获取随机临时域名，或填入 Cloudflare Token 绑定固定域名并随 DSH 开机自启；支持 macOS 下 Gatekeeper 隔离自愈与全局探测；代理层为事件流（SSE）内置空闲保活，远端实时通道不再被链路掐断；
+- **📡 隧道可观测性**：每 60s 实测公网入口端到端可达性（DNS / TLS / 边缘 / 回源，`/ready` 假绿一眼识别，疑似 DNS 污染自动标注解析 IP）；面板展示实际 cloudflared 路径 · 版本 · 来源；检测到与你使用同一 Tunnel Token 的其他 cloudflared 时黄条告警；
 - **📱 原生级移动端交互与 PWA 全屏应用**：动态居中会话标题、复用 DSH 原生侧边栏抽屉与 `[|` 收起图标、防重叠自适应工具栏，支持手机浏览器「添加到主屏幕」作为独立原生 App 运行；
 - **🗂️ 远程工作区网页选择器**：手机端点击添加工作区唤出树形目录抽屉浏览器，电脑本机点击自动分流调用系统原生选择窗口；支持 IM 指令 `/addworkspace` 远程注册；
 - **🔐 全域安全认证与双防线门禁**：专属二维码 256-bit Token 免密直通、外部访问密码门禁、独立后台管理员防篡改锁；内置物理机（`127.0.0.1`）最高特权与终端一秒救急重置（`reset-auth`）；
@@ -177,9 +178,12 @@ dsh plugin --profile desktop add @wenbin_wb/dsh-bridge
   1. 在 [Cloudflare Zero Trust 控制台](https://one.dash.cloudflare.com/) 免费创建 Tunnel 并绑定域名（如 `dsh.yourdomain.com`）——**[📖 从零申请/配置完整教程](docs/cloudflare-fixed-domain.md)**（注册账号 → 接入域名 → 建隧道 → 取 Token → 绑定子域名 → 填回面板）；
   2. 展开卡片底部的 **「⚙️ 高级配置：固定域名 (Cloudflare Token)」**，填入自定义域名与 Tunnel Token 并保存；
   3. 勾选 **「随 DSH 启动自动开启」**，每次 DSH 重启即可自动恢复隧道，**URL 永久固定不变**！
+  4. （可选）同一表单内可调整**网络参数**：协议（QUIC / HTTP/2）、边缘 IP（4 / 6 / 自动）、区域（美国 / 全球）——取值来自 Cloudflare 官方白名单，默认保持 cloudflared 默认行为；改动需重新开启隧道生效，当前二进制不支持的参数会自动跳过并告警；
 
 - **模式 3：自建 WebSocket 隧道**
   * 支持连接个人 VPS 隧道中转服务器（[查看自建隧道部署教程](docs/custom-tunnel.md)），具备数据端到端 gzip 压缩与 SSE 响应优化。
+
+- **📡 运行状态一眼看全**：卡片内 `数据面` 行 = 最近一次公网端到端探测（每 60s，含实际解析 IP，失败自动区分"回源失败"与"疑似 DNS 污染/伪造证书"）；`cloudflared` 行 = 实际使用的二进制路径 · 版本 · 来源（系统安装不参与版本钉死）；若检测到另一个使用相同 Tunnel Token 的 cloudflared，会黄条提示"隧道状态可能只反映一半"。
 
 > **自建隧道安全须知**：隧道服务端（`scripts/install-tunnel-server.sh`）只对「隧道客户端控制通道」校验 `TOKEN`；公网访客对隧道域名的 HTTP/WebSocket 转发**不再做独立认证**，安全完全依赖插件本地的「访问认证」（`x-dsh-internal-tunnel` 标识使隧道流量无法享受本机回环保留）。请务必在插件设置中开启「安全认证」并设置访问密码/二维码 Token（尤其 `scope=all` 或公网使用时）；未设置任何密码时，任何知道隧道地址的访客都能直接访问您的 DSH。
 
