@@ -767,6 +767,35 @@ const TunnelCard = React.memo(function TunnelCard({
 });
 
 // Cloudflare 命名隧道（固定域名 / Token）高级配置表单
+// 隧道可观测性（issue #71 P1-A/P2-B）：数据面端到端探测状态 + 实际使用的 cloudflared 二进制。
+// 数据面与 /ready 互补：/ready 只回答"连接器有没有健康边缘连接"，这里回答
+// "公网用户能否真的访问到入口"（DNS/TLS/边缘/回源整条链路），排障时不再被假绿误导。
+const CloudflareDiagnostics = React.memo(function CloudflareDiagnostics({ dataPlane, binary }) {
+  const lines = [];
+  if (dataPlane) {
+    const n = dataPlane.consecutiveFailures || 0;
+    if (dataPlane.state === 'ok') {
+      lines.push('✅ 数据面正常（每 60s 探测公网入口' + (dataPlane.resolvedIp ? ' · ' + dataPlane.resolvedIp : '') + '）');
+    } else if (dataPlane.state === 'unstable') {
+      lines.push('⚠️ 数据面间歇失败（连续 ' + n + ' 次）：' + (dataPlane.lastError || '原因未知'));
+    } else if (dataPlane.state === 'degraded') {
+      lines.push('❌ 数据面不可达（连续 ' + n + ' 次）：' + (dataPlane.lastError || '原因未知'));
+    } else if (dataPlane.lastError) {
+      lines.push('数据面探测：' + dataPlane.lastError);
+    }
+  }
+  if (binary && binary.path) {
+    const src = binary.source === 'system' ? '系统' : (binary.source === 'managed' ? '插件内置' : '外部指定');
+    lines.push('cloudflared：' + binary.path + '（' + (binary.version || '版本未知') + ' · ' + src + '）');
+  }
+  if (!lines.length) return null;
+  return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 4, margin: '6px 0 10px' } },
+    lines.map((t, i) => React.createElement('div', {
+      key: i,
+      style: { ...s.muted, fontSize: 11, wordBreak: 'break-all' },
+    }, t)));
+});
+
 const CloudflareConfigForm = React.memo(function CloudflareConfigForm({ token, hostname, onSave }) {
   const [open, setOpen] = React.useState(Boolean(token || hostname));
   const [tokenVal, setTokenVal] = React.useState(token || '');
@@ -3574,6 +3603,10 @@ function BridgePanel({ rpcCall, preferredTab }) {
           onStop:  onStopCloudflared,
           onReset: (cf && cf.running) ? onResetCloudflared : null,
         },
+          React.createElement(CloudflareDiagnostics, {
+            dataPlane: cf && cf.dataPlane,
+            binary: cf && cf.binary,
+          }),
           React.createElement(CloudflareConfigForm, {
             token: (cf && cf.token) || '',
             hostname: (cf && cf.hostname) || '',

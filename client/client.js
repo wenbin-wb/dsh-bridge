@@ -2950,6 +2950,34 @@ var TunnelCard = React.memo(function TunnelCard2({
     )
   );
 });
+var CloudflareDiagnostics = React.memo(function CloudflareDiagnostics2({ dataPlane, binary }) {
+  const lines = [];
+  if (dataPlane) {
+    const n = dataPlane.consecutiveFailures || 0;
+    if (dataPlane.state === "ok") {
+      lines.push("\u2705 \u6570\u636E\u9762\u6B63\u5E38\uFF08\u6BCF 60s \u63A2\u6D4B\u516C\u7F51\u5165\u53E3" + (dataPlane.resolvedIp ? " \xB7 " + dataPlane.resolvedIp : "") + "\uFF09");
+    } else if (dataPlane.state === "unstable") {
+      lines.push("\u26A0\uFE0F \u6570\u636E\u9762\u95F4\u6B47\u5931\u8D25\uFF08\u8FDE\u7EED " + n + " \u6B21\uFF09\uFF1A" + (dataPlane.lastError || "\u539F\u56E0\u672A\u77E5"));
+    } else if (dataPlane.state === "degraded") {
+      lines.push("\u274C \u6570\u636E\u9762\u4E0D\u53EF\u8FBE\uFF08\u8FDE\u7EED " + n + " \u6B21\uFF09\uFF1A" + (dataPlane.lastError || "\u539F\u56E0\u672A\u77E5"));
+    } else if (dataPlane.lastError) {
+      lines.push("\u6570\u636E\u9762\u63A2\u6D4B\uFF1A" + dataPlane.lastError);
+    }
+  }
+  if (binary && binary.path) {
+    const src = binary.source === "system" ? "\u7CFB\u7EDF" : binary.source === "managed" ? "\u63D2\u4EF6\u5185\u7F6E" : "\u5916\u90E8\u6307\u5B9A";
+    lines.push("cloudflared\uFF1A" + binary.path + "\uFF08" + (binary.version || "\u7248\u672C\u672A\u77E5") + " \xB7 " + src + "\uFF09");
+  }
+  if (!lines.length) return null;
+  return React.createElement(
+    "div",
+    { style: { display: "flex", flexDirection: "column", gap: 4, margin: "6px 0 10px" } },
+    lines.map((t, i) => React.createElement("div", {
+      key: i,
+      style: { ...s.muted, fontSize: 11, wordBreak: "break-all" }
+    }, t))
+  );
+});
 var CloudflareConfigForm = React.memo(function CloudflareConfigForm2({ token, hostname, onSave }) {
   const [open, setOpen] = React.useState(Boolean(token || hostname));
   const [tokenVal, setTokenVal] = React.useState(token || "");
@@ -5995,6 +6023,10 @@ function BridgePanel({ rpcCall, preferredTab }) {
             onStop: onStopCloudflared,
             onReset: cf && cf.running ? onResetCloudflared : null
           },
+          React.createElement(CloudflareDiagnostics, {
+            dataPlane: cf && cf.dataPlane,
+            binary: cf && cf.binary
+          }),
           React.createElement(CloudflareConfigForm, {
             token: cf && cf.token || "",
             hostname: cf && cf.hostname || "",
