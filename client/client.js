@@ -2950,7 +2950,7 @@ var TunnelCard = React.memo(function TunnelCard2({
     )
   );
 });
-var CloudflareDiagnostics = React.memo(function CloudflareDiagnostics2({ dataPlane, binary }) {
+var CloudflareDiagnostics = React.memo(function CloudflareDiagnostics2({ dataPlane, binary, foreignRunner }) {
   const lines = [];
   if (dataPlane) {
     const n = dataPlane.consecutiveFailures || 0;
@@ -2964,8 +2964,11 @@ var CloudflareDiagnostics = React.memo(function CloudflareDiagnostics2({ dataPla
       lines.push("\u6570\u636E\u9762\u63A2\u6D4B\uFF1A" + dataPlane.lastError);
     }
   }
+  if (foreignRunner && foreignRunner.pid) {
+    lines.push("\u26A0\uFE0F \u68C0\u6D4B\u5230\u53E6\u4E00\u4E2A cloudflared\uFF08PID " + foreignRunner.pid + "\uFF0C\u51ED\u636E\u6765\u6E90 --" + foreignRunner.via + "\uFF09\u6B63\u5728\u4F7F\u7528\u76F8\u540C\u7684 tunnel token\uFF1A\u96A7\u9053\u72B6\u6001\u53EF\u80FD\u53EA\u53CD\u6620\u4E00\u534A\uFF0C\u8BF7\u505C\u7528\u5176\u4E2D\u4E00\u4FA7");
+  }
   if (binary && binary.path) {
-    const src = binary.source === "system" ? "\u7CFB\u7EDF" : binary.source === "managed" ? "\u63D2\u4EF6\u5185\u7F6E" : "\u5916\u90E8\u6307\u5B9A";
+    const src = binary.source === "system" ? "\u7CFB\u7EDF\u5B89\u88C5\uFF08\u4E0D\u53C2\u4E0E\u7248\u672C\u9489\u6B7B\uFF09" : binary.source === "managed" ? "\u63D2\u4EF6\u5185\u7F6E" : "\u5916\u90E8\u6307\u5B9A";
     lines.push("cloudflared\uFF1A" + binary.path + "\uFF08" + (binary.version || "\u7248\u672C\u672A\u77E5") + " \xB7 " + src + "\uFF09");
   }
   if (!lines.length) return null;
@@ -2978,16 +2981,31 @@ var CloudflareDiagnostics = React.memo(function CloudflareDiagnostics2({ dataPla
     }, t))
   );
 });
-var CloudflareConfigForm = React.memo(function CloudflareConfigForm2({ token, hostname, onSave }) {
+var CLOUDFLARE_NETWORK_SELECTS = [
+  { key: "protocol", label: "\u7F51\u7EDC\u534F\u8BAE", opts: [["", "\u9ED8\u8BA4\uFF08auto\uFF09"], ["quic", "\u5F3A\u5236 QUIC"], ["http2", "\u5F3A\u5236 HTTP/2"]] },
+  { key: "edgeIpVersion", label: "\u8FB9\u7F18 IP", opts: [["", "\u9ED8\u8BA4\uFF084\uFF09"], ["4", "IPv4\uFF084\uFF09"], ["6", "IPv6\uFF086\uFF09"], ["auto", "\u81EA\u52A8\uFF08auto\uFF09"]] },
+  { key: "region", label: "\u8FB9\u7F18\u533A\u57DF", opts: [["", "\u5168\u7403\uFF08\u9ED8\u8BA4\uFF09"], ["us", "\u7F8E\u56FD\uFF08us\uFF09"]] }
+];
+var CloudflareConfigForm = React.memo(function CloudflareConfigForm2({ token, hostname, network, onSave }) {
   const [open, setOpen] = React.useState(Boolean(token || hostname));
   const [tokenVal, setTokenVal] = React.useState(token || "");
   const [hostnameVal, setHostnameVal] = React.useState(hostname || "");
+  const [netVals, setNetVals] = React.useState(() => ({
+    protocol: network?.protocol || "",
+    edgeIpVersion: network?.edgeIpVersion || "",
+    region: network?.region || ""
+  }));
   const [saving, setSaving] = React.useState(false);
   const [msg, setMsg] = React.useState(null);
   React.useEffect(() => {
     setTokenVal(token || "");
     setHostnameVal(hostname || "");
-  }, [token, hostname]);
+    setNetVals({
+      protocol: network?.protocol || "",
+      edgeIpVersion: network?.edgeIpVersion || "",
+      region: network?.region || ""
+    });
+  }, [token, hostname, network]);
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -2996,6 +3014,9 @@ var CloudflareConfigForm = React.memo(function CloudflareConfigForm2({ token, ho
       const patch = {};
       if (hostnameVal !== (hostname || "")) patch.hostname = hostnameVal;
       if (tokenVal !== (token || "")) patch.token = tokenVal;
+      for (const { key } of CLOUDFLARE_NETWORK_SELECTS) {
+        if ((netVals[key] || "") !== ((network || {})[key] || "")) patch[key] = netVals[key] || "";
+      }
       if (Object.keys(patch).length > 0) await onSave(patch);
       setMsg({ ok: true, text: "\u2713 \u56FA\u5B9A\u57DF\u540D\u914D\u7F6E\u5DF2\u4FDD\u5B58" });
     } catch (err) {
@@ -3063,6 +3084,41 @@ var CloudflareConfigForm = React.memo(function CloudflareConfigForm2({ token, ho
           value: tokenVal,
           onChange: (e) => setTokenVal(e.target.value)
         })
+      ),
+      React.createElement(
+        "div",
+        {
+          style: { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 6, marginBottom: 8 }
+        },
+        CLOUDFLARE_NETWORK_SELECTS.map(({ key, label, opts }) => React.createElement(
+          "label",
+          {
+            key,
+            style: { display: "flex", flexDirection: "column", gap: 3, fontSize: 11, color: "var(--dsw-alias-label-secondary, #6b7280)" }
+          },
+          label,
+          React.createElement(
+            "select",
+            {
+              style: {
+                ...s.input,
+                height: 28,
+                fontSize: 12,
+                padding: "0 6px",
+                cursor: "pointer",
+                background: "var(--dsw-alias-bg-layer-1, #ffffff)"
+              },
+              value: netVals[key] || "",
+              onChange: (e) => setNetVals((v) => ({ ...v, [key]: e.target.value }))
+            },
+            opts.map(([val, text]) => React.createElement("option", { key: val, value: val }, text))
+          )
+        ))
+      ),
+      React.createElement(
+        "div",
+        { style: { ...s.muted, fontSize: 11, marginBottom: 8, lineHeight: 1.5 } },
+        "\u7F51\u7EDC\u53C2\u6570\u53D6\u503C\u6765\u81EA Cloudflare \u5B98\u65B9\u767D\u540D\u5355\uFF1B\u6539\u52A8\u9700\u91CD\u65B0\u5F00\u542F\u96A7\u9053\uFF08\u5173\u95ED\u2192\u5F00\u542F\uFF09\u540E\u751F\u6548\uFF0C\u5F53\u524D\u4E8C\u8FDB\u5236\u4E0D\u652F\u6301\u7684\u53C2\u6570\u4F1A\u81EA\u52A8\u8DF3\u8FC7\u5E76\u5728\u65E5\u5FD7\u544A\u8B66\u3002"
       ),
       React.createElement(
         "div",
@@ -5890,7 +5946,7 @@ function BridgePanel({ rpcCall, preferredTab }) {
     [act]
   );
   const saveCloudflaredConfig = React.useCallback(
-    ({ token, hostname }) => act(BRIDGE_ENDPOINTS.saveCloudflaredConfig, { token, hostname }),
+    (patch) => act(BRIDGE_ENDPOINTS.saveCloudflaredConfig, patch || {}),
     [act]
   );
   const onSelectLanIp = React.useCallback((ip) => act(BRIDGE_ENDPOINTS.setLanIp, { ip }), [act]);
@@ -6025,11 +6081,17 @@ function BridgePanel({ rpcCall, preferredTab }) {
           },
           React.createElement(CloudflareDiagnostics, {
             dataPlane: cf && cf.dataPlane,
-            binary: cf && cf.binary
+            binary: cf && cf.binary,
+            foreignRunner: cf && cf.foreignRunner
           }),
           React.createElement(CloudflareConfigForm, {
             token: cf && cf.token || "",
             hostname: cf && cf.hostname || "",
+            network: cf && {
+              protocol: cf.protocol || "",
+              edgeIpVersion: cf.edgeIpVersion || "",
+              region: cf.region || ""
+            },
             onSave: saveCloudflaredConfig
           })
         ),

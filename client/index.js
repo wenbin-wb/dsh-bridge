@@ -770,7 +770,7 @@ const TunnelCard = React.memo(function TunnelCard({
 // 隧道可观测性（issue #71 P1-A/P2-B）：数据面端到端探测状态 + 实际使用的 cloudflared 二进制。
 // 数据面与 /ready 互补：/ready 只回答"连接器有没有健康边缘连接"，这里回答
 // "公网用户能否真的访问到入口"（DNS/TLS/边缘/回源整条链路），排障时不再被假绿误导。
-const CloudflareDiagnostics = React.memo(function CloudflareDiagnostics({ dataPlane, binary }) {
+const CloudflareDiagnostics = React.memo(function CloudflareDiagnostics({ dataPlane, binary, foreignRunner }) {
   const lines = [];
   if (dataPlane) {
     const n = dataPlane.consecutiveFailures || 0;
@@ -784,8 +784,13 @@ const CloudflareDiagnostics = React.memo(function CloudflareDiagnostics({ dataPl
       lines.push('数据面探测：' + dataPlane.lastError);
     }
   }
+  if (foreignRunner && foreignRunner.pid) {
+    lines.push('⚠️ 检测到另一个 cloudflared（PID ' + foreignRunner.pid + '，凭据来源 --' + foreignRunner.via
+      + '）正在使用相同的 tunnel token：隧道状态可能只反映一半，请停用其中一侧');
+  }
   if (binary && binary.path) {
-    const src = binary.source === 'system' ? '系统' : (binary.source === 'managed' ? '插件内置' : '外部指定');
+    const src = binary.source === 'system' ? '系统安装（不参与版本钉死）'
+      : (binary.source === 'managed' ? '插件内置' : '外部指定');
     lines.push('cloudflared：' + binary.path + '（' + (binary.version || '版本未知') + ' · ' + src + '）');
   }
   if (!lines.length) return null;
@@ -796,17 +801,35 @@ const CloudflareDiagnostics = React.memo(function CloudflareDiagnostics({ dataPl
     }, t)));
 });
 
-const CloudflareConfigForm = React.memo(function CloudflareConfigForm({ token, hostname, onSave }) {
+// 三个网络参数（issue #71 P1-B）：取值白名单来自 Cloudflare 官方 Tunnel run parameters
+// 文档（--protocol auto|http2|quic；--edge-ip-version auto|4|6；--region 仅 us）。
+const CLOUDFLARE_NETWORK_SELECTS = [
+  { key: 'protocol', label: '网络协议', opts: [['', '默认（auto）'], ['quic', '强制 QUIC'], ['http2', '强制 HTTP/2']] },
+  { key: 'edgeIpVersion', label: '边缘 IP', opts: [['', '默认（4）'], ['4', 'IPv4（4）'], ['6', 'IPv6（6）'], ['auto', '自动（auto）']] },
+  { key: 'region', label: '边缘区域', opts: [['', '全球（默认）'], ['us', '美国（us）']] },
+];
+
+const CloudflareConfigForm = React.memo(function CloudflareConfigForm({ token, hostname, network, onSave }) {
   const [open, setOpen] = React.useState(Boolean(token || hostname));
   const [tokenVal, setTokenVal] = React.useState(token || '');
   const [hostnameVal, setHostnameVal] = React.useState(hostname || '');
+  const [netVals, setNetVals] = React.useState(() => ({
+    protocol: network?.protocol || '',
+    edgeIpVersion: network?.edgeIpVersion || '',
+    region: network?.region || '',
+  }));
   const [saving, setSaving] = React.useState(false);
   const [msg, setMsg] = React.useState(null);
 
   React.useEffect(() => {
     setTokenVal(token || '');
     setHostnameVal(hostname || '');
-  }, [token, hostname]);
+    setNetVals({
+      protocol: network?.protocol || '',
+      edgeIpVersion: network?.edgeIpVersion || '',
+      region: network?.region || '',
+    });
+  }, [token, hostname, network]);
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -817,6 +840,10 @@ const CloudflareConfigForm = React.memo(function CloudflareConfigForm({ token, h
       const patch = {};
       if (hostnameVal !== (hostname || '')) patch.hostname = hostnameVal;
       if (tokenVal !== (token || '')) patch.token = tokenVal;
+      // 网络参数：只上传发生变化的字段（undefined = 服务端保留现值）
+      for (const { key } of CLOUDFLARE_NETWORK_SELECTS) {
+        if ((netVals[key] || '') !== ((network || {})[key] || '')) patch[key] = netVals[key] || '';
+      }
       if (Object.keys(patch).length > 0) await onSave(patch);
       setMsg({ ok: true, text: '✓ 固定域名配置已保存' });
     } catch (err) {
@@ -871,6 +898,29 @@ const CloudflareConfigForm = React.memo(function CloudflareConfigForm({ token, h
           value: tokenVal,
           onChange: (e) => setTokenVal(e.target.value),
         }),
+      ),
+      React.createElement('div', {
+        style: { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6, marginBottom: 8 },
+      },
+        CLOUDFLARE_NETWORK_SELECTS.map(({ key, label, opts }) => React.createElement('label', {
+          key,
+          style: { display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11, color: 'var(--dsw-alias-label-secondary, #6b7280)' },
+        },
+          label,
+          React.createElement('select', {
+            style: {
+              ...s.input, height: 28, fontSize: 12, padding: '0 6px', cursor: 'pointer',
+              background: 'var(--dsw-alias-bg-layer-1, #ffffff)',
+            },
+            value: netVals[key] || '',
+            onChange: (e) => setNetVals((v) => ({ ...v, [key]: e.target.value })),
+          },
+            opts.map(([val, text]) => React.createElement('option', { key: val, value: val }, text)),
+          ),
+        )),
+      ),
+      React.createElement('div', { style: { ...s.muted, fontSize: 11, marginBottom: 8, lineHeight: 1.5 } },
+        '网络参数取值来自 Cloudflare 官方白名单；改动需重新开启隧道（关闭→开启）后生效，当前二进制不支持的参数会自动跳过并在日志告警。'
       ),
       React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' } },
         React.createElement('button', {
@@ -3482,8 +3532,9 @@ function BridgePanel({ rpcCall, preferredTab }) {
   const onToggleCloudflaredAutoStart = React.useCallback((autoStart) =>
     act(BRIDGE_ENDPOINTS.setTunnelAutoStart, { tunnel: 'cloudflared', autoStart })
   , [act]);
-  const saveCloudflaredConfig = React.useCallback(({ token, hostname }) =>
-    act(BRIDGE_ENDPOINTS.saveCloudflaredConfig, { token, hostname })
+  // patch 直通（token/hostname/protocol/edgeIpVersion/region；未出现的字段服务端保留现值）
+  const saveCloudflaredConfig = React.useCallback((patch) =>
+    act(BRIDGE_ENDPOINTS.saveCloudflaredConfig, patch || {})
   , [act]);
 
   const onSelectLanIp = React.useCallback((ip) => act(BRIDGE_ENDPOINTS.setLanIp, { ip }), [act]);
@@ -3606,10 +3657,16 @@ function BridgePanel({ rpcCall, preferredTab }) {
           React.createElement(CloudflareDiagnostics, {
             dataPlane: cf && cf.dataPlane,
             binary: cf && cf.binary,
+            foreignRunner: cf && cf.foreignRunner,
           }),
           React.createElement(CloudflareConfigForm, {
             token: (cf && cf.token) || '',
             hostname: (cf && cf.hostname) || '',
+            network: cf && {
+              protocol: cf.protocol || '',
+              edgeIpVersion: cf.edgeIpVersion || '',
+              region: cf.region || '',
+            },
             onSave: saveCloudflaredConfig,
           }),
         ),

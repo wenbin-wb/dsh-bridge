@@ -4,7 +4,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
-import { judgeDataPlaneStatus, normalizePublicUrl, CloudflaredManager } from '../lib/cloudflared-manager.mjs'
+import { judgeDataPlaneStatus, normalizePublicUrl, classifyDataPlaneFailure, CloudflaredManager } from '../lib/cloudflared-manager.mjs'
 import { BridgeService } from '../lib/index.js'
 
 const silent = { info() {}, warn() {}, error() {}, debug() {} }
@@ -133,6 +133,7 @@ test('数据面探测：连接被拒与超时都如实进入失败态（reason �
     const t = await slow.probeDataPlaneOnce()
     assert.equal(t.state, 'unstable')
     assert.ok(t.lastError.includes('超时'), '超时原因应可读，实际: ' + t.lastError)
+    assert.ok(t.lastError.includes('解析到 127.0.0.1'), '失败时应补查并标注解析 IP，实际: ' + t.lastError)
   } finally {
     dead.closeAllConnections?.()
     await new Promise((r) => dead.close(r))
@@ -200,6 +201,25 @@ test('探针循环：周期执行、start 幂等不叠表、stop 后不再写状
     srv.closeAllConnections?.()
     await new Promise((r) => srv.close(r))
   }
+})
+
+// ── 失败标注（#6 DNS 污染可观测性）───────────────────────────────────────
+test('classifyDataPlaneFailure：证书/握手类错误标注疑似污染并附解析 IP', () => {
+  const tagged = classifyDataPlaneFailure('self signed certificate', '103.73.220.188')
+  assert.ok(tagged.startsWith('疑似 DNS 污染或伪造证书：'), '证书类错误必须显式分类')
+  assert.ok(tagged.includes('103.73.220.188'), '必须带上解析 IP')
+
+  const alt = classifyDataPlaneFailure('Hostname/IP does not match certificate\'s altnames', '104.21.83.67')
+  assert.ok(alt.startsWith('疑似 DNS 污染或伪造证书：'))
+
+  const plain = classifyDataPlaneFailure('connect ECONNREFUSED 127.0.0.1:1', '127.0.0.1')
+  assert.equal(plain.startsWith('疑似'), false, '连接类错误不应误标为污染')
+  assert.equal(plain, 'connect ECONNREFUSED 127.0.0.1:1', '原因里已有 IP 时不重复拼接')
+
+  const appended = classifyDataPlaneFailure('connect ETIMEDOUT', '203.0.113.5')
+  assert.ok(appended.includes('（解析到 203.0.113.5）'), '原因里没有 IP 时补上')
+
+  assert.equal(classifyDataPlaneFailure('timeout'), 'timeout', '无 IP 时原样返回')
 })
 
 // ── 二进制画像（P2-B）─────────────────────────────────────────────────────

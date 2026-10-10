@@ -33,6 +33,12 @@
     #   token: ''
     #   hostname: ''
     #   autoStart: false
+    #   # 网络参数（issue #71 P1-B）：白名单来自 Cloudflare 官方 Tunnel run parameters
+    #   # 文档；留空 = 不传参 = cloudflared 默认行为。改动需重新开启隧道生效；
+    #   # 实际二进制不支持的 flag 会被能力探测自动跳过并告警。
+    #   protocol: ''         # auto | http2 | quic
+    #   edgeIpVersion: ''    # auto | 4 | 6
+    #   region: ''           # us（官方唯一具名区域）
 
     # 访问门禁初始配置（密码等敏感值建议在 Web 面板设置，不要写进仓库）
     # auth:
