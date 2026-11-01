@@ -448,6 +448,21 @@ function makeNodeHarness({ status = 'online', sendChunkDelayMs = 100 } = {}) {
     },
   }
   ctx.feishu = gateway
+  // 真实宿主里活动会话必然有一个 Agent 实例，轮次绑定以 agent.session.id 为 key
+  // （issue #93）。桩里也要给出同样的形状，否则 handleInbound 走到"无活动会话"，
+  // 审批测试就测不到真实链路。
+  const agent = {
+    session: { id: 'sess_1' },
+    status: 'idle',
+    followup() {},
+    steer() {},
+    cancel() {},
+  }
+  ctx.agents = {
+    get: (id) => (id === 'sess_1' ? agent : undefined),
+    create: async ({ sessionId }) => ({ agent: { ...agent, session: { id: sessionId ?? 'sess_1' } } }),
+    resume: async ({ resumeSessionId }) => ({ agent: { ...agent, session: { id: resumeSessionId ?? 'sess_1' } } }),
+  }
   const logger = { info() {}, warn() {}, error() {}, debug() {} }
   const node = new FeishuConversationNode(ctx, { allowFrom: [], sendChunkDelayMs }, logger)
   node.activeSessionId = 'sess_1'
