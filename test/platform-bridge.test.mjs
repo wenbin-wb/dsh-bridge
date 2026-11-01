@@ -1026,6 +1026,36 @@ test('Web 端发起轮次的审批放行给宿主 GUI，不被 IM 桥劫持（�
   platform.dispose()
 })
 
+test('/new <提示词> 后新会话的审批仍走 IM，不被宿主 GUI 接管（轮次绑定迁到新会话 ID 回归）', async () => {
+  const harness = await makeApprovalHarness()
+  const { app, platform, bridge } = harness
+
+  // 入站时 activeSessionId 还是旧会话 s1；/new 在同一条消息里切到新会话并直接开跑
+  await bridge.handleInbound({ senderId: 'u1', text: '/new 在桌面创建一个 dsh-test.txt', outboundPeer: { peerId: 'u1' } })
+  const newId = bridge.activeSessionId
+  assert.notEqual(newId, 's1')
+  assert.ok(bridge._turnPeers.has(newId), '轮次绑定必须迁到新会话 ID')
+  assert.equal(bridge._turnPeers.has('s1'), false, '旧会话上不得残留本条入站的轮次绑定')
+
+  const decidePromise = app.waterfall('approval/request', { agent: { session: { id: newId } }, toolName: 'write_file' }, () => Promise.resolve('unavailable'))
+  await new Promise((r) => setTimeout(r, 30))
+  assert.equal(harness.hostClaims.length, 0, 'IM 发起的轮次不得调用 next() 交给宿主 GUI')
+  assert.ok(platform.sent.some((m) => m.text.includes('操作权限确认')), '审批卡片必须发到 IM')
+
+  // Web 端驱动的另一会话（无 IM 轮次记录）仍放行给宿主 GUI
+  const webPromise = app.waterfall('approval/request', { agent: { session: { id: 's-web' } }, toolName: 'write_file' }, () => Promise.resolve('unavailable'))
+  await new Promise((r) => setTimeout(r, 30))
+  assert.equal(harness.hostClaims.length, 1, 'Web 会话的审批必须交给宿主 GUI')
+  harness.hostResolve('allowed-once')
+  assert.equal(await webPromise, 'allowed-once')
+
+  await bridge.handleInbound({ senderId: 'u1', text: '/yes', outboundPeer: { peerId: 'u1' } })
+  assert.equal(await decidePromise, 'allowed-once')
+
+  bridge.dispose()
+  platform.dispose()
+})
+
 // ---------------------------------------------------------------------------
 // 回归：模型把工具调用协议标记（DSML）当正文输出时，不得原样转发到 IM
 // ---------------------------------------------------------------------------
@@ -1184,6 +1214,30 @@ test('飞书：非发起者点击按钮被拒绝', async () => {
   // 发起者仍可决议
   node._handleAction({ operatorId: 'u1', value: { action: 'reject', approvalId: 1 } })
   assert.equal(await decide, 'rejected')
+
+  node.dispose()
+})
+
+test('飞书：/new <提示词> 后新会话的审批卡片仍发到飞书，不落到宿主 GUI', async () => {
+  const harness = await makeFeishuHarness()
+  const { app, node, cardSends } = harness
+  app.agents.create = async ({ sessionId }) => ({ agent: { session: { id: sessionId }, status: 'idle', followup() {}, cancel() {} } })
+
+  app.emit('feishu/message', { chatId: 'oc_u1', peerId: 'oc_u1', senderId: 'u1', isGroup: false, text: '/new 在桌面创建一个 dsh-test.txt', messageId: 'm1', rawContentType: 'text', resources: [] })
+  await new Promise((r) => setTimeout(r, 40))
+  const newId = node.activeSessionId
+  assert.notEqual(newId, 'session-f1')
+
+  let hostClaimed = false
+  app.on('approval/request', () => { hostClaimed = true; return new Promise(() => {}) })
+  const decide = app.waterfall('approval/request', { agent: { session: { id: newId } }, toolName: 'write_file' }, () => Promise.resolve('unavailable'))
+  await new Promise((r) => setTimeout(r, 40))
+
+  assert.equal(hostClaimed, false, '飞书发起的轮次不得交给宿主 GUI')
+  assert.equal(cardSends.filter((c) => JSON.stringify(c.card).includes('approvalId')).length, 1, '审批卡片必须发到飞书')
+
+  node._handleAction({ operatorId: 'u1', value: { action: 'approve', approvalId: 1 } })
+  assert.equal(await decide, 'allowed-once')
 
   node.dispose()
 })
