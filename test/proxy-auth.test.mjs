@@ -298,3 +298,53 @@ test('ProxyServer gzip session.list 经局域网/CF 入口也剥离（PR #29 补
     await new Promise((resolve) => backend.close(resolve))
   }
 })
+
+test('ProxyServer 把隧道地址的 Referer 改写为 loopback（保留路径与查询串），非法 Referer 丢弃', async () => {
+  const seen = []
+  const backend = createServer((req, res) => {
+    seen.push({ url: req.url, referer: req.headers.referer, origin: req.headers.origin })
+    res.writeHead(200, { 'Content-Type': 'application/json' })
+    res.end('{}')
+  })
+  await new Promise((resolve) => backend.listen(0, '127.0.0.1', resolve))
+  const backendPort = backend.address().port
+
+  const authManager = new AuthManager({ sessionsFile: makeSessionsFile(), config: { enabled: false } })
+  const proxy = new ProxyServer({
+    localPort: 0,
+    targetPort: backendPort,
+    authManager,
+    logger: { info: () => {}, warn: () => {}, error: () => {} },
+  })
+  await proxy.start()
+  const proxyPort = proxy.server.address().port
+
+  try {
+    await doRequest({
+      host: '127.0.0.1',
+      port: proxyPort,
+      path: '/api/job.status',
+      method: 'GET',
+      headers: {
+        Origin: 'https://dsh.example.com',
+        Referer: 'https://dsh.example.com/plugins/novel?tab=jobs#frag',
+      },
+    })
+    await doRequest({
+      host: '127.0.0.1',
+      port: proxyPort,
+      path: '/api/bad',
+      method: 'GET',
+      headers: { Referer: 'not a url' },
+    })
+
+    const authority = `127.0.0.1:${backendPort}`
+    assert.equal(seen[0].origin, `http://${authority}`)
+    assert.equal(seen[0].referer, `http://${authority}/plugins/novel?tab=jobs`, 'Referer 的 origin 应改写为 loopback')
+    assert.equal(seen[1].referer, undefined, '无法解析的 Referer 应被丢弃')
+  } finally {
+    await proxy.stop()
+    authManager.dispose()
+    await new Promise((resolve) => backend.close(resolve))
+  }
+})
