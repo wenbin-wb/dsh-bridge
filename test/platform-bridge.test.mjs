@@ -1026,6 +1026,78 @@ test('Web 端发起轮次的审批放行给宿主 GUI，不被 IM 桥劫持（�
   platform.dispose()
 })
 
+
+// ---------------------------------------------------------------------------
+// 回归：/new <提示词> 之后的审批必须回到 IM（issue #93）
+//
+// /new 会在 routeCommand 里新建会话、把 activeSessionId 换成新会话，然后直接
+// followup 起一轮。此前轮次绑定是在入站时按**当时的** activeSessionId 写的，
+// 新会话因此查不到绑定 → 审批被宿主 GUI 接管、IM 端永远收不到卡片。
+// ---------------------------------------------------------------------------
+
+test('/new <提示词> 后新会话的审批由 IM 桥接管，不落到宿主 GUI（issue #93 回归）', async () => {
+  const harness = await makeApprovalHarness()
+  const { app, platform, bridge } = harness
+
+  const out = await bridge.handleInbound({
+    senderId: 'u1',
+    text: '/new 在桌面创建一个 dsh-test.txt，内容写 hello',
+    outboundPeer: { peerId: 'oc_chat1' },
+  })
+  assert.equal(out, 'routed')
+
+  const newSessionId = bridge.activeSessionId
+  assert.ok(newSessionId && newSessionId !== 's1', '/new 必须切换到新会话')
+  assert.ok(bridge._turnPeers.has(newSessionId), '新会话必须写入轮次绑定')
+  assert.equal(bridge._turnPeers.has('s1'), false, '不得把绑定落在旧会话上')
+  assert.equal(bridge._turnPeers.get(newSessionId).outboundPeer.peerId, 'oc_chat1')
+  assert.equal(bridge._inboundTurnBinding, null, '入站处理结束后暂存绑定必须清空')
+
+  // 宿主用「新会话 id」发起审批（与 issue 中的真机日志一致）
+  const decidePromise = app.waterfall(
+    'approval/request',
+    { agent: { session: { id: newSessionId } }, toolName: 'write_file' },
+    () => Promise.resolve('unavailable'),
+  )
+  await new Promise((r) => setTimeout(r, 30))
+
+  assert.equal(harness.hostClaims.length, 0, 'IM 发起的轮次不得打开宿主 GUI 通道')
+  assert.ok(
+    platform.sent.some((m) => m.peerId === 'oc_chat1' && m.text.includes('操作权限确认')),
+    '审批卡片必须发到发起该轮的 IM 会话',
+  )
+
+  await bridge.handleInbound({ senderId: 'u1', text: '/yes', outboundPeer: { peerId: 'oc_chat1' } })
+  assert.equal(await decidePromise, 'allowed-once')
+
+  bridge.dispose()
+  platform.dispose()
+})
+
+test('不产生轮次的命令（/help）不留轮次绑定，避免后续 Web 端审批被劫持（issue #93 关联）', async () => {
+  const harness = await makeApprovalHarness()
+  const { app, platform, bridge } = harness
+
+  await bridge.handleInbound({ senderId: 'u1', text: '/help', outboundPeer: { peerId: 'oc_chat1' } })
+  assert.equal(bridge._turnPeers.size, 0, '未起轮次的命令不应写入 _turnPeers')
+
+  // 之后 Web 端在同一会话发起轮次的审批，必须原样放行给宿主 GUI
+  const decidePromise = app.waterfall(
+    'approval/request',
+    { agent: { session: { id: 's1' } }, toolName: 'read_file' },
+    () => Promise.resolve('unavailable'),
+  )
+  await new Promise((r) => setTimeout(r, 30))
+  assert.equal(harness.hostClaims.length, 1, '宿主 GUI 必须认领该审批')
+  assert.equal(platform.sent.some((m) => String(m.text).includes('操作权限确认')), false, 'IM 端不得收到审批卡片')
+
+  harness.hostResolve('allowed-once')
+  assert.equal(await decidePromise, 'allowed-once')
+
+  bridge.dispose()
+  platform.dispose()
+})
+
 // ---------------------------------------------------------------------------
 // 回归：模型把工具调用协议标记（DSML）当正文输出时，不得原样转发到 IM
 // ---------------------------------------------------------------------------
