@@ -2,8 +2,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createServer, request as httpRequest } from 'node:http'
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { ProxyServer } from '../lib/index.js'
 import { AuthManager } from '../lib/auth/manager.js'
+import { dshAuthCookieName } from '../lib/auth/dsh-native-cookie.js'
 import { makeSessionsFile } from './helpers.mjs'
 
 function doRequest(options, postBody) {
@@ -346,5 +350,122 @@ test('ProxyServer 把隧道地址的 Referer 改写为 loopback（保留路径�
     await proxy.stop()
     authManager.dispose()
     await new Promise((resolve) => backend.close(resolve))
+  }
+})
+
+// ---------------------------------------------------------------------------
+// issue #92：loopback 会话 cookie 的注入细节
+//
+// 宿主读 cookie 是「同名取第一个」，所以浏览器里残留的同名旧 cookie 会遮住
+// 代理注入的新值；另外宿主会拒绝超过 cookieMaxAgeDays 的有效期，注入的 cookie
+// 又是每请求现签的，没必要签 30 天。这里把两条行为固定下来，同时验证诊断日志
+// 只在首次出现时各打一条。
+// ---------------------------------------------------------------------------
+
+const LOOPBACK_SECRET = Buffer.alloc(32, 9).toString('base64url')
+
+function withDshHome(credentialsYaml) {
+  const dir = mkdtempSync(join(tmpdir(), 'dsh-bridge-home-'))
+  if (credentialsYaml) writeFileSync(join(dir, '.credentials.yaml'), credentialsYaml)
+  const prev = process.env.DSH_HOME
+  process.env.DSH_HOME = dir
+  return {
+    dir,
+    restore() {
+      if (prev === undefined) delete process.env.DSH_HOME
+      else process.env.DSH_HOME = prev
+      rmSync(dir, { recursive: true, force: true })
+    },
+  }
+}
+
+function cookiesYaml(secret) {
+  return `records:\n  client-connection/browser-session:\n    kind: grant\n    payload:\n      version: 1\n      secret: ${secret}\n`
+}
+
+test('注入 loopback cookie 时剔除浏览器残留的同名旧 cookie（issue #92）', async () => {
+  const home = withDshHome(cookiesYaml(LOOPBACK_SECRET))
+  const seen = []
+  const backend = createServer((req, res) => {
+    seen.push({ url: req.url, cookie: req.headers.cookie })
+    // 第一次 401 模拟「宿主拒绝了我们注入的 cookie」
+    res.writeHead(seen.length === 1 ? 401 : 200, { 'Content-Type': 'application/json' })
+    res.end('{}')
+  })
+  await new Promise((resolve) => backend.listen(0, '127.0.0.1', resolve))
+  const backendPort = backend.address().port
+  const name = dshAuthCookieName(backendPort)
+
+  const infos = []
+  const warnings = []
+  const authManager = new AuthManager({ sessionsFile: makeSessionsFile(), config: { enabled: false } })
+  const proxy = new ProxyServer({
+    localPort: 0,
+    targetPort: backendPort,
+    authManager,
+    logger: { info: (m) => infos.push(String(m)), warn: (m) => warnings.push(String(m)), error: () => {} },
+  })
+  await proxy.start()
+  const proxyPort = proxy.server.address().port
+
+  try {
+    const staleCookie = `${name}=stale-value`
+    await doRequest({
+      host: '127.0.0.1', port: proxyPort, path: '/api/x', method: 'GET',
+      headers: { Cookie: `${staleCookie}; theme=dark` },
+    })
+    await doRequest({
+      host: '127.0.0.1', port: proxyPort, path: '/api/y', method: 'GET',
+      headers: { Cookie: `${staleCookie}; theme=dark` },
+    })
+
+    const segments = seen[0].cookie.split(';').map((s) => s.trim())
+    const ours = segments.filter((s) => s.startsWith(`${name}=`))
+    assert.equal(ours.length, 1, '同名 cookie 只应剩一条（旧的被剔除，新的追加）')
+    assert.notEqual(ours[0], staleCookie, '注入的必须是新签的 cookie，不是浏览器带来的旧值')
+    assert.ok(segments.includes('theme=dark'), '其它 cookie 必须原样保留')
+    assert.equal(seen[1].cookie.includes('stale-value'), false, '后续请求同样不得带回旧值')
+
+    assert.equal(infos.filter((m) => m.includes('已启用 loopback 会话 cookie 注入')).length, 1, '就绪日志只打一次')
+    assert.equal(warnings.filter((m) => m.includes('拒绝了注入的 loopback 会话 cookie')).length, 1, '401 告警只打一次')
+    assert.ok(warnings.some((m) => m.includes(name)), '告警需带上 cookie 名，便于对照宿主口径')
+  } finally {
+    await proxy.stop()
+    authManager.dispose()
+    await new Promise((resolve) => backend.close(resolve))
+    home.restore()
+  }
+})
+
+test('凭据缺失时注入不出来，只告警一次并带上凭据路径（issue #92）', async () => {
+  const home = withDshHome(null) // 目录存在，但没有 .credentials.yaml
+  const backend = createServer((req, res) => { res.writeHead(200); res.end('{}') })
+  await new Promise((resolve) => backend.listen(0, '127.0.0.1', resolve))
+  const backendPort = backend.address().port
+
+  const warnings = []
+  const authManager = new AuthManager({ sessionsFile: makeSessionsFile(), config: { enabled: false } })
+  const proxy = new ProxyServer({
+    localPort: 0,
+    targetPort: backendPort,
+    authManager,
+    logger: { info: () => {}, warn: (m) => warnings.push(String(m)), error: () => {} },
+  })
+  await proxy.start()
+  const proxyPort = proxy.server.address().port
+
+  try {
+    for (const path of ['/api/a', '/api/b']) {
+      await doRequest({ host: '127.0.0.1', port: proxyPort, path, method: 'GET', headers: {} })
+    }
+    const missing = warnings.filter((m) => m.includes('未能生成 loopback 会话 cookie'))
+    assert.equal(missing.length, 1, '缺失告警只打一次')
+    assert.ok(missing[0].includes(home.dir), '告警需带上解析到的凭据路径')
+    assert.ok(missing[0].includes('secretFound=false'))
+  } finally {
+    await proxy.stop()
+    authManager.dispose()
+    await new Promise((resolve) => backend.close(resolve))
+    home.restore()
   }
 })
