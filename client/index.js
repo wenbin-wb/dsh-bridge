@@ -1760,6 +1760,8 @@ function PlatformCard({
         groupAutoApprove:   Boolean(platform.config.groupAutoApprove),
         changesDigest:      platform.config.changesDigest !== false,
         steerMode:          Boolean(platform.config.steerMode),
+        // issue #77：少这一项时勾选框恒为未勾选（功能实际是开的），无法从 UI 看出真实状态
+        showActivity:       platform.config.showActivity === true,
         streamReply:        platform.config.streamReply !== false,
         appId: platform.config.appId ?? '',
         // Secret 不由后端回传；空值表示沿用已保存密钥
