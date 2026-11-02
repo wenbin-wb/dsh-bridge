@@ -17,8 +17,11 @@ import {
   buildDshLoopbackCookie,
   readBrowserSessionSecret,
   getDshLoopbackCookie,
+  stripCookieByName,
+  inspectLoopbackCookie,
   DSH_AUTH_COOKIE_PREFIX,
   DSH_AUTH_COOKIE_VERSION,
+  DSH_AUTH_COOKIE_INJECTION_MAX_AGE_MS,
 } from '../lib/auth/dsh-native-cookie.js'
 
 const PORT = 3080
@@ -171,4 +174,44 @@ test('DSH_HOME 环境变量优先于 ~/.dsh', () => {
   }
   assert.equal(seen.length, 1)
   assert.match(seen[0].replace(/\\/g, '/'), /^\/custom\/dsh\/home\/\.credentials\.yaml$/)
+})
+
+// ---------------------------------------------------------------------------
+// issue #92：注入侧的两个契约
+// ---------------------------------------------------------------------------
+
+test('注入用 cookie 的有效期是 1 小时，不写死宿主的默认上限（issue #92）', () => {
+  const now = 1_700_000_000_000
+  const cookie = buildDshLoopbackCookie({ targetPort: PORT, secret: SECRET, now })
+  const payload = JSON.parse(Buffer.from(cookie.split('.')[1], 'base64url').toString('utf8'))
+  assert.equal(payload.expiresAt - payload.issuedAt, DSH_AUTH_COOKIE_INJECTION_MAX_AGE_MS)
+  assert.equal(DSH_AUTH_COOKIE_INJECTION_MAX_AGE_MS, 60 * 60 * 1000, '宿主可配置 cookieMaxAgeDays（最小 1 天），1 小时对任何合法配置都安全')
+})
+
+test('stripCookieByName：只剔除同名段，保留其它 cookie', () => {
+  const name = dshAuthCookieName(PORT)
+  assert.equal(stripCookieByName(`${name}=stale; theme=dark; other=1`, name), 'theme=dark; other=1')
+  assert.equal(stripCookieByName(`${name}=a; ${name}=b`, name), '', '同名多段全部剔除')
+  assert.equal(stripCookieByName('theme=dark', name), 'theme=dark', '不含同名段时原样返回')
+  assert.equal(stripCookieByName('', name), '')
+  assert.equal(stripCookieByName(undefined, name), '')
+  assert.equal(stripCookieByName('broken; theme=dark', name), 'broken; theme=dark', '无等号的畸形段原样保留')
+  assert.equal(stripCookieByName(`${name}=x`, ''), `${name}=x`, 'name 为空时不动')
+})
+
+test('inspectLoopbackCookie：如实报告凭据状态且不泄露 secret（issue #92 诊断）', () => {
+  const yaml = 'records:\n  client-connection/browser-session:\n    payload:\n      secret: ' + SECRET + '\n'
+  const ok = inspectLoopbackCookie({ dshHome: '/fake/home', existsSync: () => true, readFileSync: () => yaml })
+  assert.equal(ok.fileExists, true)
+  assert.equal(ok.secretFound, true)
+  assert.match(ok.credentialsPath.replace(/\\/g, '/'), /\/fake\/home\/\.credentials\.yaml$/)
+  assert.equal(JSON.stringify(ok).includes(SECRET), false, '诊断信息绝不能带出 secret')
+
+  const noFile = inspectLoopbackCookie({ dshHome: '/fake/home', existsSync: () => false })
+  assert.equal(noFile.fileExists, false)
+  assert.equal(noFile.secretFound, false)
+
+  const noSecret = inspectLoopbackCookie({ dshHome: '/fake/home', existsSync: () => true, readFileSync: () => 'records: {}\n' })
+  assert.equal(noSecret.fileExists, true)
+  assert.equal(noSecret.secretFound, false)
 })
