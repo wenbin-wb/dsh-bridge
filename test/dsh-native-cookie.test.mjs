@@ -14,9 +14,12 @@ import assert from 'node:assert/strict'
 import { createHash, createHmac } from 'node:crypto'
 import {
   dshAuthCookieName,
+  dshAuthCookieNames,
   buildDshLoopbackCookie,
+  buildDshLoopbackCookies,
   readBrowserSessionSecret,
   getDshLoopbackCookie,
+  getDshLoopbackCookies,
   stripCookieByName,
   inspectLoopbackCookie,
   DSH_AUTH_COOKIE_PREFIX,
@@ -214,4 +217,55 @@ test('inspectLoopbackCookie：如实报告凭据状态且不泄露 secret（issu
   const noSecret = inspectLoopbackCookie({ dshHome: '/fake/home', existsSync: () => true, readFileSync: () => 'records: {}\n' })
   assert.equal(noSecret.fileExists, true)
   assert.equal(noSecret.secretFound, false)
+})
+
+// ---------------------------------------------------------------------------
+// issue #92：忽略端口的补丁宿主（dsh-purge 等）
+//
+// 补丁只把 cookie **名**改成 sha256(host)，载荷 authority 仍按含端口的 Host
+// 校验。因此同时注入两个名字、共用同一载荷，两种宿主都能命中。
+// ---------------------------------------------------------------------------
+
+test('同时给出「含端口」与「忽略端口」两个候选名，第一个仍是官方口径', () => {
+  const names = dshAuthCookieNames(PORT)
+  assert.equal(names.length, 2)
+  assert.equal(names[0], dshAuthCookieName(PORT))
+  assert.equal(
+    names[1],
+    DSH_AUTH_COOKIE_PREFIX + createHash('sha256').update('127.0.0.1').digest('base64url'),
+    '第二个名字按 host 派生（不含端口）',
+  )
+  assert.notEqual(names[0], names[1])
+})
+
+test('两个候选名共用同一签名载荷，且载荷 authority 仍带端口（issue #92 实测矩阵）', () => {
+  const now = 1_700_000_000_000
+  const cookies = buildDshLoopbackCookies({ targetPort: PORT, secret: SECRET, now })
+  assert.equal(cookies.length, 2)
+
+  const [first, second] = cookies
+  const firstValue = first.slice(first.indexOf('=') + 1)
+  const secondValue = second.slice(second.indexOf('=') + 1)
+  assert.equal(firstValue, secondValue, '两个名字必须共用同一载荷与签名')
+
+  const payload = JSON.parse(Buffer.from(firstValue.split('.')[1], 'base64url').toString('utf8'))
+  assert.equal(payload.authority, AUTHORITY, '载荷 authority 必须带端口：宿主按 Host 头校验')
+
+  const [nameA, nameB] = dshAuthCookieNames(PORT)
+  assert.equal(first.slice(0, first.indexOf('=')), nameA)
+  assert.equal(second.slice(0, second.indexOf('=')), nameB)
+})
+
+test('getDshLoopbackCookies：从凭据文件产出两枚候选 cookie；缺密钥时为空数组', () => {
+  const yaml = 'records:\n  client-connection/browser-session:\n    payload:\n      secret: ' + SECRET + '\n'
+  const cookies = getDshLoopbackCookies(PORT, {
+    dshHome: '/fake/home',
+    existsSync: () => true,
+    readFileSync: () => yaml,
+    now: 1_700_000_000_000,
+  })
+  assert.equal(cookies.length, 2)
+  assert.deepEqual(cookies.map((c) => c.split('=')[0]), dshAuthCookieNames(PORT))
+
+  assert.deepEqual(getDshLoopbackCookies(PORT, { dshHome: '/nope', existsSync: () => false }), [])
 })

@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { ProxyServer } from '../lib/index.js'
 import { AuthManager } from '../lib/auth/manager.js'
-import { dshAuthCookieName } from '../lib/auth/dsh-native-cookie.js'
+import { dshAuthCookieNames } from '../lib/auth/dsh-native-cookie.js'
 import { makeSessionsFile } from './helpers.mjs'
 
 function doRequest(options, postBody) {
@@ -394,7 +394,7 @@ test('注入 loopback cookie 时剔除浏览器残留的同名旧 cookie（issue
   })
   await new Promise((resolve) => backend.listen(0, '127.0.0.1', resolve))
   const backendPort = backend.address().port
-  const name = dshAuthCookieName(backendPort)
+  const [name, hostOnlyName] = dshAuthCookieNames(backendPort)
 
   const infos = []
   const warnings = []
@@ -409,22 +409,26 @@ test('注入 loopback cookie 时剔除浏览器残留的同名旧 cookie（issue
   const proxyPort = proxy.server.address().port
 
   try {
-    const staleCookie = `${name}=stale-value`
+    const staleCookies = `${name}=stale-official; ${hostOnlyName}=stale-host`
     await doRequest({
       host: '127.0.0.1', port: proxyPort, path: '/api/x', method: 'GET',
-      headers: { Cookie: `${staleCookie}; theme=dark` },
+      headers: { Cookie: `${staleCookies}; theme=dark` },
     })
     await doRequest({
       host: '127.0.0.1', port: proxyPort, path: '/api/y', method: 'GET',
-      headers: { Cookie: `${staleCookie}; theme=dark` },
+      headers: { Cookie: `${staleCookies}; theme=dark` },
     })
 
     const segments = seen[0].cookie.split(';').map((s) => s.trim())
-    const ours = segments.filter((s) => s.startsWith(`${name}=`))
-    assert.equal(ours.length, 1, '同名 cookie 只应剩一条（旧的被剔除，新的追加）')
-    assert.notEqual(ours[0], staleCookie, '注入的必须是新签的 cookie，不是浏览器带来的旧值')
+    // 两个候选名各注入一条：含端口（官方）与忽略端口（被本地补丁改过的宿主）
+    const official = segments.filter((s) => s.startsWith(`${name}=`))
+    const hostOnly = segments.filter((s) => s.startsWith(`${hostOnlyName}=`))
+    assert.equal(official.length, 1, '官方口径同名 cookie 只应剩一条（旧的被剔除，新的追加）')
+    assert.equal(hostOnly.length, 1, '忽略端口口径同样只应剩一条')
+    assert.notEqual(official[0], `${name}=stale-official`, '注入的必须是新签的 cookie')
+    assert.notEqual(hostOnly[0], `${hostOnlyName}=stale-host`, '两个名字都要换成新值')
     assert.ok(segments.includes('theme=dark'), '其它 cookie 必须原样保留')
-    assert.equal(seen[1].cookie.includes('stale-value'), false, '后续请求同样不得带回旧值')
+    assert.equal(seen[1].cookie.includes('stale-'), false, '后续请求同样不得带回旧值')
 
     assert.equal(infos.filter((m) => m.includes('已启用 loopback 会话 cookie 注入')).length, 1, '就绪日志只打一次')
     assert.equal(warnings.filter((m) => m.includes('拒绝了注入的 loopback 会话 cookie')).length, 1, '401 告警只打一次')
