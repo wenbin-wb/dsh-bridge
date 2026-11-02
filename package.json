@@ -1,6 +1,6 @@
 {
   "name": "@wenbin_wb/dsh-bridge",
-  "version": "2.17.5",
+  "version": "2.17.6",
   "description": "DSH 远程连接/远程控制插件（remote control）：手机扫码即可在移动端/公网继续用 DeepSeek Harness，人不在电脑前也能接着干。一键局域网二维码、Cloudflare 公网隧道、自建隧道与微信 / QQ / 飞书 / Telegram Bot（多工作区/会话持久化/媒体/卡片审批/流式输出），无需自己搭公网服务器。",
   "releaseNotes": "【v2.17.5】\n• 修复「本轮改动」摘要从未显示（读取时机竞态）\n• 修复按钮点击后误弹「请勿重复操作」提示\n• 平台面板：QQ 调整为第一位，推荐标记移到 QQ\n• 按钮交互与卡片渲染已通过真机验证",
   "type": "module",
