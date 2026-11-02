@@ -2,7 +2,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createServer, request as httpRequest } from 'node:http'
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { ProxyServer } from '../lib/index.js'
@@ -441,8 +441,9 @@ test('注入 loopback cookie 时剔除浏览器残留的同名旧 cookie（issue
   }
 })
 
-test('凭据缺失时注入不出来，只告警一次并带上凭据路径（issue #92）', async () => {
+test('凭据缺失时注入不出来，只告警一次、带上凭据路径，并落到诊断文件（issue #92）', async () => {
   const home = withDshHome(null) // 目录存在，但没有 .credentials.yaml
+  const diagnosticsPath = join(home.dir, 'diagnostics.log')
   const backend = createServer((req, res) => { res.writeHead(200); res.end('{}') })
   await new Promise((resolve) => backend.listen(0, '127.0.0.1', resolve))
   const backendPort = backend.address().port
@@ -454,9 +455,14 @@ test('凭据缺失时注入不出来，只告警一次并带上凭据路径（is
     targetPort: backendPort,
     authManager,
     logger: { info: () => {}, warn: (m) => warnings.push(String(m)), error: () => {} },
+    diagnosticsLogPath: diagnosticsPath,
   })
   await proxy.start()
   const proxyPort = proxy.server.address().port
+
+  // 诊断同时 echo 到 stderr；这里静音，避免测试输出被预期内的一行污染
+  const originalConsoleError = console.error
+  console.error = () => {}
 
   try {
     for (const path of ['/api/a', '/api/b']) {
@@ -466,7 +472,12 @@ test('凭据缺失时注入不出来，只告警一次并带上凭据路径（is
     assert.equal(missing.length, 1, '缺失告警只打一次')
     assert.ok(missing[0].includes(home.dir), '告警需带上解析到的凭据路径')
     assert.ok(missing[0].includes('secretFound=false'))
+
+    const diagnostics = readFileSync(diagnosticsPath, 'utf8')
+    assert.match(diagnostics, /未能生成 loopback 会话 cookie/, '诊断必须落到文件，否则用户捞不到（宿主不落盘 logger.info）')
+    assert.equal(diagnostics.trim().split('\n').length, 1, '同一状态只落一行')
   } finally {
+    console.error = originalConsoleError
     await proxy.stop()
     authManager.dispose()
     await new Promise((resolve) => backend.close(resolve))
