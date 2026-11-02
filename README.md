@@ -399,6 +399,7 @@ dsh plugin --profile desktop add @wenbin_wb/dsh-bridge
 | `/stop` | 立即中断当前正在运行的任务 |
 | `/end` | 结束并挂起当前会话上下文 |
 | `/yes` / `/no` (或 `1`/`2`) | 响应敏感操作权限审批（或直接点击卡片按钮） |
+| `/model` | 列出宿主可用的模型；`/model <编号>` 选择、`/model reset` 恢复默认（对该平台新建或重新接入的会话生效） |
 | `/status` | 查看 Agent 状态与系统摘要看板 |
 | `/help` | 查看完整的指令与快捷帮助 |
 
