@@ -38,15 +38,15 @@ test('追加一行：带时间戳、以换行结尾、返回写入内容', () =>
   assert.equal(readFileSync(filePath, 'utf8'), `${line}\n`);
 }));
 
-test('超过上限时轮转一次，保留 .1 备份', () => withTempDir((dir) => {
+test('超过上限时清空重写，避免无限增长', () => withTempDir((dir) => {
   const filePath = join(dir, 'diagnostics.log');
   writeFileSync(filePath, 'x'.repeat(DIAGNOSTICS_LOG_MAX_BYTES + 1));
-  appendDiagnostic('轮转后的新行', { filePath, echo: false });
+  appendDiagnostic('超限后的新行', { filePath, echo: false });
 
-  assert.ok(statSync(`${filePath}.1`).size > DIAGNOSTICS_LOG_MAX_BYTES, '旧文件应被移到 .1');
   const fresh = readFileSync(filePath, 'utf8');
-  assert.match(fresh, /轮转后的新行/);
-  assert.ok(statSync(filePath).size < 1024, '新文件只包含本次写入');
+  assert.match(fresh, /超限后的新行/);
+  assert.doesNotMatch(fresh, /xxxxx/, '超限时应清空旧内容');
+  assert.ok(statSync(filePath).size < 1024, '文件只包含本次写入');
 }));
 
 test('目标不可写时不抛出（诊断不得影响主链路）', () => withTempDir((dir) => {
