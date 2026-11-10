@@ -126,6 +126,15 @@
 - 含 **Incorrect Usage / 配置错误** → Token 复制不完整或参数问题，重新复制整串 Token；
 - 含 **退出 code≠0 / 连接失败** → 多为网络到 Cloudflare 边缘不通或 Token 无效，检查网络后点「开启」重试（自愈已内置退避重试）。
 
+### Q3.5：面板提示「cloudflared 版本已超出 Cloudflare 一年支持窗口」怎么办？
+Cloudflare 官方只支持**距最新发布一年内**的 cloudflared（见 [Deprecated versions](https://github.com/cloudflare/cloudflared#deprecated-versions)）。
+插件内置的 cloudflared 会随版本更新，看到这条提示说明**插件本身该升级了**：
+
+1. **首选**：升级 dsh-bridge 到最新版（插件内置的 cloudflared 版本会随发版更新）；
+2. 或者：自己在系统里安装最新 cloudflared（插件优先使用系统安装的二进制，面板会显示来源「系统安装」）；
+3. **临时绕过**（排查/内网镜像场景）：设置环境变量 `DSH_BRIDGE_CLOUDFLARED_VERSION` 指向你要的版本号（如 `2026.10.7`），
+   插件会改下载该版本；该变量只接受纯版本号，非法值会被忽略。用它时插件**不再校验**支持窗口（版本发布日期未知）。
+
 ### Q4：需要买最贵的套餐吗？
 不用。Cloudflare **Free** 套餐即可创建固定隧道、绑定子域名、免费 TLS。仅当你想在同一域名下加很多复杂规则或团队审计时才需付费。
 

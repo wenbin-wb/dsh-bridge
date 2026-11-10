@@ -11,7 +11,9 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   FEATURES,
+  detectHostMobileDrawerTrigger,
   detectMobileShellOrResponsivePlugin,
+  shouldYieldMobileDrawerTrigger,
   shouldYieldMobileHeader,
   shouldYieldMobileStyles,
   shouldYieldComposerCollapse,
@@ -311,4 +313,63 @@ test('设置面板可见开关 PageTweaksCard 必须存在并走 uiUpdateConfig'
   assert.match(indexSource, /dsh_bridge:feature:pageTweaks/);
   assert.match(unescapedBundle, /PageTweaksCard/);
   assert.match(unescapedBundle, /uiUpdateConfig/);
+});
+
+// ---------- 5. 自绘抽屉按钮让位宿主（issue #105 后续，用户截图确认双图标重叠） ----------
+
+test('detectHostMobileDrawerTrigger：宿主自带抽屉触发器才为真，旧宿主为假', () => {
+  const detect = (selectors) => detectHostMobileDrawerTrigger({
+    querySelector: (sel) => (selectors.includes(sel) ? { sel } : null),
+  });
+
+  assert.equal(detect(['[data-sidebar-toggle], [data-sidebar-opener]']), true, '0.2.x 稳定 data 属性');
+  assert.equal(detect(['[class*="leadingSeat"] button']), true, '0.2.x leadingSeat 内的 opener（类名哈希会变，局部名稳定）');
+  assert.equal(detect(['button[aria-label*="Open sidebar"], button[title*="Open sidebar"]']), true, '英文 aria-label 兜底');
+  assert.equal(detect([]), false, '旧宿主没有任何宿主触发器 → 插件继续用自己的汉堡');
+});
+
+test('detectHostMobileDrawerTrigger：无 document / 宿主查询抛错时按"没有"处理，绝不外抛', () => {
+  assert.equal(detectHostMobileDrawerTrigger(null), false);
+  assert.equal(detectHostMobileDrawerTrigger({}), false);
+  const throwing = { querySelector: () => { throw new Error('host exploded'); } };
+  assert.equal(detectHostMobileDrawerTrigger(throwing), false, '探测失败不得冒泡（否则整个移动端初始化会挂）');
+});
+
+test('shouldYieldMobileDrawerTrigger：宿主自带则让位，否则保留插件按钮', () => {
+  const cleanup = setupMockBrowser();
+  try {
+    assert.equal(FEATURES.MOBILE_DRAWER_TRIGGER, 'mobileDrawerTrigger');
+    assert.equal(shouldYieldMobileDrawerTrigger(true), true, '宿主自带触发器 → 隐藏插件汉堡（保留 DSH 的）');
+    assert.equal(shouldYieldMobileDrawerTrigger(false), false, '宿主没有 → 插件汉堡必须保留（否则移动端没有菜单入口）');
+  } finally {
+    cleanup();
+  }
+});
+
+test('shouldYieldMobileDrawerTrigger：支持运行时覆盖与 URL 排障开关（用户可强制用插件按钮）', () => {
+  const cleanup = setupMockBrowser();
+  try {
+    setRuntimeFeatureOverrides({ mobileDrawerTrigger: true });
+    assert.equal(shouldYieldMobileDrawerTrigger(true), false, '用户强制启用插件按钮时不让位');
+  } finally {
+    cleanup();
+  }
+
+  const cleanupUrl = setupMockBrowser({ search: '?dsh_mobile_drawer_trigger=0' });
+  try {
+    assert.equal(shouldYieldMobileDrawerTrigger(false), true, 'URL 关闭插件触发器 → 让位（隐藏插件汉堡）');
+  } finally {
+    cleanupUrl();
+  }
+});
+
+test('结构与产物：client/index.js 必须按宿主探测结果同步自绘汉堡的让位属性', () => {
+  assert.match(indexSource, /syncMobileHeaderDrawerTrigger/);
+  assert.match(indexSource, /detectHostMobileDrawerTrigger/);
+  assert.match(indexSource, /data-dsh-yield-host-drawer/);
+  // 必须在创建顶栏后立即同步一次，并在宿主抽屉相关 DOM 变化后（合并）重判
+  assert.match(indexSource, /document\.body\.appendChild\(header\);[\s\S]{0,400}?syncMobileHeaderDrawerTrigger\(\)/);
+  assert.match(indexSource, /scheduleMobileHeaderDrawerTriggerSync\(\)/);
+  assert.match(unescapedBundle, /data-dsh-yield-host-drawer/);
+  assert.match(unescapedBundle, /shouldYieldMobileDrawerTrigger/);
 });
