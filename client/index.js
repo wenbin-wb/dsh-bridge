@@ -18,10 +18,16 @@ import {
   shouldYieldMobileStyles,
   shouldYieldComposerCollapse,
   shouldYieldAllPageTweaks,
+  shouldYieldMobileDrawerTrigger,
+  detectHostMobileDrawerTrigger,
   setRuntimeFeatureOverrides,
   getRuntimeFeatureOverrides,
 } from './mobile-yield.js'
-import { registerSettingsNavIcon } from './settings-nav-icon.js'
+import {
+  registerSettingsNavIcon,
+  markSettingsNavIconSlotActive,
+  REMOTE_NAV_ICON_SHAPES,
+} from './settings-nav-icon.js'
 import { createTranslator } from './locales.mjs'
 import { needsTunnelPassword } from './tunnel-guard.js'
 // dsh-bridge 客户端插件：设置页「远程访问」面板
@@ -876,6 +882,16 @@ const CloudflareDiagnostics = React.memo(function CloudflareDiagnostics({ dataPl
       version: localeT(binary.version || '版本未知'),
       source: localeT(src),
     }));
+  }
+  // 版本支持窗口（issue #108）：lib 侧 getBinaryInfo() 只在「插件自管理」且超出
+  // Cloudflare 一年支持窗口时把 outdated 置 true；supportedUntil 为 'YYYY-MM-DD'。
+  // 系统安装由用户自行维护、未启动时没有二进制，两种情况 lib 都返回 outdated=false，
+  // 这里不再重复判断。supportedUntil 缺失（契约异常）时仍提示，只是不带截止日期。
+  if (binary && binary.outdated) {
+    const until = typeof binary.supportedUntil === 'string' && binary.supportedUntil ? binary.supportedUntil : '';
+    lines.push(until
+      ? localeT('⚠️ cloudflared 版本已超出 Cloudflare 一年支持窗口（支持至 ${date}），建议升级插件或改用系统安装的 cloudflared', { date: until })
+      : localeT('⚠️ cloudflared 版本已超出 Cloudflare 一年支持窗口，建议升级插件或改用系统安装的 cloudflared'));
   }
   if (!lines.length) return null;
   return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 4, margin: '6px 0 10px' } },
@@ -2621,6 +2637,14 @@ function SystemMetricsWidget({ metrics }) {
   const memUsedGb = (metrics.memory?.usedBytes / (1024 ** 3)).toFixed(1);
   const memTotalGb = (metrics.memory?.totalBytes / (1024 ** 3)).toFixed(1);
   const heapMb = Math.round((metrics.memory?.processHeapUsed || 0) / (1024 ** 2));
+  // macOS 上 lib 侧用 vm_stat 按「活动监视器」口径取内存；取数失败会回退到
+  // total-free 的粗略口径（可能仍是 99%，容易误导），必须显式告知用户
+  // （issue #104，memory.source 由 lib/platform/system-metrics.js 提供）。
+  const memoryFallbackHint = (
+    metrics.os?.platform === 'darwin' && metrics.memory?.source === 'os-fallback'
+  )
+    ? localeT('（vm_stat 取数失败，已回退粗略口径，可能与活动监视器差异较大）')
+    : '';
 
   const formatUptime = (sec = 0) => {
     const days = Math.floor(sec / 86400);
@@ -2687,6 +2711,9 @@ function SystemMetricsWidget({ metrics }) {
           },
         }),
       ),
+      memoryFallbackHint
+        ? h('div', { style: { fontSize: 11, color: 'var(--dsw-alias-label-tertiary, #9ca3af)', marginTop: 4 } }, memoryFallbackHint)
+        : null,
     ),
   );
 }
@@ -4893,6 +4920,167 @@ function setupSettingsDrilldown() {
   syncGate();
 }
 
+// ---- 移动端抽屉：插件状态与宿主抽屉状态的双写同步（issue #105）----
+//
+// 背景：本插件自绘了一个 body 级抽屉（body.dsh-drawer-open）；而宿主 0.2.x 在
+// <768px 下**自己也实现了抽屉**（AppFrame 带 data-sidebar-drawer；打开时
+// data-sidebar-collapsed 缺席，并渲染一层 pointer-events:auto 的 drawerMask）。
+//
+// 插件的打开路径（顶栏汉堡 / 左缘右滑）会顺带点宿主的「打开侧边栏」按钮，让两套
+// 状态一起打开；但**所有关闭路径此前只删自己的 class、从不收起宿主抽屉**。于是
+// 宿主抽屉连同它的遮罩留在打开态：插件遮罩消失后，宿主的 drawerMask 正好盖在
+// 内容区上，用户的下一次点击被它吃掉（它只会把宿主抽屉关掉）——体感就是
+// 「抽屉第一次点击被吞、要点第二次」，人也因此退不回会话界面（issue #105 现象 A）。
+//
+// 因此打开/关闭统一走 setMobileDrawerOpen()：先按宿主的**稳定属性**读出真实状态
+// （0.2.x: frame 的 data-sidebar-drawer / data-sidebar-collapsed），只在两套状态
+// 不一致时才点宿主 toggle，避免把宿主状态又切反。
+//
+// 旧宿主（0.1.x）没有 data-sidebar-drawer：readHostMobileDrawerOpen() 返回 null，
+// 此时保持历史语义——**打开**时点宿主的展开入口（data 属性 → 中英文 aria-label →
+// 宿主前缀 family 选择器，后者是左缘右滑在改造前使用的兜底），**关闭**时只删插件
+// class、不碰宿主（旧宿主本来就没有需要收起的宿主抽屉）。
+const MOBILE_DRAWER_CLASS = 'dsh-drawer-open';
+
+/** 宿主移动端抽屉是否打开；宿主没有自己的抽屉（0.1.x）时返回 null。 */
+function readHostMobileDrawerOpen() {
+  if (typeof document === 'undefined') return null;
+  const frame = document.querySelector('[data-sidebar-drawer]');
+  if (!frame) return null;
+  return !frame.hasAttribute('data-sidebar-collapsed');
+}
+
+/**
+ * 点宿主自己的侧边栏 toggle。
+ * 优先用 0.2.x 的稳定 data 属性（data-sidebar-toggle / data-sidebar-opener）；
+ * 旧宿主没有这两个属性，退回中英文 aria-label（与改动前的选择器完全一致）。
+ */
+function clickHostSidebarToggle() {
+  if (typeof document === 'undefined') return false;
+  let buttons;
+  try {
+    buttons = [...document.querySelectorAll('button[data-sidebar-toggle], button[data-sidebar-opener]')];
+  } catch {
+    buttons = [];
+  }
+  if (buttons.length > 0) {
+    // 关闭态下 sidebar 自身处于 inert 子树（宿主 drawer 语义），优先点不在 inert 里的
+    // 那个（打开时是 leadingSeat 的 opener）；programmatic click 对 inert 也可用，
+    // 这里只是选更符合宿主预期的入口。
+    const target = buttons.find((b) => b.closest('[inert]') === null) || buttons[0];
+    target.click();
+    return true;
+  }
+  // 旧宿主没有 data 属性：先找「打开侧边栏」，再找「收起侧边栏」。
+  // 两个选择器各自保持独立字面量：它们同时是面板 i18n 守卫里登记的内部匹配串
+  // （合并成一条新串会被判成"未登记的中文 UI 文案"）。
+  const legacy = document.querySelector(
+    'button[aria-label*="打开侧边栏"], button[title*="打开侧边栏"], button[aria-label*="Open sidebar"], button[title*="Open sidebar"]',
+  ) || document.querySelector(
+    'button[aria-label*="收起侧边栏"], button[title*="收起侧边栏"], button[aria-label*="Collapse sidebar"], button[title*="Collapse sidebar"]',
+  );
+  if (legacy) {
+    legacy.click();
+    return true;
+  }
+  // 最后一层兜底：宿主前缀 family 选择器（改造前「左缘右滑」用的就是这一条）。
+  // 有些旧宿主只给按钮加 CSS-module class、不带中文/英文 aria-label，少了这层会让
+  // 抽屉滑出但会话列表没挂载（侧边栏空白）。family 未解析时 querySelector 会抛错，
+  // 必须吞掉——这是兜底路径，不能反过来影响调用方。
+  try {
+    const familyToggle = document.querySelector(
+      `div${familySelector('SIDEBAR', 'collapsed')} button${familySelector('SIDEBAR', 'toggle')}`,
+    );
+    if (familyToggle) {
+      familyToggle.click();
+      return true;
+    }
+  } catch { /* family 未解析：无兜底可点，交由调用方继续（不抛错） */ }
+  return false;
+}
+
+/**
+ * 打开/关闭移动端抽屉，并让宿主抽屉状态跟随。
+ * 只在移动端调用（各调用点本身已有 innerWidth <= MOBILE_MAX_WIDTH 守卫）。
+ */
+const HOST_DRAWER_SYNC_GUARD_MS = 150;
+let lastHostSyncAt = 0;
+let lastHostSyncOpen = null;
+
+function setMobileDrawerOpen(open) {
+  if (typeof document === 'undefined' || !document.body) return;
+  const body = document.body;
+  if (open) body.classList.add(MOBILE_DRAWER_CLASS);
+  else body.classList.remove(MOBILE_DRAWER_CLASS);
+  const hostOpen = readHostMobileDrawerOpen();
+  if (hostOpen === null) {
+    // 旧宿主：保持历史行为——只在打开时点宿主的展开按钮（宿主没有抽屉可收）。
+    if (open) clickHostSidebarToggle();
+    return;
+  }
+  if (hostOpen === open) return;
+  // 同一次交互里可能被连续调用两次「关闭」（例如抽屉内点新建会话：捕获阶段先关一次，
+  // 宿主 startSession 又触发 sessions 订阅再关一次）。若宿主异步提交抽屉状态，
+  // 第二次读到的仍是旧值 → 会再点一次 toggle，把刚收起的抽屉又切回打开。
+  // 因此对「同一意图、极短时间内的重复请求」只执行一次宿主同步。
+  const now = Date.now();
+  if (lastHostSyncOpen === open && now - lastHostSyncAt < HOST_DRAWER_SYNC_GUARD_MS) return;
+  lastHostSyncAt = now;
+  lastHostSyncOpen = open;
+  clickHostSidebarToggle();
+}
+
+function toggleMobileDrawer() {
+  if (typeof document === 'undefined' || !document.body) return;
+  setMobileDrawerOpen(!document.body.classList.contains(MOBILE_DRAWER_CLASS));
+}
+
+/**
+ * 收起移动端右侧 / Workbench 面板，回到对话。
+ * 新建会话（顶栏 + 或抽屉入口）与切换会话都走这里：否则面板会留在打开态，
+ * 其顶部右侧的关闭控件与自绘顶栏的 (+) 挤在同一片区域，用户点不到退出控件
+ * （issue #105 现象 B 的直接触发条件）。
+ */
+function hideOpenMobilePanels() {
+  if (typeof document === 'undefined') return;
+  if (document.body) document.body.classList.remove('dsh-workbench-open');
+  document.querySelectorAll(workbenchPanelSelector({ openOnly: true }))
+    .forEach((p) => p.classList.add('dsh-bridge-panelHidden'));
+}
+
+// ---- 自绘顶栏的「抽屉按钮」让位宿主（issue #105 后续，用户截图确认：两个图标叠在一起）----
+// 宿主 0.2.x 在 <768px 抽屉模式下，左上角 leadingSeat（top:11px / left:12px）已经渲染了
+// 自己的侧边栏 opener；插件自绘顶栏的汉堡在 left:16px —— 两个图标直接重合成一团。
+// 规则：宿主自带就**保留 DSH 的**、隐藏插件自绘的那个（用 visibility 保留占位，
+// 中间标题与右侧 (+) 的布局不会因此偏移）。
+const HEADER_YIELD_ATTR = 'data-dsh-yield-host-drawer';
+let headerYieldSyncPending = false;
+
+/** 立即同步一次：按宿主是否自带抽屉触发器，决定自绘汉堡是否让位。 */
+function syncMobileHeaderDrawerTrigger() {
+  if (typeof document === 'undefined') return;
+  const header = document.querySelector('.dsh-mobile-app-header');
+  if (!header) return;
+  if (shouldYieldMobileDrawerTrigger(detectHostMobileDrawerTrigger())) {
+    if (!header.hasAttribute(HEADER_YIELD_ATTR)) header.setAttribute(HEADER_YIELD_ATTR, '');
+  } else if (header.hasAttribute(HEADER_YIELD_ATTR)) {
+    header.removeAttribute(HEADER_YIELD_ATTR);
+  }
+}
+
+/**
+ * 合并触发同步：宿主 React 可能晚于插件挂载（或窗口从桌面切到移动端才渲染抽屉模式），
+ * 单次判断会漏。合并成一次宏任务，避免聊天流式渲染期间每个 DOM 变更都跑一遍查询。
+ */
+function scheduleMobileHeaderDrawerTriggerSync() {
+  if (headerYieldSyncPending || typeof setTimeout !== 'function') return;
+  headerYieldSyncPending = true;
+  setTimeout(() => {
+    headerYieldSyncPending = false;
+    syncMobileHeaderDrawerTrigger();
+  }, 100);
+}
+
 function setupMobileExperience(rpcCall, ctx) {
   if (typeof document === 'undefined' || typeof window === 'undefined') return;
   injectMobileStyles();
@@ -4917,16 +5105,8 @@ function setupMobileExperience(rpcCall, ctx) {
     `;
     leftBtn.onclick = (e) => {
       e.stopPropagation();
-      const isOpen = document.body.classList.toggle('dsh-drawer-open');
-      if (isOpen) {
-        // 匹配宿主「展开侧边栏」按钮。宿主文案随界面语言切换：中文「打开侧边栏」、
-        // 英文 "Open sidebar"（0.1.7 起宿主按浏览器语言渲染 en，只匹配中文会漏取，
-        // 导致抽屉滑出但会话列表未挂载 → 侧边栏空白）。
-        const expand = document.querySelector(
-          'button[aria-label*="打开侧边栏"], button[title*="打开侧边栏"], button[aria-label*="Open sidebar"], button[title*="Open sidebar"]',
-        );
-        if (expand) expand.click();
-      }
+      // 打开/关闭都走统一入口：宿主 0.2.x 自带抽屉，两套状态必须同步（issue #105）。
+      toggleMobileDrawer();
     };
 
     // 中间动态会话标题 (居中展示当前会话名称，点击可快速切回对话流)
@@ -4950,8 +5130,10 @@ function setupMobileExperience(rpcCall, ctx) {
       </svg>
     `;
     rightBtn.onclick = () => {
-      const openPanels = document.querySelectorAll(workbenchPanelSelector({ openOnly: true }));
-      openPanels.forEach((p) => p.classList.add('dsh-bridge-panelHidden'));
+      // 先收起抽屉与面板再新建会话：否则面板/抽屉的关闭控件会和顶栏 (+) 一起留在
+      // 顶部右侧，用户点不到退出入口（issue #105 现象 B）。
+      setMobileDrawerOpen(false);
+      hideOpenMobilePanels();
       // 宿主新建会话按钮文案随语言切换：中文「新建会话」/ 英文 "New session"（两者都要匹配，否则英文界面下 (+) 失效）
       const dshNewBtn = document.querySelector('button[aria-label="新建会话"], button[aria-label="New session"]');
       if (dshNewBtn) dshNewBtn.click();
@@ -4961,6 +5143,11 @@ function setupMobileExperience(rpcCall, ctx) {
     header.appendChild(titleEl);
     header.appendChild(rightBtn);
     document.body.appendChild(header);
+
+    // 宿主 0.2.x 自带抽屉触发器时，插件汉堡立即让位（并用延迟再判一次：
+    // 宿主 React 可能晚于插件挂载，首帧判不出 [data-sidebar-drawer]）。
+    syncMobileHeaderDrawerTrigger();
+    scheduleMobileHeaderDrawerTriggerSync();
   }
 
   // 绑定会话标题实时同步 (切换会话或收到首条回复自动更新)
@@ -5032,14 +5219,14 @@ function setupMobileExperience(rpcCall, ctx) {
   }
   if (typeof ctx?.sessions?.active?.subscribe === 'function') {
     ctx.sessions.active.subscribe(() => {
-      if (document.body.classList.contains('dsh-drawer-open')) {
-        document.body.classList.remove('dsh-drawer-open');
+      // 切换会话后收起抽屉：必须连宿主抽屉一起收（只删插件 class 会留下宿主遮罩，
+      // 吃掉下一次点击，见 setMobileDrawerOpen 注释）。
+      if (document.body.classList.contains(MOBILE_DRAWER_CLASS)) {
+        setMobileDrawerOpen(false);
       }
       // 仅在移动端切换会话时自动收起右侧面板回到对话（PC端绝不干扰）
       if (typeof window !== 'undefined' && window.innerWidth <= MOBILE_MAX_WIDTH) {
-        document.body.classList.remove('dsh-workbench-open');
-        const openPanels = document.querySelectorAll(workbenchPanelSelector({ openOnly: true }));
-        openPanels.forEach((p) => p.classList.add('dsh-bridge-panelHidden'));
+        hideOpenMobilePanels();
       }
     });
   }
@@ -5231,11 +5418,15 @@ function setupMobileExperience(rpcCall, ctx) {
 
   // 移动端点击 DSH 自带的收起侧边栏图标时，自动收起抽屉
   // （文案随宿主界面语言切换：中文「收起侧边栏」/ 英文 "Collapse sidebar"，两者都要匹配）
+  //
+  // 这里**只删插件自己的 class，不能走 setMobileDrawerOpen(false)**：本监听器是
+  // document 上的捕获阶段，宿主自己的 onClick 还没执行、它的抽屉状态还没更新；
+  // 此刻再点一次宿主 toggle 会把宿主刚收起的抽屉又切回打开（双 toggle）。
   document.addEventListener('click', (e) => {
     if (typeof window === 'undefined' || window.innerWidth > MOBILE_MAX_WIDTH) return;
     const toggle = e.target.closest('button[aria-label*="收起侧边栏"], button[title*="收起侧边栏"], button[aria-label*="Collapse sidebar"], button[title*="Collapse sidebar"]');
     if (toggle) {
-      document.body.classList.remove('dsh-drawer-open');
+      document.body.classList.remove(MOBILE_DRAWER_CLASS);
     }
   }, true);
 
@@ -5245,16 +5436,45 @@ function setupMobileExperience(rpcCall, ctx) {
     backdrop = document.createElement('div');
     backdrop.className = 'dsh-mobile-backdrop';
     backdrop.addEventListener('click', () => {
-      document.body.classList.remove('dsh-drawer-open');
+      setMobileDrawerOpen(false);
     });
     document.body.appendChild(backdrop);
+  }
+
+  // 2.1 反向同步：宿主自己打开/关闭抽屉时（Esc、宿主自身入口、转屏），把插件状态拉齐。
+  // 只同步 class、**不再回点宿主 toggle**：这里的输入就是宿主状态本身，再点一次会把
+  // 它切反。两个方向都收敛后，才不会出现「宿主抽屉开着、插件遮罩已消失」的中间态
+  // ——那正是 issue #105 里下一次点击被宿主遮罩吃掉的原因。
+  if (typeof MutationObserver !== 'undefined') {
+    const syncDrawerClassFromHost = () => {
+      const hostOpen = readHostMobileDrawerOpen();
+      if (hostOpen === null) return;
+      const pluginOpen = document.body.classList.contains(MOBILE_DRAWER_CLASS);
+      if (hostOpen === pluginOpen) return;
+      if (hostOpen) document.body.classList.add(MOBILE_DRAWER_CLASS);
+      else document.body.classList.remove(MOBILE_DRAWER_CLASS);
+    };
+    const hostDrawerObserver = new MutationObserver(() => {
+      syncDrawerClassFromHost();
+      // 宿主抽屉模式（leadingSeat opener）出现/消失时，自绘汉堡同步让位或恢复。
+      // 合并到宏任务里：聊天流式渲染期间 childList 变更很密，不能每次都对全文档查询。
+      scheduleMobileHeaderDrawerTriggerSync();
+    });
+    try {
+      hostDrawerObserver.observe(document.documentElement, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        attributeFilter: ['data-sidebar-drawer', 'data-sidebar-collapsed'],
+      });
+    } catch { /* 老引擎不支持 attributeFilter 时忽略：正向同步（setMobileDrawerOpen）仍生效 */ }
   }
 
   // 3. 点击遮罩收起抽屉，或点击抽屉内的会话项自动收起抽屉
   let lastLongPressTime = 0;
 
   document.addEventListener('click', (e) => {
-    if (!document.body.classList.contains('dsh-drawer-open')) return;
+    if (!document.body.classList.contains(MOBILE_DRAWER_CLASS)) return;
 
     // 如果刚发生过长按（<= 600ms），拦截所有触发的后续 click
     if (Date.now() - lastLongPressTime < 600) {
@@ -5291,9 +5511,13 @@ function setupMobileExperience(rpcCall, ctx) {
           return;
         }
 
-        // 如果点击的是新建会话按钮，开始新会话并收起抽屉
+        // 如果点击的是新建会话按钮，开始新会话并收起抽屉。
+        // 必须连宿主抽屉一起收（只删插件 class 会留下宿主遮罩挡住下一次点击），
+        // 并把右侧面板一并收起——否则面板的关闭控件会和顶栏 (+) 挤在顶部右侧
+        // （issue #105 现象 B：从抽屉入口新建会话后退不回会话界面）。
         if (label.includes('新会话') || btn.matches('button[class*="newSession"]')) {
-          document.body.classList.remove('dsh-drawer-open');
+          setMobileDrawerOpen(false);
+          hideOpenMobilePanels();
           return;
         }
       }
@@ -5305,14 +5529,17 @@ function setupMobileExperience(rpcCall, ctx) {
       const sessionRow = e.target.closest('a, div[class*="sessionRow"]');
       if (sessionRow) {
         setTimeout(() => {
-          if (document.body.classList.contains('dsh-drawer-open')) {
-            document.body.classList.remove('dsh-drawer-open');
+          if (document.body.classList.contains(MOBILE_DRAWER_CLASS)) {
+            // 宿主若已在切会话时自己收起抽屉，readHostMobileDrawerOpen() 会返回 false，
+            // 这里不会再点一次宿主 toggle（避免把抽屉又切回打开）。
+            setMobileDrawerOpen(false);
           }
         }, 80);
       }
-    } else if (e.target.classList?.contains('dsh-mobile-backdrop')) {
-      document.body.classList.remove('dsh-drawer-open');
     }
+    // 点遮罩关闭抽屉由遮罩自己的 click 监听器负责（见上面 backdrop 的绑定）。
+    // 这里刻意不再补一条 else-if：捕获阶段先点一次宿主 toggle、目标阶段又点一次，
+    // 在宿主状态异步提交的时机下会变成双 toggle（收起后又被切回打开）。
   }, true);
 
   // 4. 移动端抽屉长按（Long Press >= 380ms）呼出操作菜单，以及左右滑动手势
@@ -5326,7 +5553,7 @@ function setupMobileExperience(rpcCall, ctx) {
       touchStartY = e.touches[0].clientY;
     }
 
-    if (!document.body.classList.contains('dsh-drawer-open')) return;
+    if (!document.body.classList.contains(MOBILE_DRAWER_CLASS)) return;
 
     const sidebar = document.querySelector('div[class*="_sidebarCol"]');
     if (!sidebar || !sidebar.contains(e.target)) return;
@@ -5372,13 +5599,10 @@ function setupMobileExperience(rpcCall, ctx) {
 
     if (Math.abs(deltaX) > 60 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
       if (deltaX > 0 && touchStartX <= 35) {
-        document.body.classList.add('dsh-drawer-open');
-        const collapsedToggle = document.querySelector(
-          `div${familySelector('SIDEBAR', 'collapsed')} button${familySelector('SIDEBAR', 'toggle')}, button[aria-label*="打开侧边栏"], button[title*="打开侧边栏"], button[aria-label*="Open sidebar"], button[title*="Open sidebar"]`,
-        );
-        if (collapsedToggle) collapsedToggle.click();
-      } else if (deltaX < 0 && document.body.classList.contains('dsh-drawer-open')) {
-        document.body.classList.remove('dsh-drawer-open');
+        // 左缘右滑打开：插件状态与宿主抽屉一起打开（与顶栏汉堡同一入口）。
+        setMobileDrawerOpen(true);
+      } else if (deltaX < 0 && document.body.classList.contains(MOBILE_DRAWER_CLASS)) {
+        setMobileDrawerOpen(false);
       }
     }
   }, { passive: true });
@@ -5941,7 +6165,7 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
       render();
       setTimeout(() => {
         closeModal();
-        document.body.classList.remove('dsh-drawer-open');
+        setMobileDrawerOpen(false);
       }, 400);
     } finally {
       // 与 doSubmit 对称：本函数此前只置位、从不复位，导致点过一次「已注册工作区」后，
@@ -6073,7 +6297,7 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
 
         setTimeout(() => {
           closeModal();
-          document.body.classList.remove('dsh-drawer-open');
+          setMobileDrawerOpen(false);
         }, 500);
       } else {
         statusMessage = localeT(res?.error) || localeT(raw?.error) || localeT('添加工作区失败');
@@ -6379,6 +6603,44 @@ function setupComposerCollapse() {
 }
 
 
+// ---- 设置页导航图标（官方插槽，issue #106）----
+//
+// DSH 0.2.2 起设置外壳把每行图标渲染进 settings.section.icon 插槽
+// （kind: list, scope: root, inline: true），并按行 id 取用注册项：
+//   renderSlot('settings.section.icon', { size: 16, active }, { only: row.id, fallback: navIcon(row.id) })
+// 插件用 id: 'dsh-bridge'（与 settings.section 的行 id 一致）注册自己的图标组件后，
+// 宿主不再画齿轮 fallback。旧版 DSH（0.1.x / 0.2.0）没有该槽位，inject 不会触发，
+// 继续走 client/settings-nav-icon.js 的 CSS 兜底。
+//
+// 两套方案由 markSettingsNavIconSlotActive() 互斥：组件提交时置位，CSS 兜底整体
+// 退出，避免 0.2.2 上出现「宿主图标 + 兜底图标」两个图标（issue #106 的根因）。
+const NAV_ICON_DEFAULT_SIZE = 16;
+
+function SettingsNavIconSlot({ size = NAV_ICON_DEFAULT_SIZE } = {}) {
+  // 提交后（绘制前）同步置位「插槽已接管」：layout effect 在 DOM 变更后、MutationObserver
+  // 微任务和首帧绘制之前执行，既不会让兜底标记重新打上，也不会出现一帧双图标闪烁。
+  // 放在 layout effect 而不是渲染期，渲染被丢弃/组件抛错时不会误关兜底。
+  React.useLayoutEffect(() => {
+    markSettingsNavIconSlotActive();
+  }, []);
+  const px = Number(size) > 0 ? Number(size) : NAV_ICON_DEFAULT_SIZE;
+  // active 由宿主按钮的激活态样式控制颜色（图标 stroke 用 currentColor），无需单独区分。
+  return h('svg', {
+    xmlns: 'http://www.w3.org/2000/svg',
+    width: px,
+    height: px,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 2,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+    'aria-hidden': 'true',
+    focusable: 'false',
+  }, REMOTE_NAV_ICON_SHAPES.map(([tag, attrs], index) => h(tag, { key: index, ...attrs })));
+}
+
+
 function apply(ctx) {
   window.__dshClientCtx = ctx;
   // 主题令牌优先：后续任何渲染都要能取到告警面/边框的深色值（与移动端让位无关）
@@ -6416,6 +6678,25 @@ function apply(ctx) {
       ctx.effect(() => registerSettingsNavIcon(() => localeT('远程访问'), navIconFamilies), 'dsh-bridge: settings nav icon');
     } else {
       registerSettingsNavIcon(() => localeT('远程访问'), navIconFamilies);
+    }
+    // DSH 0.2.2+ 官方图标插槽：注册插件自己的图标组件（旧版无该槽位时 inject 不触发，
+    // 安全降级到上面的 CSS 兜底）。id 必须与 settings.section 的注册 id 一致，
+    // 宿主按 renderSlot(..., { only: row.id }) 取用；顺序与上方 CSS 兜底互斥，
+    // 见 SettingsNavIconSlot 与 markSettingsNavIconSlotActive() 的注释（issue #106）。
+    //
+    // 防御性 try/catch（issue #106 复核补充）：仓库历史里多次因为「在旧宿主上访问
+    // 未声明的能力」把整个插件打成 park/崩溃（见 client/picker-yield.js 的注释）。
+    // 旧版 DSH 若把未知槽位当错误抛出，这里必须**退回上面的 CSS 兜底**，绝不能
+    // 让 apply() 抛错——代价只是图标仍由兜底绘制，而不是整个远程访问面板消失。
+    try {
+      ctx.slots.inject('settings.section.icon', () =>
+        ctx.slots.register(
+          { name: 'settings.section.icon', id: 'dsh-bridge', order: 10 },
+          SettingsNavIconSlot,
+        ),
+      );
+    } catch {
+      // 旧版 DSH 没有该槽位：不注册任何东西，继续走上面的 CSS 兜底。
     }
   }
   const rpcCall = (endpoint, payload, signal) =>

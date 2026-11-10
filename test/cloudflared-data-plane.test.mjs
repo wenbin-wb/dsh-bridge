@@ -225,9 +225,14 @@ test('classifyDataPlaneFailure：证书/握手类错误标注疑似污染并附�
 // ── 二进制画像（P2-B）─────────────────────────────────────────────────────
 test('getBinaryInfo：未启动前为 null 值；注入二进制如实标注 injected 且不执行 --version', async () => {
   const mgr = makeManager({ binaryPath: '/fake/cloudflared' })
-  assert.deepEqual(mgr.getBinaryInfo(), { path: null, version: null, source: null })
+  // issue #108：画像额外带支持窗口判定（未启动/注入二进制都不判定超期）
+  assert.deepEqual(mgr.getBinaryInfo(), {
+    path: null, version: null, source: null, outdated: false, supportedUntil: null,
+  })
   await mgr._ensureBinary()
-  assert.deepEqual(mgr.getBinaryInfo(), { path: '/fake/cloudflared', version: null, source: 'injected' })
+  assert.deepEqual(mgr.getBinaryInfo(), {
+    path: '/fake/cloudflared', version: null, source: 'injected', outdated: false, supportedUntil: null,
+  })
 })
 
 // ── 状态出口（getStatus）─────────────────────────────────────────────────
