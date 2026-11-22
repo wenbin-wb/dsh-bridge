@@ -18,6 +18,9 @@ export const FEATURES = {
   MOBILE_HEADER: 'mobileHeader',
   MOBILE_STYLES: 'mobileStyles',
   COMPOSER_COLLAPSE: 'composerCollapse',
+  // 自绘顶栏左上角的「菜单/抽屉」按钮：宿主 0.2.x 自己就在同一个角落渲染了侧边栏触发器
+  // （leadingSeat 的 opener），两个图标会叠在一起。默认让位给宿主，保留 DSH 自带的那一个。
+  MOBILE_DRAWER_TRIGGER: 'mobileDrawerTrigger',
   // 总开关：覆盖全部页面改写动作（含设置钻取/导航图标/iOS 键盘适配等残留项，见 #56）
   PAGE_TWEAKS: 'pageTweaks',
 };
@@ -172,6 +175,47 @@ export function isFeatureEnabled(featureName, defaultDetector) {
   }
 
   return true;
+}
+
+/**
+ * 探测宿主是否已在移动端提供自己的「侧边栏/抽屉」触发器。
+ *
+ * 背景（issue #105 后续，用户截图确认）：DSH 0.2.x 在 <768px 下把侧边栏做成抽屉，
+ * 并在**左上角同一个位置**（`leadingSeat`，top:11px/left:12px）渲染了自己的 opener；
+ * 插件自绘顶栏的汉堡按钮也在那儿（left:16px），两个图标直接叠在一起。
+ * 宿主既然自带，就保留 DSH 的，插件不再画第二个（见 shouldYieldMobileDrawerTrigger）。
+ *
+ * 判定口径（任一成立即视为宿主自带，均不依赖中文文案，避免踩面板 i18n 守卫）：
+ *   1. 宿主 0.2.x 的稳定 data 属性 `[data-sidebar-toggle] / [data-sidebar-opener]`；
+ *   2. 宿主 CSS-module 的 `leadingSeat` 容器里确实有可点的按钮（类名哈希会变，
+ *      局部名 leadingSeat 稳定，仓库其它地方同样按 `[class*="..."]` 取宿主类名）；
+ *   3. 英文 aria-label / title 的兜底（中文文案不在此列：那是内部匹配串，另有白名单）。
+ *
+ * 旧宿主（0.1.x）没有以上任何一项 → 返回 false，插件继续用自己的汉堡（不回归）。
+ * @param {Document} [doc] 便于单测注入
+ * @returns {boolean}
+ */
+export function detectHostMobileDrawerTrigger(doc = typeof document === 'undefined' ? null : document) {
+  if (!doc || typeof doc.querySelector !== 'function') return false;
+  try {
+    if (doc.querySelector('[data-sidebar-toggle], [data-sidebar-opener]')) return true;
+    if (doc.querySelector('[class*="leadingSeat"] button')) return true;
+    if (doc.querySelector('button[aria-label*="Open sidebar"], button[title*="Open sidebar"]')) return true;
+  } catch { /* 选择器不支持/宿主异常：按"没有自带触发器"处理，宁可多用插件自己的按钮 */ }
+  return false;
+}
+
+/**
+ * 是否应该让位宿主的移动端抽屉触发器（true = 隐藏插件自绘的汉堡按钮）。
+ *
+ * 复用统一的特性开关链（URL 参数 > 宿主注入配置 > 运行时覆盖 > localStorage > 自动探测）：
+ * 自动探测为「宿主自带则让位」；用户若想强制用插件的按钮，可用
+ * `?dsh_mobile_drawer_trigger=1` 或运行时 `configureFeatures({ mobileDrawerTrigger: true })`。
+ * @param {boolean} [hostHasOwnTrigger] 宿主是否自带触发器（默认现查 DOM）
+ * @returns {boolean}
+ */
+export function shouldYieldMobileDrawerTrigger(hostHasOwnTrigger = detectHostMobileDrawerTrigger()) {
+  return !isFeatureEnabled(FEATURES.MOBILE_DRAWER_TRIGGER, () => !hostHasOwnTrigger);
 }
 
 /**

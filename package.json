@@ -1,8 +1,8 @@
 {
   "name": "@wenbin_wb/dsh-bridge",
-  "version": "2.17.8",
+  "version": "2.17.9",
   "description": "DSH 远程连接/远程控制插件（remote control）：手机扫码即可在移动端/公网继续用 DeepSeek Harness，人不在电脑前也能接着干。一键局域网二维码、Cloudflare 公网隧道、自建隧道与微信 / QQ / 飞书 / Telegram Bot（多工作区/会话持久化/媒体/卡片审批/流式输出），无需自己搭公网服务器。",
-  "releaseNotes": "【v2.17.8】\n• 修复宿主 cookie 名被本地补丁改成「忽略端口」后，经代理访问一直提示需要认证\n• 同时注入含端口与忽略端口两种命名口径的会话 cookie，官方与打补丁的宿主都能通过\n• 注入前清除浏览器残留的同名旧值，避免旧 cookie 遮住新 cookie",
+  "releaseNotes": "【v2.17.9】\n• 内置 cloudflared 升级到 2026.10.7，超期时面板会提示升级\n• 从旧版 DSH 升级上来的机器，/sessions 标题不再停在升级前的旧值\n• DSH 0.2.2 设置页「远程访问」恢复正常，只显示一个图标\n• macOS 运维监控的内存占用改为与活动监视器一致的口径\n• 移动端左上角不再出现两个菜单图标，抽屉与新建会话更稳定",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

@@ -206,6 +206,16 @@ var MOBILE_STYLES_CSS = `
         opacity: 0.6;
       }
 
+      /* 2.1 \u5BBF\u4E3B\u81EA\u5E26\u79FB\u52A8\u7AEF\u4FA7\u8FB9\u680F\u89E6\u53D1\u5668\u65F6\uFF0C\u81EA\u7ED8\u6C49\u5821\u8BA9\u4F4D\uFF08issue #105 \u540E\u7EED\uFF0C\u7528\u6237\u622A\u56FE\uFF1A
+         0.2.x \u7684 leadingSeat opener \u5C31\u5728\u5DE6\u4E0A\u89D2\u540C\u4E00\u4F4D\u7F6E\uFF0C\u4E0E\u63D2\u4EF6\u6C49\u5821\u53E0\u6210\u4E00\u56E2\uFF09\u3002
+         \u89C4\u5219\uFF1A\u4FDD\u7559 DSH \u81EA\u5E26\u7684\u90A3\u4E2A\uFF0C\u53EA\u9690\u85CF\u63D2\u4EF6\u81EA\u7ED8\u7684\uFF1B\u7528 visibility \u800C\u4E0D\u662F display\uFF0C
+         40px \u5360\u4F4D\u4ECD\u5728\uFF0C\u4E2D\u95F4\u6807\u9898\u4E0E\u53F3\u4FA7 (+) \u7684\u4F4D\u7F6E\u4E0D\u4F1A\u56E0\u6B64\u504F\u79FB\u3002
+         \u5BF9\u5E94 client/index.js \u7684 syncMobileHeaderDrawerTrigger()\u3002 */
+      .dsh-mobile-app-header[data-dsh-yield-host-drawer] .dsh-header-menu-btn {
+        visibility: hidden !important;
+        pointer-events: none !important;
+      }
+
       /* \u53F3\u4FA7 (+) \u65B0\u5EFA\u4F1A\u8BDD\u6309\u94AE (DeepSeek App \u539F\u751F\u56FE\u6807) */
       .dsh-header-new-btn {
         width: 40px;
@@ -759,6 +769,21 @@ var MOBILE_STYLES_CSS = `
         transform: translateX(0) !important;
         box-shadow: 4px 0 28px rgba(0, 0, 0, 0.25) !important;
         pointer-events: auto !important;
+      }
+
+      /* 4.1 \u62BD\u5C49\u6253\u5F00\u671F\u95F4\uFF0C\u81EA\u7ED8\u9876\u680F\u7684\u4E24\u4E2A\u6309\u94AE\u5FC5\u987B\u8BA9\u4F4D\uFF08issue #105\uFF09\u3002
+         **\u8FD9\u662F\u6709\u610F\u7684\u6A21\u6001\u8BED\u4E49**\uFF1A\u62BD\u5C49\u6253\u5F00\u65F6\u5B83\u5C31\u662F\u4E00\u4E2A\u6A21\u6001\u5C42\uFF0C\u7528\u6237\u5FC5\u987B\u5148\u6536\u8D77\u62BD\u5C49\uFF0C
+         \u624D\u80FD\u518D\u70B9\u9876\u680F\u7684\u6C49\u5821 / (+)\u3002\u4E0D\u8981\u628A\u5B83\u5F53 bug \u56DE\u9000\u3002
+         \u80CC\u666F\uFF1A\u5BBF\u4E3B 0.2.x \u81EA\u5E26\u62BD\u5C49\u65F6\uFF0C\u5B83\u53F3\u4E0A\u89D2\u7684\u6536\u8D77/\u5173\u95ED\u63A7\u4EF6\u4E0E\u81EA\u7ED8\u9876\u680F\u53F3\u4FA7\u7684 (+)
+         \u540C\u5904\u5C4F\u5E55\u9876\u90E8\u53F3\u4FA7\uFF1B\u4E00\u65E6\u51FA\u73B0\u300C\u63D2\u4EF6 class \u5DF2\u6E05\u3001\u5BBF\u4E3B\u62BD\u5C49\u4ECD\u5F00\u300D\u7684\u72B6\u6001\uFF08\u5386\u53F2\u7F3A\u9677\uFF0C
+         \u89C1 client/index.js \u7684 setMobileDrawerOpen \u6CE8\u91CA\uFF09\uFF0C\u63D2\u4EF6\u906E\u7F69\u5148\u6D88\u5931\uFF0C(+) / \u6C49\u5821
+         \u5C31\u4F1A\u91CD\u65B0\u53EF\u547D\u4E2D\u5E76\u76D6\u5728\u62BD\u5C49/\u9762\u677F\u7684\u5173\u95ED\u63A7\u4EF6\u4E0A \u2014\u2014 \u7528\u6237\u70B9 (+) \u53CD\u800C\u91CD\u5F00\u65B0\u5EFA\u4F1A\u8BDD\uFF0C
+         \u9000\u4E0D\u56DE\u4F1A\u8BDD\u754C\u9762\u3002\u8FD9\u91CC\u5728\u62BD\u5C49\u6253\u5F00\u671F\u95F4\u663E\u5F0F\u5173\u95ED\u8FD9\u4E24\u4E2A\u6309\u94AE\u7684\u547D\u4E2D\uFF0C\u4FDD\u8BC1\u62BD\u5C49\u81EA\u5DF1\u7684
+         \u5173\u95ED\u63A7\u4EF6\u6C38\u8FDC\u4E0D\u88AB\u9876\u680F\u6309\u94AE\u906E\u6321\uFF1B\u684C\u9762\u7AEF\u4E0D\u53D7\u5F71\u54CD\uFF08\u6574\u5757\u5728 @media (max-width:
+         767px) \u5185\uFF09\u3002 */
+      body.dsh-drawer-open .dsh-header-menu-btn,
+      body.dsh-drawer-open .dsh-header-new-btn {
+        pointer-events: none !important;
       }
 
       /* \u62BD\u5C49\u5185\u90E8\uFF1A\u5F3A\u5236 100% \u5BBD\u5EA6\uFF0C\u65E0\u8BBA\u5185\u90E8\u72B6\u6001\u5982\u4F55\u5747\u6B63\u5E38\u5C55\u5F00\u5E76\u5C55\u793A DSH \u81EA\u5E26\u7684\u9876\u90E8\u6536\u8D77\u4FA7\u8FB9\u680F\u56FE\u6807 */
@@ -1975,6 +2000,7 @@ var panelEn = {
   "DSH \u8FD0\u884C\u65F6\u95F4 (Uptime)": "DSH uptime",
   "Node \u8FDB\u7A0B\u5806\u5185\u5B58": "Node process heap",
   "\u7CFB\u7EDF\u5185\u5B58\u5360\u7528: ${used} GB / ${total} GB": "System memory: ${used} GB / ${total} GB",
+  "\uFF08vm_stat \u53D6\u6570\u5931\u8D25\uFF0C\u5DF2\u56DE\u9000\u7C97\u7565\u53E3\u5F84\uFF0C\u53EF\u80FD\u4E0E\u6D3B\u52A8\u76D1\u89C6\u5668\u5DEE\u5F02\u8F83\u5927\uFF09": "(vm_stat read failed; falling back to a rough estimate that may differ noticeably from Activity Monitor)",
   "\u8BCA\u65AD\u8BF7\u6C42\u5F02\u5E38": "Diagnostic request failed",
   "\u{1F50D} \u7F51\u7EDC\u8FDE\u901A\u6027\u4E00\u952E\u8BCA\u65AD": "\u{1F50D} One-click network diagnostics",
   "\u4E00\u952E\u68C0\u6D4B\u672C\u5730\u53CD\u5411\u4EE3\u7406\u7AEF\u53E3\u3001\u5C40\u57DF\u7F51 IPv4\u3001Cloudflare Anycast \u5EF6\u8FDF\u4EE5\u53CA\u56FD\u5185 npmmirror \u955C\u50CF\u6E90\u8FDE\u901A\u6027\u3002": "Checks the local reverse-proxy port, LAN IPv4, Cloudflare Anycast latency and npmmirror connectivity.",
@@ -2186,6 +2212,8 @@ var panelEn = {
   "IPv6\uFF086\uFF09": "IPv6 (6)",
   "${label}\uFF1A${reason}": "${label}: ${reason}",
   "cloudflared\uFF1A${path}\uFF08${version} \xB7 ${source}\uFF09": "cloudflared: ${path} (${version} \xB7 ${source})",
+  "\u26A0\uFE0F cloudflared \u7248\u672C\u5DF2\u8D85\u51FA Cloudflare \u4E00\u5E74\u652F\u6301\u7A97\u53E3\uFF08\u652F\u6301\u81F3 ${date}\uFF09\uFF0C\u5EFA\u8BAE\u5347\u7EA7\u63D2\u4EF6\u6216\u6539\u7528\u7CFB\u7EDF\u5B89\u88C5\u7684 cloudflared": "\u26A0\uFE0F cloudflared is past Cloudflare's one-year support window (supported until ${date}); upgrade the plugin or switch to a system-installed cloudflared",
+  "\u26A0\uFE0F cloudflared \u7248\u672C\u5DF2\u8D85\u51FA Cloudflare \u4E00\u5E74\u652F\u6301\u7A97\u53E3\uFF0C\u5EFA\u8BAE\u5347\u7EA7\u63D2\u4EF6\u6216\u6539\u7528\u7CFB\u7EDF\u5B89\u88C5\u7684 cloudflared": "\u26A0\uFE0F cloudflared is past Cloudflare's one-year support window; upgrade the plugin or switch to a system-installed cloudflared",
   "\u26A1 \u81EA\u52A8\u63A8\u8350 (${ip} \xB7 ${label})": "\u26A1 Auto (recommended: ${ip} \xB7 ${label})",
   "\u5F00\u542F\u516C\u7F51\u96A7\u9053\u524D\uFF0C\u8BF7\u5148\u5728\u300C\u5B89\u5168\u8BA4\u8BC1\u300D\u4E2D\u8BBE\u7F6E\u8BBF\u95EE\u5BC6\u7801": "Before enabling the public tunnel, set an access password under \u201CSecurity\u201D",
   "\u53BB\u8BBE\u7F6E \u2794": "Set up \u2794",
@@ -2658,6 +2686,9 @@ var FEATURES = {
   MOBILE_HEADER: "mobileHeader",
   MOBILE_STYLES: "mobileStyles",
   COMPOSER_COLLAPSE: "composerCollapse",
+  // 自绘顶栏左上角的「菜单/抽屉」按钮：宿主 0.2.x 自己就在同一个角落渲染了侧边栏触发器
+  // （leadingSeat 的 opener），两个图标会叠在一起。默认让位给宿主，保留 DSH 自带的那一个。
+  MOBILE_DRAWER_TRIGGER: "mobileDrawerTrigger",
   // 总开关：覆盖全部页面改写动作（含设置钻取/导航图标/iOS 键盘适配等残留项，见 #56）
   PAGE_TWEAKS: "pageTweaks"
 };
@@ -2744,6 +2775,19 @@ function isFeatureEnabled(featureName, defaultDetector) {
   }
   return true;
 }
+function detectHostMobileDrawerTrigger(doc = typeof document === "undefined" ? null : document) {
+  if (!doc || typeof doc.querySelector !== "function") return false;
+  try {
+    if (doc.querySelector("[data-sidebar-toggle], [data-sidebar-opener]")) return true;
+    if (doc.querySelector('[class*="leadingSeat"] button')) return true;
+    if (doc.querySelector('button[aria-label*="Open sidebar"], button[title*="Open sidebar"]')) return true;
+  } catch {
+  }
+  return false;
+}
+function shouldYieldMobileDrawerTrigger(hostHasOwnTrigger = detectHostMobileDrawerTrigger()) {
+  return !isFeatureEnabled(FEATURES.MOBILE_DRAWER_TRIGGER, () => !hostHasOwnTrigger);
+}
 function shouldYieldMobileHeader() {
   return !isFeatureEnabled(FEATURES.MOBILE_HEADER, () => {
     return !detectMobileShellOrResponsivePlugin();
@@ -2765,11 +2809,29 @@ function shouldYieldComposerCollapse() {
 
 // client/settings-nav-icon.js
 var SETTINGS_NAV_MARKER = "data-dsh-bridge-settings-nav";
-var REMOTE_NAV_SVG = `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect width='10' height='16' x='3' y='4' rx='2'/><path d='M7 16h2'/><path d='M17 8a4 4 0 0 1 0 8'/><path d='M20 5a8 8 0 0 1 0 14'/></svg>`;
+var SETTINGS_NAV_ICON_STYLE_ID = "dsh-bridge-settings-nav-icon-style";
+var REMOTE_NAV_ICON_SHAPES = [
+  ["rect", { width: 10, height: 16, x: 3, y: 4, rx: 2 }],
+  ["path", { d: "M7 16h2" }],
+  ["path", { d: "M17 8a4 4 0 0 1 0 8" }],
+  ["path", { d: "M20 5a8 8 0 0 1 0 14" }]
+];
+var REMOTE_NAV_SHAPES_SVG = REMOTE_NAV_ICON_SHAPES.map(([tag, attrs]) => `<${tag} ${Object.entries(attrs).map(([key, value]) => `${key}='${value}'`).join(" ")}/>`).join("");
+var REMOTE_NAV_SVG = `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>${REMOTE_NAV_SHAPES_SVG}</svg>`;
+var navIconSlotActive = false;
+function markSettingsNavIconSlotActive() {
+  if (navIconSlotActive) return;
+  navIconSlotActive = true;
+  if (typeof document === "undefined") return;
+  document.querySelectorAll(`[${SETTINGS_NAV_MARKER}]`).forEach((el) => el.removeAttribute(SETTINGS_NAV_MARKER));
+  const styleEl = document.getElementById(SETTINGS_NAV_ICON_STYLE_ID);
+  if (styleEl) styleEl.remove();
+}
 function getNavIconCss(customSvg = REMOTE_NAV_SVG) {
   const maskUrl = `data:image/svg+xml,${encodeURIComponent(customSvg)}`;
   return `
-[${SETTINGS_NAV_MARKER}] > svg:first-child {
+[${SETTINGS_NAV_MARKER}] > svg:first-child,
+[${SETTINGS_NAV_MARKER}] > span:first-child {
   display: none !important;
 }
 [${SETTINGS_NAV_MARKER}]::before {
@@ -2786,10 +2848,11 @@ function getNavIconCss(customSvg = REMOTE_NAV_SVG) {
 function registerSettingsNavIcon(resolveLabel = () => t("\u8FDC\u7A0B\u8BBF\u95EE"), resolveFamilies = null) {
   if (typeof document === "undefined") return () => {
   };
-  const styleId = "dsh-bridge-settings-nav-icon-style";
-  if (!document.getElementById(styleId)) {
+  if (navIconSlotActive) return () => {
+  };
+  if (!document.getElementById(SETTINGS_NAV_ICON_STYLE_ID)) {
     const style = document.createElement("style");
-    style.id = styleId;
+    style.id = SETTINGS_NAV_ICON_STYLE_ID;
     style.dataset.plugin = "@wenbin_wb/dsh-bridge";
     style.dataset.pluginCss = "@wenbin_wb/dsh-bridge/settings-nav-icon";
     style.textContent = getNavIconCss();
@@ -2797,7 +2860,7 @@ function registerSettingsNavIcon(resolveLabel = () => t("\u8FDC\u7A0B\u8BBF\u95E
   }
   let disposed = false;
   const sync = () => {
-    if (disposed) return;
+    if (disposed || navIconSlotActive) return;
     const currentLabel = typeof resolveLabel === "function" ? resolveLabel().trim() : t("\u8FDC\u7A0B\u8BBF\u95EE");
     const families = typeof resolveFamilies === "function" ? resolveFamilies() || {} : {};
     const settingsFamily = families.SETTINGS;
@@ -2822,7 +2885,7 @@ function registerSettingsNavIcon(resolveLabel = () => t("\u8FDC\u7A0B\u8BBF\u95E
     disposed = true;
     if (observer) observer.disconnect();
     document.querySelectorAll(`[${SETTINGS_NAV_MARKER}]`).forEach((el) => el.removeAttribute(SETTINGS_NAV_MARKER));
-    const styleEl = document.getElementById(styleId);
+    const styleEl = document.getElementById(SETTINGS_NAV_ICON_STYLE_ID);
     if (styleEl) styleEl.remove();
   };
 }
@@ -3841,6 +3904,10 @@ var CloudflareDiagnostics = React.memo(function CloudflareDiagnostics2({ dataPla
       version: localeT(binary.version || "\u7248\u672C\u672A\u77E5"),
       source: localeT(src)
     }));
+  }
+  if (binary && binary.outdated) {
+    const until = typeof binary.supportedUntil === "string" && binary.supportedUntil ? binary.supportedUntil : "";
+    lines.push(until ? localeT("\u26A0\uFE0F cloudflared \u7248\u672C\u5DF2\u8D85\u51FA Cloudflare \u4E00\u5E74\u652F\u6301\u7A97\u53E3\uFF08\u652F\u6301\u81F3 ${date}\uFF09\uFF0C\u5EFA\u8BAE\u5347\u7EA7\u63D2\u4EF6\u6216\u6539\u7528\u7CFB\u7EDF\u5B89\u88C5\u7684 cloudflared", { date: until }) : localeT("\u26A0\uFE0F cloudflared \u7248\u672C\u5DF2\u8D85\u51FA Cloudflare \u4E00\u5E74\u652F\u6301\u7A97\u53E3\uFF0C\u5EFA\u8BAE\u5347\u7EA7\u63D2\u4EF6\u6216\u6539\u7528\u7CFB\u7EDF\u5B89\u88C5\u7684 cloudflared"));
   }
   if (!lines.length) return null;
   return h(
@@ -5706,6 +5773,7 @@ function SystemMetricsWidget({ metrics }) {
   const memUsedGb = (metrics.memory?.usedBytes / 1024 ** 3).toFixed(1);
   const memTotalGb = (metrics.memory?.totalBytes / 1024 ** 3).toFixed(1);
   const heapMb = Math.round((metrics.memory?.processHeapUsed || 0) / 1024 ** 2);
+  const memoryFallbackHint = metrics.os?.platform === "darwin" && metrics.memory?.source === "os-fallback" ? localeT("\uFF08vm_stat \u53D6\u6570\u5931\u8D25\uFF0C\u5DF2\u56DE\u9000\u7C97\u7565\u53E3\u5F84\uFF0C\u53EF\u80FD\u4E0E\u6D3B\u52A8\u76D1\u89C6\u5668\u5DEE\u5F02\u8F83\u5927\uFF09") : "";
   const formatUptime = (sec = 0) => {
     const days = Math.floor(sec / 86400);
     const hrs = Math.floor(sec % 86400 / 3600);
@@ -5804,7 +5872,8 @@ function SystemMetricsWidget({ metrics }) {
             transition: "width .3s ease"
           }
         })
-      )
+      ),
+      memoryFallbackHint ? h("div", { style: { fontSize: 11, color: "var(--dsw-alias-label-tertiary, #9ca3af)", marginTop: 4 } }, memoryFallbackHint) : null
     )
   );
 }
@@ -8085,6 +8154,96 @@ function setupSettingsDrilldown() {
   }
   syncGate();
 }
+var MOBILE_DRAWER_CLASS = "dsh-drawer-open";
+function readHostMobileDrawerOpen() {
+  if (typeof document === "undefined") return null;
+  const frame = document.querySelector("[data-sidebar-drawer]");
+  if (!frame) return null;
+  return !frame.hasAttribute("data-sidebar-collapsed");
+}
+function clickHostSidebarToggle() {
+  if (typeof document === "undefined") return false;
+  let buttons;
+  try {
+    buttons = [...document.querySelectorAll("button[data-sidebar-toggle], button[data-sidebar-opener]")];
+  } catch {
+    buttons = [];
+  }
+  if (buttons.length > 0) {
+    const target = buttons.find((b) => b.closest("[inert]") === null) || buttons[0];
+    target.click();
+    return true;
+  }
+  const legacy = document.querySelector(
+    'button[aria-label*="\u6253\u5F00\u4FA7\u8FB9\u680F"], button[title*="\u6253\u5F00\u4FA7\u8FB9\u680F"], button[aria-label*="Open sidebar"], button[title*="Open sidebar"]'
+  ) || document.querySelector(
+    'button[aria-label*="\u6536\u8D77\u4FA7\u8FB9\u680F"], button[title*="\u6536\u8D77\u4FA7\u8FB9\u680F"], button[aria-label*="Collapse sidebar"], button[title*="Collapse sidebar"]'
+  );
+  if (legacy) {
+    legacy.click();
+    return true;
+  }
+  try {
+    const familyToggle = document.querySelector(
+      `div${familySelector("SIDEBAR", "collapsed")} button${familySelector("SIDEBAR", "toggle")}`
+    );
+    if (familyToggle) {
+      familyToggle.click();
+      return true;
+    }
+  } catch {
+  }
+  return false;
+}
+var HOST_DRAWER_SYNC_GUARD_MS = 150;
+var lastHostSyncAt = 0;
+var lastHostSyncOpen = null;
+function setMobileDrawerOpen(open) {
+  if (typeof document === "undefined" || !document.body) return;
+  const body = document.body;
+  if (open) body.classList.add(MOBILE_DRAWER_CLASS);
+  else body.classList.remove(MOBILE_DRAWER_CLASS);
+  const hostOpen = readHostMobileDrawerOpen();
+  if (hostOpen === null) {
+    if (open) clickHostSidebarToggle();
+    return;
+  }
+  if (hostOpen === open) return;
+  const now = Date.now();
+  if (lastHostSyncOpen === open && now - lastHostSyncAt < HOST_DRAWER_SYNC_GUARD_MS) return;
+  lastHostSyncAt = now;
+  lastHostSyncOpen = open;
+  clickHostSidebarToggle();
+}
+function toggleMobileDrawer() {
+  if (typeof document === "undefined" || !document.body) return;
+  setMobileDrawerOpen(!document.body.classList.contains(MOBILE_DRAWER_CLASS));
+}
+function hideOpenMobilePanels() {
+  if (typeof document === "undefined") return;
+  if (document.body) document.body.classList.remove("dsh-workbench-open");
+  document.querySelectorAll(workbenchPanelSelector({ openOnly: true })).forEach((p) => p.classList.add("dsh-bridge-panelHidden"));
+}
+var HEADER_YIELD_ATTR = "data-dsh-yield-host-drawer";
+var headerYieldSyncPending = false;
+function syncMobileHeaderDrawerTrigger() {
+  if (typeof document === "undefined") return;
+  const header = document.querySelector(".dsh-mobile-app-header");
+  if (!header) return;
+  if (shouldYieldMobileDrawerTrigger(detectHostMobileDrawerTrigger())) {
+    if (!header.hasAttribute(HEADER_YIELD_ATTR)) header.setAttribute(HEADER_YIELD_ATTR, "");
+  } else if (header.hasAttribute(HEADER_YIELD_ATTR)) {
+    header.removeAttribute(HEADER_YIELD_ATTR);
+  }
+}
+function scheduleMobileHeaderDrawerTriggerSync() {
+  if (headerYieldSyncPending || typeof setTimeout !== "function") return;
+  headerYieldSyncPending = true;
+  setTimeout(() => {
+    headerYieldSyncPending = false;
+    syncMobileHeaderDrawerTrigger();
+  }, 100);
+}
 function setupMobileExperience(rpcCall, ctx) {
   if (typeof document === "undefined" || typeof window === "undefined") return;
   injectMobileStyles();
@@ -8105,13 +8264,7 @@ function setupMobileExperience(rpcCall, ctx) {
     `;
     leftBtn.onclick = (e) => {
       e.stopPropagation();
-      const isOpen = document.body.classList.toggle("dsh-drawer-open");
-      if (isOpen) {
-        const expand = document.querySelector(
-          'button[aria-label*="\u6253\u5F00\u4FA7\u8FB9\u680F"], button[title*="\u6253\u5F00\u4FA7\u8FB9\u680F"], button[aria-label*="Open sidebar"], button[title*="Open sidebar"]'
-        );
-        if (expand) expand.click();
-      }
+      toggleMobileDrawer();
     };
     titleEl = document.createElement("div");
     titleEl.className = "dsh-mobile-header-title";
@@ -8131,8 +8284,8 @@ function setupMobileExperience(rpcCall, ctx) {
       </svg>
     `;
     rightBtn.onclick = () => {
-      const openPanels = document.querySelectorAll(workbenchPanelSelector({ openOnly: true }));
-      openPanels.forEach((p) => p.classList.add("dsh-bridge-panelHidden"));
+      setMobileDrawerOpen(false);
+      hideOpenMobilePanels();
       const dshNewBtn = document.querySelector('button[aria-label="\u65B0\u5EFA\u4F1A\u8BDD"], button[aria-label="New session"]');
       if (dshNewBtn) dshNewBtn.click();
     };
@@ -8140,6 +8293,8 @@ function setupMobileExperience(rpcCall, ctx) {
     header.appendChild(titleEl);
     header.appendChild(rightBtn);
     document.body.appendChild(header);
+    syncMobileHeaderDrawerTrigger();
+    scheduleMobileHeaderDrawerTriggerSync();
   }
   const MOBILE_TITLE_FALLBACK_TEXT = () => localeT("title.fallback");
   const readHostSessionTitle = () => {
@@ -8192,13 +8347,11 @@ function setupMobileExperience(rpcCall, ctx) {
   }
   if (typeof ctx?.sessions?.active?.subscribe === "function") {
     ctx.sessions.active.subscribe(() => {
-      if (document.body.classList.contains("dsh-drawer-open")) {
-        document.body.classList.remove("dsh-drawer-open");
+      if (document.body.classList.contains(MOBILE_DRAWER_CLASS)) {
+        setMobileDrawerOpen(false);
       }
       if (typeof window !== "undefined" && window.innerWidth <= MOBILE_MAX_WIDTH) {
-        document.body.classList.remove("dsh-workbench-open");
-        const openPanels = document.querySelectorAll(workbenchPanelSelector({ openOnly: true }));
-        openPanels.forEach((p) => p.classList.add("dsh-bridge-panelHidden"));
+        hideOpenMobilePanels();
       }
     });
   }
@@ -8330,7 +8483,7 @@ function setupMobileExperience(rpcCall, ctx) {
     if (typeof window === "undefined" || window.innerWidth > MOBILE_MAX_WIDTH) return;
     const toggle = e.target.closest('button[aria-label*="\u6536\u8D77\u4FA7\u8FB9\u680F"], button[title*="\u6536\u8D77\u4FA7\u8FB9\u680F"], button[aria-label*="Collapse sidebar"], button[title*="Collapse sidebar"]');
     if (toggle) {
-      document.body.classList.remove("dsh-drawer-open");
+      document.body.classList.remove(MOBILE_DRAWER_CLASS);
     }
   }, true);
   let backdrop = document.querySelector(".dsh-mobile-backdrop");
@@ -8338,13 +8491,36 @@ function setupMobileExperience(rpcCall, ctx) {
     backdrop = document.createElement("div");
     backdrop.className = "dsh-mobile-backdrop";
     backdrop.addEventListener("click", () => {
-      document.body.classList.remove("dsh-drawer-open");
+      setMobileDrawerOpen(false);
     });
     document.body.appendChild(backdrop);
   }
+  if (typeof MutationObserver !== "undefined") {
+    const syncDrawerClassFromHost = () => {
+      const hostOpen = readHostMobileDrawerOpen();
+      if (hostOpen === null) return;
+      const pluginOpen = document.body.classList.contains(MOBILE_DRAWER_CLASS);
+      if (hostOpen === pluginOpen) return;
+      if (hostOpen) document.body.classList.add(MOBILE_DRAWER_CLASS);
+      else document.body.classList.remove(MOBILE_DRAWER_CLASS);
+    };
+    const hostDrawerObserver = new MutationObserver(() => {
+      syncDrawerClassFromHost();
+      scheduleMobileHeaderDrawerTriggerSync();
+    });
+    try {
+      hostDrawerObserver.observe(document.documentElement, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        attributeFilter: ["data-sidebar-drawer", "data-sidebar-collapsed"]
+      });
+    } catch {
+    }
+  }
   let lastLongPressTime = 0;
   document.addEventListener("click", (e) => {
-    if (!document.body.classList.contains("dsh-drawer-open")) return;
+    if (!document.body.classList.contains(MOBILE_DRAWER_CLASS)) return;
     if (Date.now() - lastLongPressTime < 600) {
       e.stopPropagation();
       e.preventDefault();
@@ -8365,20 +8541,19 @@ function setupMobileExperience(rpcCall, ctx) {
           return;
         }
         if (label.includes("\u65B0\u4F1A\u8BDD") || btn.matches('button[class*="newSession"]')) {
-          document.body.classList.remove("dsh-drawer-open");
+          setMobileDrawerOpen(false);
+          hideOpenMobilePanels();
           return;
         }
       }
       const sessionRow = e.target.closest('a, div[class*="sessionRow"]');
       if (sessionRow) {
         setTimeout(() => {
-          if (document.body.classList.contains("dsh-drawer-open")) {
-            document.body.classList.remove("dsh-drawer-open");
+          if (document.body.classList.contains(MOBILE_DRAWER_CLASS)) {
+            setMobileDrawerOpen(false);
           }
         }, 80);
       }
-    } else if (e.target.classList?.contains("dsh-mobile-backdrop")) {
-      document.body.classList.remove("dsh-drawer-open");
     }
   }, true);
   let longPressTimer = null;
@@ -8389,7 +8564,7 @@ function setupMobileExperience(rpcCall, ctx) {
       touchStartX = e.touches[0].clientX;
       touchStartY = e.touches[0].clientY;
     }
-    if (!document.body.classList.contains("dsh-drawer-open")) return;
+    if (!document.body.classList.contains(MOBILE_DRAWER_CLASS)) return;
     const sidebar = document.querySelector('div[class*="_sidebarCol"]');
     if (!sidebar || !sidebar.contains(e.target)) return;
     const sessionRow = e.target.closest('div[class*="sessionRow"]');
@@ -8426,13 +8601,9 @@ function setupMobileExperience(rpcCall, ctx) {
     const deltaY = e.changedTouches[0].clientY - touchStartY;
     if (Math.abs(deltaX) > 60 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
       if (deltaX > 0 && touchStartX <= 35) {
-        document.body.classList.add("dsh-drawer-open");
-        const collapsedToggle = document.querySelector(
-          `div${familySelector("SIDEBAR", "collapsed")} button${familySelector("SIDEBAR", "toggle")}, button[aria-label*="\u6253\u5F00\u4FA7\u8FB9\u680F"], button[title*="\u6253\u5F00\u4FA7\u8FB9\u680F"], button[aria-label*="Open sidebar"], button[title*="Open sidebar"]`
-        );
-        if (collapsedToggle) collapsedToggle.click();
-      } else if (deltaX < 0 && document.body.classList.contains("dsh-drawer-open")) {
-        document.body.classList.remove("dsh-drawer-open");
+        setMobileDrawerOpen(true);
+      } else if (deltaX < 0 && document.body.classList.contains(MOBILE_DRAWER_CLASS)) {
+        setMobileDrawerOpen(false);
       }
     }
   }, { passive: true });
@@ -8917,7 +9088,7 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
       render();
       setTimeout(() => {
         closeModal();
-        document.body.classList.remove("dsh-drawer-open");
+        setMobileDrawerOpen(false);
       }, 400);
     } finally {
       isSubmitting = false;
@@ -9025,7 +9196,7 @@ function showRemoteWorkspaceDialog(rpcCall, onWorkspaceAdded, clientCtx, onPicke
         }
         setTimeout(() => {
           closeModal();
-          document.body.classList.remove("dsh-drawer-open");
+          setMobileDrawerOpen(false);
         }, 500);
       } else {
         statusMessage = localeT(res?.error) || localeT(raw?.error) || localeT("\u6DFB\u52A0\u5DE5\u4F5C\u533A\u5931\u8D25");
@@ -9304,6 +9475,26 @@ function setupComposerCollapse() {
   observer.observe(document.body, { childList: true, subtree: true });
   onComposerChange();
 }
+var NAV_ICON_DEFAULT_SIZE = 16;
+function SettingsNavIconSlot({ size = NAV_ICON_DEFAULT_SIZE } = {}) {
+  React.useLayoutEffect(() => {
+    markSettingsNavIconSlotActive();
+  }, []);
+  const px = Number(size) > 0 ? Number(size) : NAV_ICON_DEFAULT_SIZE;
+  return h("svg", {
+    xmlns: "http://www.w3.org/2000/svg",
+    width: px,
+    height: px,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 2,
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+    "aria-hidden": "true",
+    focusable: "false"
+  }, REMOTE_NAV_ICON_SHAPES.map(([tag, attrs], index) => h(tag, { key: index, ...attrs })));
+}
 function apply(ctx) {
   window.__dshClientCtx = ctx;
   injectThemeTokens();
@@ -9326,6 +9517,16 @@ function apply(ctx) {
       ctx.effect(() => registerSettingsNavIcon(() => localeT("\u8FDC\u7A0B\u8BBF\u95EE"), navIconFamilies), "dsh-bridge: settings nav icon");
     } else {
       registerSettingsNavIcon(() => localeT("\u8FDC\u7A0B\u8BBF\u95EE"), navIconFamilies);
+    }
+    try {
+      ctx.slots.inject(
+        "settings.section.icon",
+        () => ctx.slots.register(
+          { name: "settings.section.icon", id: "dsh-bridge", order: 10 },
+          SettingsNavIconSlot
+        )
+      );
+    } catch {
     }
   }
   const rpcCall = (endpoint, payload, signal) => ctx.connection.rpc.call(BRIDGE_RPC_CHANNEL, endpoint, payload, signal);

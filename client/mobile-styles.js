@@ -181,6 +181,16 @@ export const MOBILE_STYLES_CSS = `
         opacity: 0.6;
       }
 
+      /* 2.1 宿主自带移动端侧边栏触发器时，自绘汉堡让位（issue #105 后续，用户截图：
+         0.2.x 的 leadingSeat opener 就在左上角同一位置，与插件汉堡叠成一团）。
+         规则：保留 DSH 自带的那个，只隐藏插件自绘的；用 visibility 而不是 display，
+         40px 占位仍在，中间标题与右侧 (+) 的位置不会因此偏移。
+         对应 client/index.js 的 syncMobileHeaderDrawerTrigger()。 */
+      .dsh-mobile-app-header[data-dsh-yield-host-drawer] .dsh-header-menu-btn {
+        visibility: hidden !important;
+        pointer-events: none !important;
+      }
+
       /* 右侧 (+) 新建会话按钮 (DeepSeek App 原生图标) */
       .dsh-header-new-btn {
         width: 40px;
@@ -734,6 +744,21 @@ export const MOBILE_STYLES_CSS = `
         transform: translateX(0) !important;
         box-shadow: 4px 0 28px rgba(0, 0, 0, 0.25) !important;
         pointer-events: auto !important;
+      }
+
+      /* 4.1 抽屉打开期间，自绘顶栏的两个按钮必须让位（issue #105）。
+         **这是有意的模态语义**：抽屉打开时它就是一个模态层，用户必须先收起抽屉，
+         才能再点顶栏的汉堡 / (+)。不要把它当 bug 回退。
+         背景：宿主 0.2.x 自带抽屉时，它右上角的收起/关闭控件与自绘顶栏右侧的 (+)
+         同处屏幕顶部右侧；一旦出现「插件 class 已清、宿主抽屉仍开」的状态（历史缺陷，
+         见 client/index.js 的 setMobileDrawerOpen 注释），插件遮罩先消失，(+) / 汉堡
+         就会重新可命中并盖在抽屉/面板的关闭控件上 —— 用户点 (+) 反而重开新建会话，
+         退不回会话界面。这里在抽屉打开期间显式关闭这两个按钮的命中，保证抽屉自己的
+         关闭控件永远不被顶栏按钮遮挡；桌面端不受影响（整块在 @media (max-width:
+         767px) 内）。 */
+      body.dsh-drawer-open .dsh-header-menu-btn,
+      body.dsh-drawer-open .dsh-header-new-btn {
+        pointer-events: none !important;
       }
 
       /* 抽屉内部：强制 100% 宽度，无论内部状态如何均正常展开并展示 DSH 自带的顶部收起侧边栏图标 */
