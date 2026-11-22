@@ -116,9 +116,19 @@ test('#115：管理解锁豁免只认精确路径（前缀/后缀变体不再获
     chunks.push(await exploit('/api/session/list#/dsh-bridge/authAdminUnlock'))
     chunks.push(await exploit('/prefix/dsh-bridge/authAdminUnlock'))
     chunks.push(await exploit('/dsh-bridge/authAdminUnlockX'))
+    // 绝对形式 URL（HTTP/1.1 允许，代理必须按 URL 语义取 pathname）
+    chunks.push(await exploit('http://127.0.0.1/api/session/list#/dsh-bridge/authAdminUnlock'))
+    chunks.push(await exploit('http://127.0.0.1/api/session/list'))
+    // 编码与归一化变体：不得因归一化差异命中豁免
+    chunks.push(await exploit('/api/session/list%23/dsh-bridge/authAdminUnlock'))
+    chunks.push(await exploit('/api/session/list%23%2fdsh-bridge%2fauthAdminUnlock'))
+    chunks.push(await exploit('//dsh-bridge/authAdminUnlock'))
+    chunks.push(await exploit('/api/session/list/../session/list'))
+    chunks.push(await exploit('/api/session/list/%2e%2e/session/list'))
 
     for (const statusLine of chunks) {
       assert.doesNotMatch(statusLine, / 200 /, `不得有请求被放行：${statusLine}`)
+      assert.doesNotMatch(statusLine, / 302 /, `不得有请求被重定向放行：${statusLine}`)
     }
     assert.equal(h.seen.length, 0, '以上变体都不应转发到后端')
   } finally {
