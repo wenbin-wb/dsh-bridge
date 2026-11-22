@@ -4,6 +4,35 @@
 
 ---
 
+## [v2.17.10] - 2026-11-23
+
+> **安全版，建议所有用户尽快升级**：修复一处可绕过访问认证的漏洞（issue #115，2.17.5–2.17.9 均受影响）。
+
+### 🔒 安全修复
+
+- **未认证鉴权绕过**（issue #115，高危）：在请求路径后追加 `#/dsh-bridge/authAdminUnlock` 即可跳过访问认证、直接调用 DSH 的 HTTP 接口（如 `session/list`、`session/prompt`），无需密码或令牌。攻击面包括局域网代理端口与公网隧道；该问题已在真实部署中被外部扫描器利用。
+  - 根因：路径解析只按 `?` 切分、不剥离 `#`，而管理解锁豁免用 `endsWith` 允许任意前缀命中——鉴权判定路径与下游实际路由路径不一致。
+  - 修复：路径改用 URL 语义解析（同时剥离 query 与 fragment，与下游一致）；管理解锁豁免改为精确匹配；HTTP 与 WebSocket 升级入口一律拒绝含 `#` 的 request-target（400），不依赖下游解析差异。
+  - 该 RPC 仍需免认证可达，否则管理锁屏会死锁；已通过回归用例保证正常流量不受影响。
+
+### 🛠️ 其它改进
+
+- **诊断日志落盘**：宿主的 logger 默认不写文件，排障时拿不到插件日志。现改为同时写入 `~/.dsh/dsh-bridge/diagnostics.log`（600 权限、512KB 上限）与 stderr，便于用户自查「经代理访问 401」这类问题。
+
+### ✅ 验证
+
+- 新增 `test/security-fragment-auth-bypass.test.mjs`：fragment 各位置、绝对 URL 形式、`%23`/`%2f` 编码、协议相对路径、dot-segment、CONNECT、WS 升级等变体全部 fail-closed；正常流量（管理解锁、合法会话、PWA 资源）行为不变。
+- 独立子代理交叉验收通过（25 项断言全 PASS，结论见 PR #116）。
+- 全量测试 944 项；CI Windows / Ubuntu × Node 22/24 全绿；eslint 0 error。
+
+### ⬆️ 升级
+
+```bash
+dsh plugin --profile <profile> update @wenbin_wb/dsh-bridge
+```
+
+或在面板内一键升级后重启 DSH。**暴露在公网的实例请优先升级。**
+
 ## [v2.17.9] - 2026-11-10
 
 > 补丁版：修复 5 个用户报告的问题（#104 / #105 / #106 / #107 / #108）。
