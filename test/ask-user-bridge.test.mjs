@@ -138,8 +138,12 @@ test('[ask-bridge] 非 IM 发起的轮次必须放行给 Web GUI（绝不抢答�
   // 兜底错误的具体形状由宿主决定（此处是测试自己提供的 noAnswerer），只断言"走到了兜底"。
   await assert.rejects(promise)
   assert.equal(getCaptured(), 'NO_PROVIDER', 'Web 轮次应落到宿主兜底（交给 GUI）')
-  assert.equal(platform.sent.length, 0, '不得向 IM 发问')
-  assert.equal(bridge.pendingAskCount(), 0, '不得登记待答')
+  // issue #119：放行之前允许留一条"有提问在等待"的提示（提示 ≠ 抢答），
+  // 因此这里断言的是**没有接管**：不登记待答、不回任何作答类内容。
+  assert.equal(bridge.pendingAskCount(), 0, '不得登记待答（绝不抢答）')
+  for (const sent of platform.sent) {
+    assert.doesNotMatch(sent.text, /需要你的决定|请直接在卡片上选择/, '不得把提问本身发到 IM')
+  }
   bridge.dispose()
 })
 

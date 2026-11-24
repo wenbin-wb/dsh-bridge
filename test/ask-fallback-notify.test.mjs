@@ -13,7 +13,7 @@
 //   ④ 多会话歧义：兜底推送时标题必须带会话标识。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { Platform, ConversationBridge, conversationBridgeHelpers } from '../lib/platform/index.js'
+import { Platform, ConversationBridge } from '../lib/platform/index.js'
 import { formatAskPrompt } from '../lib/platform/ask-user.js'
 
 const NOOP = () => {}
@@ -129,6 +129,27 @@ test('#119：开启 alwaysNotifyAsk 后，重启遗留轮次（_turnPeers 无记
   assert.equal(platform.sent.length, 1, '必须推一条提问给 IM')
   assert.equal(platform.sent[0].peerId, 'user-1', '必须推给白名单里的 peer')
   assert.match(platform.sent[0].text, /需要你的决定/, '文案应是提问正文')
+
+  await bridge.resolveAsk('1', 'user-1')
+  await done
+})
+
+test('#119：重启时正在跑的轮次没有 _lastTurnPeers 记录（turn/end 才写入），此时落到白名单首位', async () => {
+  // 这条锁的是 issue #119 的**典型**场景：重启时该轮正跑到一半，turn/end 从未触发，
+  // 因此 _lastTurnPeers 里没有它的绑定 —— 归属只能来自白名单。
+  // 若将来有人把 _lastTurnPeers 的写入点挪到 turn/start，这条用例会变红，是预期行为。
+  const { ctx, platform, bridge } = makeHarness({ config: { allowFrom: ['user-1', 'user-2'], alwaysNotifyAsk: true } })
+  assert.equal(bridge._lastTurnPeers.size, 0, '前置：重启后 _lastTurnPeers 必为空')
+
+  const done = ctx.fire('user-questions/request', {
+    agent: makeAgent('session-重启时在跑'),
+    questions: QUESTIONS,
+    signal: new AbortController().signal,
+  }, () => {})
+  await new Promise((r) => setTimeout(r, 20))
+
+  assert.equal(platform.sent.length, 1)
+  assert.equal(platform.sent[0].peerId, 'user-1', '无绑定时应落到白名单首位')
 
   await bridge.resolveAsk('1', 'user-1')
   await done
@@ -325,6 +346,3 @@ test('sessionTagOf 契约：cwd 末段 + 会话 id 尾段；信息不足时降�
   await done
   assert.equal(typeof sessionTagOf, 'undefined')
 })
-
-// 保持 helpers 导入被使用（避免 lint 报未使用）
-assert.ok(typeof conversationBridgeHelpers === 'object')
