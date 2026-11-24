@@ -1774,6 +1774,7 @@ function PlatformCard({
         maxMessageChars:    String((platform.config.maxMessageChars >= 500 ? platform.config.maxMessageChars : null) ?? (platformId === 'telegram' ? 4096 : 2000)),
         sendChunkDelayMs:   String(platform.config.sendChunkDelayMs   ?? 1500),
         groupAutoApprove:   Boolean(platform.config.groupAutoApprove),
+        alwaysNotifyAsk:    platform.config.alwaysNotifyAsk === true,
         changesDigest:      platform.config.changesDigest !== false,
         steerMode:          Boolean(platform.config.steerMode),
         // issue #77：少这一项时勾选框恒为未勾选（功能实际是开的），无法从 UI 看出真实状态
@@ -2254,6 +2255,24 @@ function PlatformCard({
           },
         }),
         h('span', null, '群聊自动授权（新群首次 @机器人 自动加入白名单，默认关闭）'),
+      ),
+      // 始终接收提问（issue #112）：默认关闭 = 保持"谁发起推给谁"；
+      // 开启后，PC 上发起、或重启后恢复的轮次，提问也会推到白名单内的 IM 对话。
+      h('label', {
+        style: { display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, fontSize: 12, cursor: 'pointer', width: 'fit-content', color: 'var(--dsw-alias-label-secondary,#6b7280)' },
+        title: '开启后，即使本轮是在电脑端发起（或 DSH 重启后恢复的轮次），Agent 的提问也会推送到这里；关闭（默认）时只在 IM 发起的轮次推送。推送目标始终限于上方白名单内的对话。',
+      },
+        h('input', {
+          type: 'checkbox',
+          checked: Boolean(cfgDraft?.alwaysNotifyAsk),
+          disabled: busy,
+          onChange: (e) => {
+            const checked = e.target.checked;
+            setCfgDraft(d => ({ ...(d ?? {}), alwaysNotifyAsk: checked }));
+            act(BRIDGE_ENDPOINTS.platformSetConfig, { alwaysNotifyAsk: checked });
+          },
+        }),
+        h('span', null, '始终接收提问（电脑端发起的轮次也推送，默认关闭）'),
       ),
       // 本轮改动摘要开关：默认开启（IM 侧也能看到"这轮改了哪些文件"）
       h('label', {

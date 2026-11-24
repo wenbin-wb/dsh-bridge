@@ -1910,6 +1910,8 @@ var panelEn = {
   "\u89E3\u7ED1\u8D26\u53F7": "Unbind account",
   "\u5F00\u542F\u540E\uFF0C\u767D\u540D\u5355\u4E4B\u5916\u7684\u65B0\u7FA4\u9996\u6B21 @\u673A\u5668\u4EBA \u5373\u81EA\u52A8\u6388\u6743\u5165\u767D\u540D\u5355\uFF1B\u5173\u95ED\uFF08\u9ED8\u8BA4\uFF09\u65F6\u65B0\u7FA4\u5FC5\u987B\u5148\u5728\u6B64\u624B\u52A8\u6DFB\u52A0": "When on, a new group is auto-authorized the first time it @mentions the bot; when off (default) you must add it here first",
   "\u7FA4\u804A\u81EA\u52A8\u6388\u6743\uFF08\u65B0\u7FA4\u9996\u6B21 @\u673A\u5668\u4EBA \u81EA\u52A8\u52A0\u5165\u767D\u540D\u5355\uFF0C\u9ED8\u8BA4\u5173\u95ED\uFF09": "Group auto-authorization (first @mention joins the allowlist; default off)",
+  "\u5F00\u542F\u540E\uFF0C\u5373\u4F7F\u672C\u8F6E\u662F\u5728\u7535\u8111\u7AEF\u53D1\u8D77\uFF08\u6216 DSH \u91CD\u542F\u540E\u6062\u590D\u7684\u8F6E\u6B21\uFF09\uFF0CAgent \u7684\u63D0\u95EE\u4E5F\u4F1A\u63A8\u9001\u5230\u8FD9\u91CC\uFF1B\u5173\u95ED\uFF08\u9ED8\u8BA4\uFF09\u65F6\u53EA\u5728 IM \u53D1\u8D77\u7684\u8F6E\u6B21\u63A8\u9001\u3002\u63A8\u9001\u76EE\u6807\u59CB\u7EC8\u9650\u4E8E\u4E0A\u65B9\u767D\u540D\u5355\u5185\u7684\u5BF9\u8BDD\u3002": "When on, questions raised by turns started on the desktop (or resumed after a DSH restart) are also pushed here; when off (default) only IM-initiated turns are pushed. Targets are always limited to the allowlist above.",
+  "\u59CB\u7EC8\u63A5\u6536\u63D0\u95EE\uFF08\u7535\u8111\u7AEF\u53D1\u8D77\u7684\u8F6E\u6B21\u4E5F\u63A8\u9001\uFF0C\u9ED8\u8BA4\u5173\u95ED\uFF09": "Always receive questions (also for desktop-initiated turns; default off)",
   '\u5F00\u542F\u540E\uFF0C\u6BCF\u8F6E\u7ED3\u675F\u4F1A\u628A"\u6539\u4E86\u54EA\u4E9B\u6587\u4EF6\uFF08+\u589E/-\u5220\uFF09"\u64AD\u62A5\u5230\u5F53\u524D\u4F1A\u8BDD\uFF1B/diff \u53EF\u5BFC\u51FA .patch \u8865\u4E01': "When on, each turn ends with a summary of changed files (+added/-removed); /diff exports a .patch",
   "\u672C\u8F6E\u6539\u52A8\u6458\u8981\uFF08\u6BCF\u8F6E\u64AD\u62A5\u6539\u52A8\u6587\u4EF6\u6E05\u5355\uFF0C\u9ED8\u8BA4\u5F00\u542F\uFF09": "Turn change summary (broadcast changed files each turn; default on)",
   "\u5F00\u542F\u540E\uFF0CAgent \u6267\u884C\u4EFB\u52A1\u671F\u95F4\u53D1\u6D88\u606F\u4F1A\u63D2\u8BDD\u6CE8\u5165\u5230\u5F53\u524D\u8F6E\u6B21\u7684\u4E0B\u4E00\u6B65\uFF08\u4E0D\u6253\u65AD\u6B63\u5728\u8FD0\u884C\u7684\u5DE5\u5177\u8C03\u7528\uFF09\uFF1B\u5173\u95ED\u540E\u6392\u961F\u7B49\u5F85\u5F53\u524D\u4EFB\u52A1\u5B8C\u6210\u540E\u5904\u7406": "When on, messages sent while the Agent is working are injected at its next step (running tool calls are not interrupted); when off, messages wait until the current turn finishes",
@@ -4842,6 +4844,7 @@ function PlatformCard({
         maxMessageChars: String((platform.config.maxMessageChars >= 500 ? platform.config.maxMessageChars : null) ?? (platformId === "telegram" ? 4096 : 2e3)),
         sendChunkDelayMs: String(platform.config.sendChunkDelayMs ?? 1500),
         groupAutoApprove: Boolean(platform.config.groupAutoApprove),
+        alwaysNotifyAsk: platform.config.alwaysNotifyAsk === true,
         changesDigest: platform.config.changesDigest !== false,
         steerMode: Boolean(platform.config.steerMode),
         // issue #77：少这一项时勾选框恒为未勾选（功能实际是开的），无法从 UI 看出真实状态
@@ -5321,6 +5324,26 @@ function PlatformCard({
           }
         }),
         h("span", null, "\u7FA4\u804A\u81EA\u52A8\u6388\u6743\uFF08\u65B0\u7FA4\u9996\u6B21 @\u673A\u5668\u4EBA \u81EA\u52A8\u52A0\u5165\u767D\u540D\u5355\uFF0C\u9ED8\u8BA4\u5173\u95ED\uFF09")
+      ),
+      // 始终接收提问（issue #112）：默认关闭 = 保持"谁发起推给谁"；
+      // 开启后，PC 上发起、或重启后恢复的轮次，提问也会推到白名单内的 IM 对话。
+      h(
+        "label",
+        {
+          style: { display: "flex", alignItems: "center", gap: 6, marginTop: 10, fontSize: 12, cursor: "pointer", width: "fit-content", color: "var(--dsw-alias-label-secondary,#6b7280)" },
+          title: "\u5F00\u542F\u540E\uFF0C\u5373\u4F7F\u672C\u8F6E\u662F\u5728\u7535\u8111\u7AEF\u53D1\u8D77\uFF08\u6216 DSH \u91CD\u542F\u540E\u6062\u590D\u7684\u8F6E\u6B21\uFF09\uFF0CAgent \u7684\u63D0\u95EE\u4E5F\u4F1A\u63A8\u9001\u5230\u8FD9\u91CC\uFF1B\u5173\u95ED\uFF08\u9ED8\u8BA4\uFF09\u65F6\u53EA\u5728 IM \u53D1\u8D77\u7684\u8F6E\u6B21\u63A8\u9001\u3002\u63A8\u9001\u76EE\u6807\u59CB\u7EC8\u9650\u4E8E\u4E0A\u65B9\u767D\u540D\u5355\u5185\u7684\u5BF9\u8BDD\u3002"
+        },
+        h("input", {
+          type: "checkbox",
+          checked: Boolean(cfgDraft?.alwaysNotifyAsk),
+          disabled: busy,
+          onChange: (e) => {
+            const checked = e.target.checked;
+            setCfgDraft((d) => ({ ...d ?? {}, alwaysNotifyAsk: checked }));
+            act(BRIDGE_ENDPOINTS.platformSetConfig, { alwaysNotifyAsk: checked });
+          }
+        }),
+        h("span", null, "\u59CB\u7EC8\u63A5\u6536\u63D0\u95EE\uFF08\u7535\u8111\u7AEF\u53D1\u8D77\u7684\u8F6E\u6B21\u4E5F\u63A8\u9001\uFF0C\u9ED8\u8BA4\u5173\u95ED\uFF09")
       ),
       // 本轮改动摘要开关：默认开启（IM 侧也能看到"这轮改了哪些文件"）
       h(
