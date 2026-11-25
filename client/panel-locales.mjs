@@ -250,6 +250,8 @@ export const panelEn = {
   "解绑账号": "Unbind account",
   "开启后，白名单之外的新群首次 @机器人 即自动授权入白名单；关闭（默认）时新群必须先在此手动添加": "When on, a new group is auto-authorized the first time it @mentions the bot; when off (default) you must add it here first",
   "群聊自动授权（新群首次 @机器人 自动加入白名单，默认关闭）": "Group auto-authorization (first @mention joins the allowlist; default off)",
+  "开启后，即使本轮是在电脑端发起（或 DSH 重启后恢复的轮次），Agent 的提问也会推送到这里；关闭（默认）时只在 IM 发起的轮次推送。推送目标始终限于上方白名单内的对话。": "When on, questions raised by turns started on the desktop (or resumed after a DSH restart) are also pushed here; when off (default) only IM-initiated turns are pushed. Targets are always limited to the allowlist above.",
+  "始终接收提问（电脑端发起的轮次也推送，默认关闭）": "Always receive questions (also for desktop-initiated turns; default off)",
   "开启后，每轮结束会把\"改了哪些文件（+增/-删）\"播报到当前会话；/diff 可导出 .patch 补丁": "When on, each turn ends with a summary of changed files (+added/-removed); /diff exports a .patch",
   "本轮改动摘要（每轮播报改动文件清单，默认开启）": "Turn change summary (broadcast changed files each turn; default on)",
   "开启后，Agent 执行任务期间发消息会插话注入到当前轮次的下一步（不打断正在运行的工具调用）；关闭后排队等待当前任务完成后处理": "When on, messages sent while the Agent is working are injected at its next step (running tool calls are not interrupted); when off, messages wait until the current turn finishes",
