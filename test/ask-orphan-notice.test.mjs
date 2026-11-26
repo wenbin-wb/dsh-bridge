@@ -89,8 +89,8 @@ async function flush(out = 30) {
   await new Promise((r) => setTimeout(r, out))
 }
 
-test('#119：无法归属且兜底关闭时，先发提示再交回宿主（不再完全静默）', async () => {
-  const { ctx, platform, bridge } = makeHarness({ config: { allowFrom: ['user-1'] } })
+test('#119：开启提醒后，无法归属的提问先发提示再交回宿主（不再完全静默）', async () => {
+  const { ctx, platform, bridge } = makeHarness({ config: { allowFrom: ['user-1'], alwaysNotifyAsk: true } })
   bridge.activeSessionId = null
 
   let nextCalled = 0
@@ -108,7 +108,7 @@ test('#119：无法归属且兜底关闭时，先发提示再交回宿主（不�
 })
 
 test('#119：会话仍挂在另一个 activeSession 上时同样要提示（ownsAgent 挡掉的场景）', async () => {
-  const { ctx, platform, bridge } = makeHarness({ config: { allowFrom: ['user-1'] } })
+  const { ctx, platform, bridge } = makeHarness({ config: { allowFrom: ['user-1'], alwaysNotifyAsk: true } })
   // 用户在 GUI 里切过会话：activeSessionId 指向别处，遗留轮次永远过不了 ownsAgent
   bridge.activeSessionId = 'session-当前在用的'
   bridge._turnPeers.set('session-遗留轮次', { outboundPeer: { peerId: 'user-1' }, senderId: 'user-1' })
@@ -127,7 +127,7 @@ test('#119：会话仍挂在另一个 activeSession 上时同样要提示（owns
 })
 
 test('#119：提示绝不修改白名单，也不写新的 peer', async () => {
-  const { ctx, bridge } = makeHarness({ config: { allowFrom: ['user-1'] } })
+  const { ctx, bridge } = makeHarness({ config: { allowFrom: ['user-1'], alwaysNotifyAsk: true } })
   const before = [...bridge.config.allowFrom]
   const peerBefore = bridge.peerId
 
@@ -178,26 +178,28 @@ test('#119：IM 发起的轮次能正常接管，不得多发提示', async () =
   await done
 })
 
-test('#119：alwaysNotifyAsk 兜底命中时不得多发提示', async () => {
+test('#119/#112：alwaysNotifyAsk 开启时的提醒只发一条，且不接管', async () => {
   const { ctx, platform, bridge } = makeHarness({ config: { allowFrom: ['user-1'], alwaysNotifyAsk: true } })
   bridge.activeSessionId = null
 
+  let nextCalled = 0
   const done = ctx.fire('user-questions/request', {
     agent: makeAgent('session-兜底'),
     questions: QUESTIONS,
     signal: new AbortController().signal,
-  }, () => {})
+  }, () => { nextCalled += 1 })
 
-  await new Promise((r) => setTimeout(r, 20))
-  assert.equal(platform.sent.length, 1, '兜底已接管，不该再发提示')
-  assert.doesNotMatch(platform.sent[0].text, NOTICE_PATTERN)
-
-  await bridge.resolveAsk('1', 'user-1')
+  await new Promise((r) => setTimeout(r, 30))
+  // 提醒路径本身就是那条"提示"，因此恰好一条、且不伪装成提问
+  assert.equal(platform.sent.length, 1, '只发一条提醒')
+  assert.match(platform.sent[0].text, NOTICE_PATTERN)
+  assert.equal(nextCalled, 1, '提醒后必须放行给宿主 GUI（Web 端要能弹窗）')
+  assert.equal(bridge.pendingAskCount(), 0, '不得登记待答')
   await done
 })
 
 test('#119：提示文案带会话标识，便于用户判断该去哪个会话处理', async () => {
-  const { ctx, platform } = makeHarness({ config: { allowFrom: ['user-1'] } })
+  const { ctx, platform } = makeHarness({ config: { allowFrom: ['user-1'], alwaysNotifyAsk: true } })
 
   await ctx.fire('user-questions/request', {
     agent: makeAgent('session-66292ab8-aaaa-bbbb-cccc-1234567890ab', '/home/user/projects/dsh-bridge'),
@@ -209,4 +211,62 @@ test('#119：提示文案带会话标识，便于用户判断该去哪个会话�
   assert.equal(platform.sent.length, 1)
   assert.match(platform.sent[0].text, /dsh-bridge/, '应带 cwd 末段')
   assert.match(platform.sent[0].text, /567890ab/, "应带会话 id 尾段（后 8 位）")
+})
+
+// ---------------------------------------------------------------------------
+// #112 回归：提醒路径绝不能吃掉 Web 端的提问卡片
+// ---------------------------------------------------------------------------
+//
+// `user-questions/request` 是 waterfall，`next()` 只能调一次且一旦接管就不能再调。
+// 实测回归：alwaysNotifyAsk 最初实现成"兜底接管"，导致 Web 面板发起的会话在
+// Web 上完全看不到提问卡片（手机上收到了，电脑上什么都没有）。
+// 本组用例锁住"提醒 ≠ 接管"这条不变量。
+
+test('#112：Web 发起的轮次在提醒之后必须放行，Web 端才能弹窗', async () => {
+  const { ctx, platform, bridge } = makeHarness({ config: { allowFrom: ['user-1'], alwaysNotifyAsk: true } })
+  bridge.activeSessionId = null
+
+  let nextCalled = 0
+  await ctx.fire('user-questions/request', {
+    agent: makeAgent('session-web-发起'),
+    questions: QUESTIONS,
+    signal: new AbortController().signal,
+  }, () => { nextCalled += 1 })
+  await new Promise((r) => setTimeout(r, 30))
+
+  assert.equal(nextCalled, 1, 'next() 恰好被调用一次：既放行又不重复')
+  assert.equal(bridge.pendingAskCount(), 0, '提醒路径不得登记待答条目')
+  assert.equal(platform.sent.length, 1, 'IM 侧只收到一条提醒')
+  assert.doesNotMatch(platform.sent[0].text, /需要你的决定/, '提醒不得伪装成提问卡片')
+})
+
+test('#112：提醒文案需说明"请在 Web 面板作答"，避免用户以为要在这里回', async () => {
+  const { ctx, platform } = makeHarness({ config: { allowFrom: ['user-1'], alwaysNotifyAsk: true } })
+
+  await ctx.fire('user-questions/request', {
+    agent: makeAgent('session-web-2'),
+    questions: QUESTIONS,
+    signal: new AbortController().signal,
+  }, () => {})
+  await new Promise((r) => setTimeout(r, 30))
+
+  assert.equal(platform.sent.length, 1)
+  assert.match(platform.sent[0].text, /Web 面板/, '必须指明去 Web 面板作答')
+  assert.match(platform.sent[0].text, /已在 Web 面板显示/, '讲清卡片就在 Web 上')
+})
+
+test('#112：开关关闭时 Web 轮次完全不打扰 IM（既有行为不变）', async () => {
+  const { ctx, platform, bridge } = makeHarness({ config: { allowFrom: ['user-1'] } })
+  bridge.activeSessionId = null
+
+  let nextCalled = 0
+  await ctx.fire('user-questions/request', {
+    agent: makeAgent('session-web-3'),
+    questions: QUESTIONS,
+    signal: new AbortController().signal,
+  }, () => { nextCalled += 1 })
+  await new Promise((r) => setTimeout(r, 30))
+
+  assert.equal(nextCalled, 1, '必须放行')
+  assert.equal(platform.sent.length, 0, '开关关闭时 IM 侧不应有任何消息')
 })
