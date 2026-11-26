@@ -109,7 +109,7 @@ test('#119：alwaysNotifyAsk 默认关闭时，非 IM 发起的轮次提问仍�
 // ② 开启兜底：重启后遗留轮次（_turnPeers 空）也能送到 IM
 // ---------------------------------------------------------------------------
 
-test('#119：开启 alwaysNotifyAsk 后，重启遗留轮次（_turnPeers 无记录）的提问推到白名单 peer', async () => {
+test('#119/#112：开启 alwaysNotifyAsk 后，重启遗留轮次的提问「提醒 + 放行」，不接管', async () => {
   const { ctx, platform, bridge } = makeHarness({ config: { allowFrom: ['user-1'], alwaysNotifyAsk: true } })
 
   // 模拟"重启后"：_turnPeers 是空的，activeSessionId 与 agent 的 session 不一致
@@ -123,14 +123,16 @@ test('#119：开启 alwaysNotifyAsk 后，重启遗留轮次（_turnPeers 无记
     signal: new AbortController().signal,
   }, () => { nextCalled += 1 })
 
-  // 提问已推送到 IM，桥在等用户作答；这里模拟用户直接作答把它结束掉
-  await new Promise((r) => setTimeout(r, 20))
-  assert.equal(nextCalled, 0, '兜底命中后不得再调用 next()（否则两边同时弹窗）')
-  assert.equal(platform.sent.length, 1, '必须推一条提问给 IM')
-  assert.equal(platform.sent[0].peerId, 'user-1', '必须推给白名单里的 peer')
-  assert.match(platform.sent[0].text, /需要你的决定/, '文案应是提问正文')
+  await new Promise((r) => setTimeout(r, 30))
 
-  await bridge.resolveAsk('1', 'user-1')
+  // waterfall 的 next() 只能调一次：接管就不放行。提醒路径**必须**放行，
+  // 否则 Web 端永远拿不到提问卡片（实测回归，见 #119 补充说明）。
+  assert.equal(nextCalled, 1, '提醒之后必须放行给宿主 GUI')
+  assert.equal(bridge.pendingAskCount(), 0, '提醒不是接管，不得登记待答')
+  assert.equal(platform.sent.length, 1, '必须发一条提醒')
+  assert.equal(platform.sent[0].peerId, 'user-1', '必须推给白名单里的 peer')
+  assert.match(platform.sent[0].text, /提问在等你处理/, '文案应是提醒而非提问正文')
+  assert.doesNotMatch(platform.sent[0].text, /需要你的决定/, '提醒不得伪装成提问')
   await done
 })
 
@@ -141,17 +143,18 @@ test('#119：重启时正在跑的轮次没有 _lastTurnPeers 记录（turn/end 
   const { ctx, platform, bridge } = makeHarness({ config: { allowFrom: ['user-1', 'user-2'], alwaysNotifyAsk: true } })
   assert.equal(bridge._lastTurnPeers.size, 0, '前置：重启后 _lastTurnPeers 必为空')
 
+  let nextCalled = 0
   const done = ctx.fire('user-questions/request', {
     agent: makeAgent('session-重启时在跑'),
     questions: QUESTIONS,
     signal: new AbortController().signal,
-  }, () => {})
-  await new Promise((r) => setTimeout(r, 20))
+  }, () => { nextCalled += 1 })
+  await new Promise((r) => setTimeout(r, 30))
 
   assert.equal(platform.sent.length, 1)
   assert.equal(platform.sent[0].peerId, 'user-1', '无绑定时应落到白名单首位')
-
-  await bridge.resolveAsk('1', 'user-1')
+  assert.equal(nextCalled, 1, '提醒后必须放行')
+  assert.equal(bridge.pendingAskCount(), 0, '不得登记待答')
   await done
 })
 
@@ -164,25 +167,18 @@ test('#119：_lastTurnPeers 有该会话的绑定后，兜底优先用它而不�
     outboundPeer: { peerId: 'oc_chat_real' },
   })
 
+  let nextCalled = 0
   const done = ctx.fire('user-questions/request', {
     agent: makeAgent('session-遗留轮次'),
     questions: QUESTIONS,
     signal: new AbortController().signal,
-  }, () => {})
+  }, () => { nextCalled += 1 })
 
-  await new Promise((r) => setTimeout(r, 20))
+  await new Promise((r) => setTimeout(r, 30))
   assert.equal(platform.sent.length, 1)
   assert.equal(platform.sent[0].peerId, 'oc_chat_real', '应回到"上一次真正用过的对话框"，而不是白名单首位')
-
-  // 兜底条目必须把作答者锚定到**发送目标**，而不是退化成 undefined
-  // （旧代码取的是 turn.senderId，兜底路径下 turn 为 null → 非群聊下"限制发起者本人"直接失效）。
-  const [, entry] = [...bridge._askPending.entries()].pop()
-  assert.equal(entry.peerId, 'oc_chat_real', '兜底条目的作答者应锚定到发送目标')
-  assert.equal(entry.isGroup, false, '单聊语义：只有该对话本人可作答')
-
-  // 收尾：用非作答者作答必须被拒（证明 action 校验真的生效），随后放行本人结束本轮
-  assert.equal(await bridge.resolveAsk('1', 'stranger-999'), false, '非作答者必须被拒')
-  assert.equal(await bridge.resolveAsk('1', 'oc_chat_real'), true, '对话本人应能作答')
+  assert.equal(nextCalled, 1, '提醒后必须放行')
+  assert.equal(bridge.pendingAskCount(), 0, '提醒不登记待答')
   await done
 })
 
